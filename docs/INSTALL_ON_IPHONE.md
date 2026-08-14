@@ -20,9 +20,32 @@ B는 오늘 안에 손에 들 수 있고, A는 결제와 승인 대기가 있다
 
 ---
 
-## 공통 전제
+## 공통 전제 — 백엔드 주소
 
-GitHub 저장소가 있어야 한다. 아직이면:
+**이걸 먼저 하지 않으면 앱은 설치돼도 데이터가 안 나온다.**
+
+앱의 기본 백엔드 주소는 `Config/Base.xcconfig` 의 `http://localhost:3111` 이다.
+아이폰에서 `localhost` 는 아이폰 자신을 가리키므로 아무 데도 연결되지 않는다.
+
+이 저장소는 공개이므로 실제 API 주소를 커밋하지 않는다. 대신 **GitHub Secret 으로 주입**한다.
+
+```powershell
+gh secret set API_BASE_URL --body "https://실제-api-도메인"
+```
+
+워크플로가 빌드 시 이 값을 주입한다. 시크릿이 없으면 경고를 남기고 localhost 로 빌드된다.
+
+로컬(Xcode)에서 빌드할 때는 `Config/Local.xcconfig` 에 적는다 (gitignore 됨):
+
+```
+API_BASE_URL = https:/$()/실제-api-도메인
+```
+
+> xcconfig 에서 `//` 는 주석이라 URL 은 `$()` 로 끊어 써야 한다.
+
+## GitHub 저장소
+
+아직 없으면:
 
 ```
 ! gh auth login
