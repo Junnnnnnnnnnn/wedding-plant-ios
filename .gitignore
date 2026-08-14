@@ -46,6 +46,10 @@ fastlane/report.xml
 fastlane/screenshots/
 fastlane/test_output/
 
+# CI 에서 내려받은 스크린샷·동영상 아티팩트
+preview/
+ipa/
+
 # macOS / Windows
 .DS_Store
 Thumbs.db

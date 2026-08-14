@@ -69,6 +69,11 @@ targets:
         CFBundleDisplayName: 웨딩플랜
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # 한국 사용자 전용 앱. 이걸 지정하지 않으면 DatePicker 등 시스템 컴포넌트가
+        # 기기 언어(영어)를 따라가 "August 2026 / SUN MON TUE" 로 표시된다.
+        CFBundleDevelopmentRegion: ko
+        CFBundleLocalizations:
+          - ko
         # xcconfig 에서 주입된다. AppEnvironment.baseURL() 이 이 키를 읽는다.
         API_BASE_URL: $(API_BASE_URL)
         UILaunchScreen: {}
