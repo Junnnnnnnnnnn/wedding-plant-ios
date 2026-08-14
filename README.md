@@ -13,6 +13,7 @@ scripts/    Windows 개발 편의 스크립트
 docs/       환경 구성·테스트·배포 가이드
 ```
 
+- **현재 상태·다음 할 일: [`docs/STATUS.md`](docs/STATUS.md)**
 - **Mac 에서 구동하기: [`docs/RUN_ON_MAC.md`](docs/RUN_ON_MAC.md)**
 - 아이폰에 설치하기 (Mac 없이): [`docs/INSTALL_ON_IPHONE.md`](docs/INSTALL_ON_IPHONE.md)
 - 앱 화면 보는 법 (CI 스크린샷·동영상): [`docs/VIEW_THE_APP.md`](docs/VIEW_THE_APP.md)

@@ -2,6 +2,38 @@
 
 이 저장소에서 작업할 때 Claude Code 가 참고할 지침.
 
+## 무엇인가
+
+`wedding-plant` **Next.js 웹앱의 iOS 네이티브 포팅**. Swift + SwiftUI.
+
+### 화면은 웹과 완전히 같아야 한다
+
+사용자의 명시적 요구다. 동작·문구·색상·글꼴에 의문이 생기면 **웹이 정답**이고, 임의로 다르게 만들지 않는다.
+
+**기준 레퍼런스는 안드로이드 포팅이다.** 이미 웹을 1:1로 옮겨뒀고, 각 컴포넌트 주석에
+대응하는 웹 Tailwind 클래스까지 적혀 있다. 새 화면을 만들 때 웹 소스를 뒤지기 전에 여기를 먼저 본다.
+
+| 저장소 | 경로(이 사용자 머신 기준) |
+| --- | --- |
+| 웹 (원본) | `PERSONAL/wedding-plant` — 워크스페이스 워크트리 `apple-app` 브랜치도 동일 |
+| **안드로이드 (레퍼런스)** | `PERSONAL/wedding-plant-android` |
+| iOS (여기) | `PERSONAL/wedding-plant-ios` |
+
+안드로이드에서 대응하는 파일:
+
+| iOS | 안드로이드 |
+| --- | --- |
+| `App/Sources/DesignSystem/WPColor.swift` | `ui/theme/Theme.kt` (`WpColors`) |
+| `App/Sources/DesignSystem/WPFont.swift` | `ui/theme/Type.kt` |
+| `App/Sources/DesignSystem/Components.swift` | `ui/components/Common.kt` |
+| `App/Sources/DesignSystem/Backgrounds.swift` | `ui/components/GridBackground.kt`, `Decor.kt` |
+| `Features/Landing/LandingView.swift` | `ui/landing/LandingScreen.kt` |
+| `Features/Main/MainView.swift` | `ui/main/MainScreen.kt` |
+| `Features/Setting/SettingView.swift` | `ui/setting/SettingScreen.kt` |
+| `Features/Root/BottomTabBar.swift` | `ui/nav/BottomTabBar.kt` |
+| `Core/Sources/WPDomain/PlanRules.swift` | `domain/PlanRules.kt` |
+| `Core/Sources/WPUtils/KST*.swift` | `core/time/Kst.kt` |
+
 ## 명령어
 
 **Mac**
@@ -96,18 +128,46 @@ xcconfig 에서 `//` 는 주석이다. URL 은 `http:/$()/example.com` 처럼 `$
 실행 인자 `-WPDemoMode` 를 주면 `DemoTransport` 가 주입되어 **백엔드 없이** 채워진 화면이 뜬다.
 CI 스크린샷 촬영과 시뮬레이터 확인에 쓴다.
 
-- Xcode: Product → Scheme → Edit Scheme → Run → Arguments → `-WPDemoMode`
-- 온보딩 화면부터 보려면 `-WPForceOnboarding` 도 함께 준다
+스킴이 두 개다(`project.yml` 에 정의 — `xcodegen generate` 해도 유지된다).
+
+| 스킴 | 동작 |
+| --- | --- |
+| `WeddingPlant` | 실제 백엔드 (`Config/Local.xcconfig` 의 `API_BASE_URL`) |
+| `WeddingPlant (Demo)` | 데모 데이터 |
+
+`-WPForceOnboarding` 을 켜면 **비로그인 + 빈 사용자**로 시작해 랜딩·설정 6단계를 처음부터 볼 수 있다.
+끄면 플랜이 완성된 사용자라 `SettingViewModel.prefill` 이 곧바로 메인으로 보낸다(웹 명세대로).
 
 데모 데이터는 `App/Sources/Platform/DemoTransport.swift` 의 `DemoData` 에서 고친다.
 결혼일은 항상 "오늘 + 92일" 이라 언제 캡처해도 D-92 로 보인다.
+일정은 지남/D-day/임박/예정 상태가 한 번씩 나오도록 날짜를 배치해뒀다.
 
 ## 디자인
 
-**UI 작업 시 `impeccable` 스킬을 항상 적용한다.** SwiftUI 라면 그 스킬의 `reference/ios.md`
-(시맨틱 시스템 컬러, Dynamic Type, 다크모드 필수, large title, 44pt 터치 타깃)를 먼저 읽는다.
+**UI 작업 시 `impeccable` 스킬을 항상 적용한다.** SwiftUI 라면 그 스킬의 `reference/ios.md` 를 먼저 읽는다.
 
-스킬은 라이선스 문제로 저장소에 포함하지 않았다. 각자 머신의 `.claude/skills/` 에 설치해야 한다.
+스킬은 라이선스가 우리 것이 아니라 저장소에 포함하지 않았다(이 저장소는 공개).
+각자 머신의 `.claude/skills/` 에 복사해야 한다. 원본: `PERSONAL/wedding-plant/.claude/skills/`
+(`hallmark`, `impeccable` 두 개가 여기에만 있다)
+
+### HIG 기본값보다 웹 일치가 우선이다
+
+`impeccable/reference/ios.md` 는 시맨틱 시스템 컬러·Dynamic Type·다크모드·large title 을 요구하지만,
+이 프로젝트는 **의도적으로 따르지 않는다.** 그렇게 하면 웹에서 멀어지기 때문이다.
+impeccable 자체가 *"The brief wins. Redirecting a clear brief toward your taste is failure."* 라고
+명시하고 있고, 여기서 브리프는 "웹과 똑같이" 다.
+
+구체적으로:
+
+- **색**: `WPColor` 만 쓴다. 브랜드 핑크 `#EE2B8C`, 배경 `#FCFBFC`. 화면 코드에 hex 직접 금지.
+- **글꼴**: 웹과 같은 TTF. `WPFont.hak(_:_:)` = 덩근미소(기본), `WPFont.tmoney(_:_:)` = 사용자 입력값(이름·플랜 제목).
+  크기는 `fixedSize` 로 고정한다 — Dynamic Type 을 쓰면 웹과 레이아웃이 어긋난다.
+- **다크모드는 만들지 않는다.** 웹에 없다. `UIUserInterfaceStyle: Light` 로 고정돼 있다.
+- **하단 탭은 4개** — 홈 / 피드 / 참여 플랜 / Settings. `Settings` 가 영문인 것도 웹 그대로다.
+  피드는 라우팅 없이 "준비중" 알림만 띄운다. iOS `TabView` 대신 커스텀 바를 쓴다(웹과 모양이 달라서).
+- 배경에는 항상 `WPScreenBackground` — 배경색 + 점 그리드. 랜딩·설정만 `showsDecor: true`.
+
+### 검증
 
 프론트엔드 변경은 **실제로 화면을 캡처해 눈으로 확인하기 전까지 완료로 보고하지 않는다.**
 Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)를 쓴다.
@@ -128,13 +188,30 @@ Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)�
   연도가 `2,026` 으로 나오는 식이다. 금액처럼 **의도적으로** 천 단위를 넣을 때만
   `wpThousands(_:)` 로 문자열을 먼저 만들고 넣는다.
 - 주석과 UI 문구는 한글이 기본
-- 코드·문자열에 이모지를 넣지 않는다 (명시적 요청이 없는 한)
+- 주석은 "무엇을"이 아니라 **"왜"** 를 적는다. 특히 웹과 다르게 구현한 지점은 이유를 남긴다
+- 코드·문자열에 이모지를 **새로 추가하지** 않는다.
+  단, **웹 원문에 있는 이모지는 그대로 옮긴다** (예: 설정 축하 문구, "모든 플랜을 완료했어요! 🎉").
+  빼면 문구가 웹과 달라진다.
 - 사용자 응답은 한글로 한다 (코드·명령어·기술 용어는 영어 유지)
+
+## 하드 트랩 (실제로 당한 것들)
+
+| 증상 | 원인 / 대응 |
+| --- | --- |
+| 글꼴이 시스템 폰트로 나옴 | `Font.custom` 은 **PostScript 이름**을 요구한다. 파일명이 아니다. 틀려도 크래시 없이 조용히 대체된다. 값은 `WPFont.swift` 참고 — TTF 의 name 테이블(nameID 6)에서 직접 뽑은 것이니 추측으로 고치지 말 것 |
+| 연도가 `2,026` 으로 나옴 | `Text("\(Int)")` 는 `LocalizedStringKey` → 로케일 숫자 포맷. `Text(verbatim:)` 을 쓴다 |
+| 달력이 영어로 나옴 | `CFBundleDevelopmentRegion: ko` + `CFBundleLocalizations: [ko]` 가 `project.yml` 에 있어야 한다 |
+| 리스트가 비어 나옴 | `roomId` 가 있으면 경로가 `/plan/schedule/room/{id}/list` 로 바뀐다. 금액도 `/plan/room/total-amount/{id}` 다 |
+| 설정 화면이 곧바로 메인으로 넘어감 | 정상 동작이다. 플랜이 완성된 사용자면 `prefill` 이 스킵한다. 플로우를 보려면 `-WPForceOnboarding` |
+| UI 테스트가 버튼을 못 찾음 | `.accessibilityIdentifier` 를 감싼 뷰에 걸면 `app.buttons[...]` 로 안 잡힌다. `Button` 자체에 붙인다 (`WPNextButton(identifier:)` 처럼) |
+| 카테고리 색이 웹과 다름 | `PlanRules.categoryColorHex` 는 JS 의 **Int32 오버플로 해시**를 재현해야 한다. `&<<` `&-` `&+` 와 `Int64` abs 를 쓴다 |
+| pull 후 폰트·스킴이 안 보임 | `project.yml` 이 바뀌었으면 `xcodegen generate` 를 다시 돌려야 한다 (`./scripts/mac-setup.sh`) |
 
 ## 문서
 
 | 문서 | 내용 |
 | --- | --- |
+| **`docs/STATUS.md`** | **현재 상태·다음 할 일. 작업 시작 전에 먼저 읽을 것** |
 | `docs/RUN_ON_MAC.md` | Mac 에서 구동·실기기 설치 |
 | `docs/INSTALL_ON_IPHONE.md` | Mac 없이 아이폰 설치 (TestFlight / Sideloadly) |
 | `docs/TESTING.md` | 테스트 실행·작성 |
