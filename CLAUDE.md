@@ -1,0 +1,125 @@
+# CLAUDE.md
+
+이 저장소에서 작업할 때 Claude Code 가 참고할 지침.
+
+## 명령어
+
+**Mac**
+
+```bash
+./scripts/mac-setup.sh          # Xcode 확인 → XcodeGen 설치 → Core 테스트 → .xcodeproj 생성 → Xcode 열기
+swift test --package-path Core  # Core 유닛테스트
+xcodegen generate               # project.yml 변경 후 .xcodeproj 재생성
+```
+
+**Windows**
+
+```powershell
+.\scripts\test.ps1              # Core 전체 테스트 (환경 준비 자동)
+.\scripts\test.ps1 KstDateTests # 특정 스위트
+. .\scripts\swift-env.ps1       # swift 를 직접 쓸 때. 점(.) 소싱 필수
+```
+
+Windows 에서는 `swift build 2>&1` 로 실행하면 경고만 있어도 PowerShell 이 exit 1 로 보이게 한다.
+`2>&1` 을 빼고 `$LASTEXITCODE` 로 판단할 것.
+
+## 아키텍처
+
+### Core / App 분리는 타협이 아니라 전제다
+
+주 개발 환경이 **Windows** 다. Windows 에서는 SwiftUI 컴파일이 불가능하므로,
+**UI 가 아닌 코드는 전부 `Core/` SwiftPM 패키지에 넣는다.**
+
+| | 위치 | Windows 빌드 |
+| --- | --- | --- |
+| 모델·네트워킹·도메인 로직 | `Core/` | 가능 |
+| SwiftUI 화면 | `App/Sources/Features/` | 불가 |
+| 플랫폼 의존 구현 | `App/Sources/Platform/` | 불가 |
+
+새 로직을 추가할 때 **먼저 Core 에 넣을 수 있는지 검토한다.** View 안에 비즈니스 로직을 쓰면
+Windows 에서 테스트가 불가능해지고, macOS 왕복 비용이 발생한다.
+
+- `WPModels` — 백엔드 DTO, `APIEnvelope`
+- `WPUtils` — `KstDate`, `JWTDecoder`
+- `WPNetworking` — `HTTPTransport` 프로토콜, `APIClient`, `Endpoint` 카탈로그, `MockTransport`
+- `WPDomain` — `PostLoginRouter`, `PlanCompletion`, `GuestMigration`, `BudgetSummary`
+
+### Core 에서 금지
+
+- `import SwiftUI` / `UIKit` / `Security` — Windows 빌드가 깨진다
+- `import Foundation` 의 `URLSession` — Windows 의 swift-corelibs-foundation 에서는 별도 모듈이고 동작이 불완전하다.
+  전송 계층은 `HTTPTransport` 프로토콜로 추상화하고, 구현은 `App/Sources/Platform/URLSessionTransport.swift` 에 둔다.
+- 함수 안에서 `Date()` 직접 호출 — 자정 경계 테스트가 불가능해진다.
+  `KstDate.today(now:)` 처럼 **`now:` 파라미터로 주입**받게 만든다.
+
+### .xcodeproj 는 커밋하지 않는다
+
+Windows 에서 생성할 수 없으므로 `project.yml`(XcodeGen) 만 커밋하고 `.xcodeproj` 는 매번 생성한다.
+
+**타깃·빌드 설정·의존성 변경은 반드시 `project.yml` 에서 한다.** Xcode UI 에서 바꾼 설정은
+다음 `xcodegen generate` 때 사라진다. (소스 파일 추가는 폴더 기준이라 그냥 된다)
+
+예외: Xcode 에서 실기기 실행 시 고르는 **Team** 은 생성된 `.xcodeproj` 에만 남는다.
+매번 고르기 싫으면 `project.yml` 의 `DEVELOPMENT_TEAM` 에 팀 ID 를 박는다.
+
+## 백엔드 계약
+
+- 모든 API 는 `${API_BASE_URL}/plan/...`, 응답은 일관되게 `{ result: Bool, data: ... }` → `APIEnvelope<T>`
+- 엔드포인트는 전부 `Core/Sources/WPNetworking/Endpoint.swift` 에 모은다. 화면에서 경로 문자열을 직접 만들지 않는다.
+- **금액 단위는 만원.**
+- `Plan.onwerName` 은 백엔드 응답의 오타를 그대로 유지한 필드다. 이름을 고치지 말 것 (읽기용 `ownerName` 별칭 제공).
+- 알 수 없는 enum 값이 와도 디코딩이 깨지지 않도록 권한·상태는 `RawRepresentable` 구조체로 둔다.
+  합성 Codable 은 `{"rawValue":"X"}` 로 인코딩하므로 `init(from:)`/`encode(to:)` 를 직접 쓴다.
+- 숫자가 문자열로 오는 경우가 있어 `@LooseInt` 래퍼로 방어한다.
+
+## 시간 처리
+
+한국 사용자 대상이므로 **KST 기준으로 통일**한다. `Core/Sources/WPUtils/KST.swift` 의 `KstDate` 를 쓴다.
+`KST.secondsFromGMT` 는 고정 +9 오프셋이다 (tz 데이터베이스 의존을 피하고 웹 구현과 결과를 일치시키기 위함).
+
+## 데모 모드
+
+실행 인자 `-WPDemoMode` 를 주면 `DemoTransport` 가 주입되어 **백엔드 없이** 채워진 화면이 뜬다.
+CI 스크린샷 촬영과 시뮬레이터 확인에 쓴다.
+
+- Xcode: Product → Scheme → Edit Scheme → Run → Arguments → `-WPDemoMode`
+- 온보딩 화면부터 보려면 `-WPForceOnboarding` 도 함께 준다
+
+데모 데이터는 `App/Sources/Platform/DemoTransport.swift` 의 `DemoData` 에서 고친다.
+결혼일은 항상 "오늘 + 92일" 이라 언제 캡처해도 D-92 로 보인다.
+
+## 디자인
+
+**UI 작업 시 `impeccable` 스킬을 항상 적용한다.** SwiftUI 라면 그 스킬의 `reference/ios.md`
+(시맨틱 시스템 컬러, Dynamic Type, 다크모드 필수, large title, 44pt 터치 타깃)를 먼저 읽는다.
+
+스킬은 라이선스 문제로 저장소에 포함하지 않았다. 각자 머신의 `.claude/skills/` 에 설치해야 한다.
+
+프론트엔드 변경은 **실제로 화면을 캡처해 눈으로 확인하기 전까지 완료로 보고하지 않는다.**
+Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)를 쓴다.
+
+## CI
+
+- `.github/workflows/ios.yml` — Linux 에서 Core 테스트 + macOS 시뮬레이터 스크린샷·동영상.
+  **시뮬레이터 빌드는 코드 서명이 필요 없다.** Apple 개발자 계정 없이 동작한다.
+- `.github/workflows/device.yml` — 수동 실행. 무서명 `.ipa` 또는 TestFlight 업로드.
+
+서명 자산(`signing/`, `*.p12`, `*.p8`, `*.mobileprovision`)은 절대 커밋하지 않는다.
+**이 저장소는 공개다.** 커밋 전에 개인정보·자격증명이 섞이지 않았는지 확인할 것.
+
+## 컨벤션
+
+- 주석과 UI 문구는 한글이 기본
+- 코드·문자열에 이모지를 넣지 않는다 (명시적 요청이 없는 한)
+- 사용자 응답은 한글로 한다 (코드·명령어·기술 용어는 영어 유지)
+
+## 문서
+
+| 문서 | 내용 |
+| --- | --- |
+| `docs/RUN_ON_MAC.md` | Mac 에서 구동·실기기 설치 |
+| `docs/INSTALL_ON_IPHONE.md` | Mac 없이 아이폰 설치 (TestFlight / Sideloadly) |
+| `docs/TESTING.md` | 테스트 실행·작성 |
+| `docs/VIEW_THE_APP.md` | CI 스크린샷·동영상으로 화면 확인 |
+| `docs/IOS_DEV_ON_WINDOWS.md` | 전체 전략, 인증서 발급, 웹→iOS 포팅 매핑 |
+| `Core/README.md` | Core 설계 규칙 |
