@@ -1,0 +1,142 @@
+name: iOS
+
+# 이 워크플로는 Apple 개발자 계정이 없어도 동작한다.
+# 시뮬레이터 빌드는 코드 서명이 필요 없기 때문 (CODE_SIGNING_ALLOWED=NO).
+# 계정이 필요한 건 실기기 설치와 TestFlight 업로드뿐이고, 그건 나중에 별도 job 으로 붙인다.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core 테스트 (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+
+      # macOS 러너는 분당 과금 배수가 10배라, UI 와 무관한 로직 테스트는 리눅스에서 먼저 돌린다.
+      - name: swift test
+        run: swift test --package-path Core
+
+  simulator:
+    name: 시뮬레이터 빌드 + 화면 캡처
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      # .xcodeproj 는 커밋하지 않는다. project.yml 로부터 여기서 생성한다.
+      - name: Xcode 프로젝트 생성
+        run: |
+          xcodegen generate
+          ls -la WeddingPlant.xcodeproj
+
+      - name: 시뮬레이터 부팅
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[][] | select(.name | test("^iPhone 1[5-9]"))] | last | .udid')
+          if [ -z "$UDID" ] || [ "$UDID" = "null" ]; then
+            UDID=$(xcrun simctl list devices available --json \
+              | jq -r '[.devices[][] | select(.name | test("iPhone"))] | last | .udid')
+          fi
+          echo "선택된 시뮬레이터: $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+          # 스크린샷의 상태바를 항상 동일하게 만든다 (09:41, 배터리 100%)
+          xcrun simctl status_bar "$UDID" override \
+            --time "09:41" --batteryState charged --batteryLevel 100 \
+            --cellularBars 4 --wifiBars 3 || true
+
+      - name: 빌드 (build-for-testing)
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project WeddingPlant.xcodeproj \
+            -scheme WeddingPlant \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ONLY_ACTIVE_ARCH=YES
+
+      - name: 화면 녹화 시작
+        run: |
+          mkdir -p artifacts
+          nohup xcrun simctl io "${{ steps.sim.outputs.udid }}" recordVideo \
+            --codec h264 --force artifacts/simulator.mp4 > artifacts/record.log 2>&1 &
+          echo $! > /tmp/record.pid
+          sleep 2
+          echo "녹화 PID: $(cat /tmp/record.pid)"
+
+      - name: UI 테스트 실행 (스크린샷 촬영)
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project WeddingPlant.xcodeproj \
+            -scheme WeddingPlant \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/DerivedData \
+            -resultBundlePath artifacts/Result.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: 화면 녹화 종료
+        if: always()
+        run: |
+          # SIGINT 로 끝내야 mp4 가 정상 마무리된다. SIGKILL 이면 파일이 깨진다.
+          kill -INT "$(cat /tmp/record.pid)" 2>/dev/null || true
+          sleep 5
+          ls -la artifacts/ || true
+
+      - name: 스크린샷 추출
+        if: always()
+        run: |
+          mkdir -p artifacts/screenshots
+          xcrun xcresulttool export attachments \
+            --path artifacts/Result.xcresult \
+            --output-path artifacts/screenshots || \
+            echo "첨부 추출 실패 — 아래 Result.xcresult 를 Xcode 로 열어서 확인하세요"
+          ls -la artifacts/screenshots || true
+
+      - name: 아티팩트 업로드 (스크린샷 + 동영상)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-preview
+          path: |
+            artifacts/screenshots
+            artifacts/simulator.mp4
+          if-no-files-found: warn
+          retention-days: 14
+
+      # 스크린샷 추출이 실패했을 때를 대비한 원본. Xcode 로 열면 안에 다 들어 있다.
+      - name: 아티팩트 업로드 (원본 xcresult)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: artifacts/Result.xcresult
+          if-no-files-found: warn
+          retention-days: 7

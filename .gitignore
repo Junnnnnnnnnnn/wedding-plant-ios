@@ -1,0 +1,51 @@
+# Xcode 프로젝트는 XcodeGen(project.yml)으로 CI에서 생성한다. 커밋하지 않는다.
+*.xcodeproj/
+*.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+
+# Swift / SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+*.o
+*.swiftmodule
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# 로컬 에이전트 설정 및 서드파티 스킬.
+# 이 저장소는 공개이므로, 라이선스가 우리 것이 아닌 스킬 소스를 재배포하지 않는다.
+# (skills 는 각자 자기 머신에 설치한다)
+.claude/
+
+# 서명 자산 — 절대 커밋 금지 (GitHub Secrets로만 관리)
+signing/
+*.p12
+*.p8
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.key
+*.pem
+
+# 환경 설정
+Config/*.xcconfig
+!Config/Example.xcconfig
+.env
+
+# fastlane
+fastlane/report.xml
+fastlane/screenshots/
+fastlane/test_output/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db

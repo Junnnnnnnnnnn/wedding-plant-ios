@@ -1,0 +1,2 @@
+# Info.plist 는 XcodeGen 이 project.yml 로부터 여기에 생성한다.
+# 폴더 자체는 저장소에 있어야 하므로 이 파일을 둔다.
