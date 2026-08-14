@@ -108,6 +108,7 @@ targets:
       - target: WeddingPlant
 
 schemes:
+  # 실제 백엔드(Config/Local.xcconfig 의 API_BASE_URL)를 보는 기본 스킴.
   WeddingPlant:
     build:
       targets:
@@ -120,3 +121,18 @@ schemes:
       gatherCoverageData: false
       targets:
         - WeddingPlantUITests
+
+  # 백엔드 없이 채워진 화면을 보는 스킴.
+  #
+  # Xcode 의 Edit Scheme 에서 손으로 넣은 실행 인자는 `xcodegen generate` 때마다 사라진다.
+  # 그래서 스킴 자체를 여기에 정의해 재생성해도 유지되게 한다.
+  WeddingPlant (Demo):
+    build:
+      targets:
+        WeddingPlant: all
+    run:
+      config: Debug
+      commandLineArguments:
+        "-WPDemoMode": true
+        # 켜면 로그인 전 랜딩 화면부터 시작한다.
+        "-WPForceOnboarding": false

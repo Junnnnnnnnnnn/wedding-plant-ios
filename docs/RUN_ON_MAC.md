@@ -92,13 +92,28 @@ cd wedding-plant-ios
 
 Xcode 상단에서 기기를 **iPhone 16** 등 시뮬레이터로 고르고 **Cmd+R**.
 
-데모 데이터로 채워진 화면을 보려면 실행 인자를 준다:
+스킴이 두 개 있다. 상단 스킴 선택기에서 고른다.
 
-- Product → Scheme → Edit Scheme → Run → Arguments
-- **Arguments Passed On Launch** 에 `-WPDemoMode` 추가
+| 스킴 | 동작 |
+| --- | --- |
+| **WeddingPlant** | 실제 백엔드(`Config/Local.xcconfig` 의 `API_BASE_URL`)에 붙는다 |
+| **WeddingPlant (Demo)** | 백엔드 없이 데모 데이터로 채워진 화면이 뜬다 |
 
-이러면 백엔드 없이 이름 "지수", 예산 5000만원, 일정 6개가 채워진 화면이 뜬다.
-빼면 실제 백엔드(`API_BASE_URL`, 기본 `http://localhost:3111`)에 붙는다.
+데모 스킴은 `project.yml` 에 정의돼 있어서 `xcodegen generate` 를 다시 돌려도 유지된다.
+(Edit Scheme 에서 손으로 넣은 실행 인자는 재생성 때 사라진다 — 그래서 스킴으로 박아뒀다)
+
+로그인 전 랜딩 화면부터 보고 싶으면 `project.yml` 의 `-WPForceOnboarding` 을 `true` 로 바꾸거나,
+Edit Scheme 에서 일시적으로 체크한다.
+
+### 다시 pull 했을 때
+
+`project.yml` 이 바뀌었으면 **반드시 `xcodegen generate` 를 다시 돌려야** 한다.
+폰트·리소스·스킴이 프로젝트 파일에 반영되지 않으면 글꼴이 시스템 폰트로 나온다.
+
+```bash
+git pull
+./scripts/mac-setup.sh     # xcodegen generate 까지 다시 해준다
+```
 
 ### 3-5. UI 테스트 / 스크린샷
 
