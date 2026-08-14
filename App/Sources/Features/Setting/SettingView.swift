@@ -114,8 +114,12 @@ private struct StepScaffold<Content: View>: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            WPNextButton(text: buttonText, enabled: buttonEnabled, action: onNext)
-                .accessibilityIdentifier("setting.next")
+            WPNextButton(
+                text: buttonText,
+                enabled: buttonEnabled,
+                identifier: "setting.next",
+                action: onNext
+            )
         }
         .padding(.horizontal, 16)
         .padding(.top, 80)
@@ -274,9 +278,9 @@ private struct TermsStep: View {
                 WPNextButton(
                     text: model.submitting ? "저장 중..." : "계획 짜러 가기",
                     enabled: model.allRequiredAgreed && !model.submitting,
+                    identifier: "setting.submit",
                     action: onSubmit
                 )
-                .accessibilityIdentifier("setting.submit")
             }
             .padding(.horizontal, 16)
             .padding(.top, 80)

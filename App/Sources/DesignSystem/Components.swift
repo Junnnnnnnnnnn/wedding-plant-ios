@@ -30,6 +30,9 @@ struct KakaoStartButton: View {
 struct WPNextButton: View {
     var text: String
     var enabled: Bool = true
+    /// UI 테스트용 식별자. 바깥에서 `.accessibilityIdentifier` 를 걸면 감싼 뷰에 붙어
+    /// `app.buttons[...]` 로 잡히지 않으므로, Button 자체에 직접 붙인다.
+    var identifier: String?
     var action: () -> Void
 
     var body: some View {
@@ -47,6 +50,7 @@ struct WPNextButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .accessibilityIdentifier(identifier ?? "")
         .frame(maxWidth: 320)
     }
 }

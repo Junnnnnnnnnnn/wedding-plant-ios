@@ -11,6 +11,13 @@ struct DemoTransport: HTTPTransport {
     /// 로딩 상태가 화면에 보이도록 약간의 지연을 준다.
     var latency: Duration = .milliseconds(200)
 
+    /// 신규 사용자로 흉내낼지 여부.
+    ///
+    /// 기본 데모 유저는 이름·예산·결혼일이 모두 채워져 있어서, 설정 화면에 들어가도
+    /// `PlanCompletion.isComplete` 가 true 가 되어 곧바로 메인으로 넘어간다(웹 명세대로).
+    /// 그래서 설정 플로우를 보려면 비어 있는 사용자를 돌려줘야 한다.
+    var newUser: Bool = false
+
     func send(_ request: PreparedRequest) async throws -> HTTPResponse {
         try? await Task.sleep(for: latency)
 
@@ -25,7 +32,7 @@ struct DemoTransport: HTTPTransport {
         } else if path.hasSuffix("/plan/user/amount/detail") {
             json = DemoData.amountDetail
         } else if path.hasSuffix("/plan/user") {
-            json = DemoData.user
+            json = newUser ? DemoData.newUser : DemoData.user
         } else if path.contains("/plan/schedule") && path.hasSuffix("/list") {
             // roomId 가 있으면 경로가 `/plan/schedule/room/{id}/list` 로 바뀐다.
             // 접미사만 보고 판단해야 두 형태를 모두 잡는다.
@@ -68,6 +75,11 @@ enum DemoData {
             .replacingOccurrences(of: "=", with: "")
         return "eyJhbGciOiJIUzI1NiJ9.\(encoded).demo-signature"
     }()
+
+    /// 설정 플로우를 처음부터 보기 위한 빈 사용자.
+    static let newUser = """
+    {"result":true,"data":{"id":"demo-user"}}
+    """
 
     static var user: String {
         """

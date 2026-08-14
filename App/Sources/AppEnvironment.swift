@@ -30,11 +30,17 @@ final class AppEnvironment: ObservableObject {
         let baseURL = Self.baseURL()
 
         if isDemo {
-            let store = InMemoryTokenStore(token: DemoData.token)
-            let client = APIClient(baseURL: baseURL, transport: DemoTransport(), tokenStore: store)
-            let env = AppEnvironment(api: client, tokenStore: store, isDemo: true)
-            // 온보딩 화면도 캡처할 수 있도록, 요청하면 비로그인 상태로 시작한다.
+            // 랜딩·설정 플로우를 처음부터 보려면 비로그인 + 빈 사용자로 시작해야 한다.
+            // (기본 데모 유저는 플랜이 완성돼 있어 설정 화면이 곧바로 메인으로 넘어간다)
             let forceOnboarding = ProcessInfo.processInfo.arguments.contains("-WPForceOnboarding")
+
+            let store = InMemoryTokenStore(token: DemoData.token)
+            let client = APIClient(
+                baseURL: baseURL,
+                transport: DemoTransport(newUser: forceOnboarding),
+                tokenStore: store
+            )
+            let env = AppEnvironment(api: client, tokenStore: store, isDemo: true)
             env.isAuthenticated = !forceOnboarding
             return env
         }
