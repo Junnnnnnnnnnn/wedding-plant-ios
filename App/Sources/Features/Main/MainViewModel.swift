@@ -102,7 +102,10 @@ final class MainViewModel: ObservableObject {
 
         // 금액과 두 탭은 서로 독립이라 동시에 받는다.
         // 개별 실패는 화면 전체를 막지 않고 해당 영역만 비운다.
-        async let amountTask = env.api.send(Endpoint.totalAmount(), decoding: TotalAmount.self)
+        //
+        // 방에 속한 사용자는 방 기준 금액을 봐야 한다 (안드로이드와 동일한 분기).
+        let amountEndpoint = roomId.map { Endpoint.roomTotalAmount(roomId: $0) } ?? Endpoint.totalAmount()
+        async let amountTask = env.api.send(amountEndpoint, decoding: TotalAmount.self)
         async let plannedTask = env.api.send(
             Endpoint.scheduleList(status: .normal, roomId: roomId),
             decoding: SchedulePage.self

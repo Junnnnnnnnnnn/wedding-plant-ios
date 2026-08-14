@@ -19,14 +19,17 @@ struct DemoTransport: HTTPTransport {
 
         if path.hasSuffix("/plan/auth/kakao/login") {
             json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
-        } else if path.hasSuffix("/plan/user/total-amount") {
+        } else if path.contains("total-amount") {
+            // `/plan/user/total-amount` 와 `/plan/room/total-amount/{roomId}` 둘 다.
             json = DemoData.totalAmount
         } else if path.hasSuffix("/plan/user/amount/detail") {
             json = DemoData.amountDetail
         } else if path.hasSuffix("/plan/user") {
             json = DemoData.user
-        } else if path.hasSuffix("/plan/schedule/list") {
-            // 계획 중 / 완료를 따로 요청하므로 쿼리로 갈라준다.
+        } else if path.contains("/plan/schedule") && path.hasSuffix("/list") {
+            // roomId 가 있으면 경로가 `/plan/schedule/room/{id}/list` 로 바뀐다.
+            // 접미사만 보고 판단해야 두 형태를 모두 잡는다.
+            // 계획 중 / 완료는 쿼리로 갈라준다.
             let isCompleted = request.url.query?.contains("status=COMPLETED") ?? false
             json = isCompleted ? DemoData.completedSchedules : DemoData.plannedSchedules
         } else if path.hasSuffix("/plan/room/list") {
