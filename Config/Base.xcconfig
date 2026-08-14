@@ -1,0 +1,16 @@
+// 빌드 설정 기본값. 이 파일은 저장소에 커밋된다.
+//
+// 개인 설정(각자의 백엔드 주소 등)은 같은 폴더에 Local.xcconfig 를 만들어 덮어쓴다.
+// Local.xcconfig 는 .gitignore 되어 있고, 이 파일 맨 아래에서 선택적으로 include 된다.
+// Local.example.xcconfig 를 복사해서 쓰면 된다.
+//
+// 주의: xcconfig 에서 `//` 는 주석 시작이다. URL 의 슬래시 두 개는 `$()` 로 끊어야 한다.
+//       http://example.com  (X — 주석으로 잘림)
+//       http:/$()/example.com  (O)
+
+// 백엔드 주소. 시뮬레이터에서 PC 의 로컬 서버를 볼 때 쓰는 기본값.
+// 실기기에서는 localhost 가 아이폰 자신을 가리키므로 Local.xcconfig 에서 반드시 바꿔야 한다.
+API_BASE_URL = http:/$()/localhost:3111
+
+// 개인 설정으로 덮어쓰기. 파일이 없어도 빌드가 깨지지 않는다.
+#include? "Local.xcconfig"

@@ -37,8 +37,8 @@ signing/
 *.pem
 
 # 환경 설정
-Config/*.xcconfig
-!Config/Example.xcconfig
+# 개인별 빌드 설정. Config/Base.xcconfig 와 Local.example.xcconfig 는 커밋한다.
+Config/Local.xcconfig
 .env
 
 # fastlane

@@ -62,6 +62,20 @@ Windows 에서 생성할 수 없으므로 `project.yml`(XcodeGen) 만 커밋하�
 예외: Xcode 에서 실기기 실행 시 고르는 **Team** 은 생성된 `.xcodeproj` 에만 남는다.
 매번 고르기 싫으면 `project.yml` 의 `DEVELOPMENT_TEAM` 에 팀 ID 를 박는다.
 
+## 환경 설정
+
+`.env` 를 쓰지 않는다. **xcconfig → Info.plist → `Bundle.main`** 경로로 주입한다.
+
+- `Config/Base.xcconfig` — 커밋됨. 기본값과 `#include? "Local.xcconfig"`
+- `Config/Local.xcconfig` — **gitignore.** 각자의 백엔드 주소·팀 ID. `Local.example.xcconfig` 를 복사해 만든다
+- `project.yml` 의 `info.properties` 에 `API_BASE_URL: $(API_BASE_URL)` 로 연결되어 있다
+- 읽는 곳은 `AppEnvironment.baseURL()`
+
+xcconfig 에서 `//` 는 주석이다. URL 은 `http:/$()/example.com` 처럼 `$()` 로 끊어 써야 한다.
+
+**서버 전용 비밀값(카카오 REST API 키, client secret 등)을 앱에 넣지 않는다.**
+번들에 들어간 값은 `.ipa` 를 풀면 추출된다. 그런 값은 백엔드에만 둔다.
+
 ## 백엔드 계약
 
 - 모든 API 는 `${API_BASE_URL}/plan/...`, 응답은 일관되게 `{ result: Bool, data: ... }` → `APIEnvelope<T>`
