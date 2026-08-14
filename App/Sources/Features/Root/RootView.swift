@@ -2,44 +2,47 @@ import SwiftUI
 
 /// 최상위 화면 전환.
 ///
-/// 로그인/게스트 진입 전에는 온보딩, 이후에는 탭 셸을 보여준다.
+/// 로그인/게스트 진입 전에는 랜딩, 이후에는 탭 셸을 보여준다.
 struct RootView: View {
     @EnvironmentObject private var env: AppEnvironment
 
     var body: some View {
         Group {
             if env.isAuthenticated {
-                MainTabView()
+                MainTabShell()
             } else {
-                OnboardingView()
+                LandingView()
             }
         }
-        .background(WP.background)
-        .tint(WP.accent)
+        .tint(WPColor.primary)
     }
 }
 
-/// 웹의 `BottomTabBar` 에 대응. 홈 / 참여 플랜 / 설정 3개 탭.
-struct MainTabView: View {
+/// 웹의 `BottomTabBar` 가 붙은 화면 셸.
+///
+/// 각 화면이 자기 배경과 상태바 여백을 직접 처리하므로 여기서는 배치만 한다.
+struct MainTabShell: View {
+    @State private var tab: WPTab = .home
+
     var body: some View {
-        TabView {
-            MainView()
-                .tabItem {
-                    Label("홈", systemImage: "house.fill")
+        VStack(spacing: 0) {
+            Group {
+                switch tab {
+                case .home:
+                    MainView()
+                case .rooms:
+                    PlanListView()
+                case .settings:
+                    UserView()
+                case .feed:
+                    // 피드는 준비중 알림만 띄우고 탭이 바뀌지 않으므로 여기 올 일이 없다.
+                    MainView()
                 }
-                .accessibilityIdentifier("tab.home")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            PlanListView()
-                .tabItem {
-                    Label("참여 플랜", systemImage: "person.2.fill")
-                }
-                .accessibilityIdentifier("tab.planList")
-
-            UserView()
-                .tabItem {
-                    Label("설정", systemImage: "gearshape.fill")
-                }
-                .accessibilityIdentifier("tab.user")
+            BottomTabBar(active: $tab)
         }
+        .background(WPColor.background)
     }
 }

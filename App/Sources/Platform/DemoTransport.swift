@@ -26,7 +26,9 @@ struct DemoTransport: HTTPTransport {
         } else if path.hasSuffix("/plan/user") {
             json = DemoData.user
         } else if path.hasSuffix("/plan/schedule/list") {
-            json = DemoData.scheduleList
+            // 계획 중 / 완료를 따로 요청하므로 쿼리로 갈라준다.
+            let isCompleted = request.url.query?.contains("status=COMPLETED") ?? false
+            json = isCompleted ? DemoData.completedSchedules : DemoData.plannedSchedules
         } else if path.hasSuffix("/plan/room/list") {
             json = DemoData.roomList
         } else {
@@ -69,6 +71,10 @@ enum DemoData {
         {"result":true,"data":{
           "id":"demo-user","name":"지수","weddingDate":"\(weddingDate)","budget":5000,
           "roomId":1,"hasSeenMainGuide":true,"hasSeenBudgetGuide":true,"hasSeenChatGuide":true,
+          "members":[
+            {"planUserId":"demo-user","name":"지수","image":null,"permission":"OWNER"},
+            {"planUserId":"u2","name":"현우","image":null,"permission":"WRITE"}
+          ],
           "chatRooms":[{"id":10,"name":"본식 준비"},{"id":11,"name":"신혼여행"}]
         }}
         """
@@ -85,24 +91,36 @@ enum DemoData {
     }}
     """
 
-    static var scheduleList: String {
-        let today = KstDate.today()
-        func day(_ offset: Int) -> String { today.adding(days: offset).dateString }
-        return """
-        {"result":true,"data":[
+    private static func day(_ offset: Int) -> String {
+        KstDate.today().adding(days: offset).dateString
+    }
+
+    /// 계획 중 탭. 응답은 배열이 아니라 `{ total, list }` 다.
+    /// 일부러 지남/D-day/임박/예정 상태가 모두 한 번은 나오도록 날짜를 배치했다.
+    static var plannedSchedules: String {
+        """
+        {"result":true,"data":{"total":4,"list":[
+          {"id":3,"categoryName":"드레스","title":"드레스 1차 피팅","amount":500,
+           "startDate":"\(day(-2))","status":"NORMAL","location":"서울 강남구 논현동"},
+          {"id":4,"categoryName":"메이크업","title":"헤어·메이크업 리허설","amount":180,
+           "startDate":"\(day(0))","status":"NORMAL","location":"서울 서초구"},
+          {"id":5,"categoryName":"신혼여행","title":"항공권 예약","amount":820,
+           "startDate":"\(day(3))","status":"NORMAL","location":null},
+          {"id":6,"categoryName":"예물","title":"반지 상담","amount":650,
+           "startDate":"\(day(40))","status":"NORMAL","location":"서울 종로구"}
+        ]}}
+        """
+    }
+
+    /// 완료 탭
+    static var completedSchedules: String {
+        """
+        {"result":true,"data":{"total":2,"list":[
           {"id":1,"categoryName":"웨딩홀","title":"더채플앳청담 본식 계약","amount":1200,
            "startDate":"\(day(-20))","status":"COMPLETED","location":"서울 강남구 청담동"},
           {"id":2,"categoryName":"스튜디오","title":"본식 스냅 촬영 예약","amount":450,
-           "startDate":"\(day(-6))","status":"COMPLETED","location":"서울 성동구"},
-          {"id":3,"categoryName":"드레스","title":"드레스 1차 피팅","amount":500,
-           "startDate":"\(day(3))","status":"PLANNED","location":"서울 강남구 논현동"},
-          {"id":4,"categoryName":"메이크업","title":"헤어·메이크업 리허설","amount":180,
-           "startDate":"\(day(12))","status":"PLANNED","location":"서울 서초구"},
-          {"id":5,"categoryName":"신혼여행","title":"항공권 예약","amount":820,
-           "startDate":"\(day(25))","status":"PLANNED","location":null},
-          {"id":6,"categoryName":"예물","title":"반지 상담","amount":650,
-           "startDate":"\(day(40))","status":"PLANNED","location":"서울 종로구"}
-        ]}
+           "startDate":"\(day(-6))","status":"COMPLETED","location":"서울 성동구"}
+        ]}}
         """
     }
 

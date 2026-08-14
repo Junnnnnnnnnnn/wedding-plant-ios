@@ -14,11 +14,14 @@ public enum Endpoint {
     // MARK: - 인증
 
     /// 카카오 access token 을 앱 JWT 로 교환. 인증 불필요.
-    public static func kakaoLogin(kakaoToken: String) throws -> HTTPRequest {
+    ///
+    /// - Note: 바디 키는 `accessToken` 이다. 웹은 서버 라우트를 거치며 `kakaoToken` 을 쓰지만,
+    ///   네이티브는 SDK 가 준 access token 을 그대로 보내며 안드로이드 구현과 동일하게 맞춘다.
+    public static func kakaoLogin(accessToken: String) throws -> HTTPRequest {
         try .json(
             .post,
             "/plan/auth/kakao/login",
-            body: ["kakaoToken": kakaoToken],
+            body: ["accessToken": accessToken],
             requiresAuth: false
         )
     }
@@ -46,7 +49,7 @@ public enum Endpoint {
     }
 
     public static func markMainGuideSeen() -> HTTPRequest {
-        HTTPRequest(method: .patch, path: "/plan/user/has-seen-main-guide")
+        HTTPRequest(method: .post, path: "/plan/user/has-seen-main-guide")
     }
 
     public static func markBudgetGuideSeen() -> HTTPRequest {
@@ -69,8 +72,41 @@ public enum Endpoint {
 
     // MARK: - 일정
 
-    public static func scheduleList() -> HTTPRequest {
-        HTTPRequest(path: "/plan/schedule/list")
+    /// 일정 목록 조회 상태 필터. 계획 중 / 완료를 **따로** 받아온다.
+    public enum ScheduleListStatus: String, Sendable {
+        case normal = "NORMAL"
+        case completed = "COMPLETED"
+    }
+
+    /// 웹은 `count=10000` 으로 사실상 전체를 한 번에 받아온다. 동일하게 맞춘다.
+    public static let scheduleFetchCount = 10000
+
+    /// `GET /plan/schedule/list` 또는 `GET /plan/schedule/room/{roomId}/list`
+    ///
+    /// 응답은 배열이 아니라 `{ total, list }`(`SchedulePage`) 다.
+    public static func scheduleList(
+        status: ScheduleListStatus,
+        roomId: String? = nil,
+        sortColumn: String = "startDate",
+        descending: Bool = true,
+        count: Int = scheduleFetchCount
+    ) -> HTTPRequest {
+        let path: String
+        if let roomId, !roomId.trimmingCharacters(in: .whitespaces).isEmpty {
+            path = "/plan/schedule/room/\(escape(roomId.trimmingCharacters(in: .whitespaces)))/list"
+        } else {
+            path = "/plan/schedule/list"
+        }
+        return HTTPRequest(
+            path: path,
+            query: [
+                "page": "1",
+                "count": "\(count)",
+                "sort": descending ? "DESC" : "ASC",
+                "sortColumn": sortColumn,
+                "status": status.rawValue,
+            ]
+        )
     }
 
     public static func schedule(id: Int) -> HTTPRequest {
@@ -89,7 +125,8 @@ public enum Endpoint {
         HTTPRequest(method: .delete, path: "/plan/schedule/\(id)")
     }
 
-    public static func updateScheduleStatus(id: Int, status: ScheduleStatus) throws -> HTTPRequest {
+    /// 체크박스 토글. 계획 중 <-> 완료.
+    public static func updateScheduleStatus(id: Int, status: ScheduleListStatus) throws -> HTTPRequest {
         try .json(.patch, "/plan/schedule/status/\(id)", body: ["status": status.rawValue])
     }
 

@@ -106,7 +106,8 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         self.id = try container.decode(Int.self, forKey: .id)
         self.categoryName = try container.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
-        self.amount = try container.decodeIfPresent(Int.self, forKey: .amount)
+        // 금액은 소수로 내려올 수 있다. Int 로 바로 받으면 항목 하나가 리스트 전체를 깨뜨린다.
+        self.amount = try container.decode(LooseInt.self, forKey: .amount).wrappedValue
         self.startDate = try container.decodeIfPresent(String.self, forKey: .startDate)
         self.createDate = try container.decodeIfPresent(String.self, forKey: .createDate)
         self.status = try container.decodeIfPresent(ScheduleStatus.self, forKey: .status)
@@ -116,6 +117,25 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         self.memo = try container.decodeIfPresent(String.self, forKey: .memo)
         self.payType = try container.decodeIfPresent(PayType.self, forKey: .payType)
         self.addCategoryNameList = try container.decodeIfPresent([String].self, forKey: .addCategoryNameList)
+    }
+}
+
+/// `GET /plan/schedule/list` 응답 페이로드.
+///
+/// 배열이 아니라 `{ total, list }` 래퍼다.
+public struct SchedulePage: Codable, Hashable, Sendable {
+    public var total: Int
+    public var list: [ScheduleItem]
+
+    public init(total: Int, list: [ScheduleItem] = []) {
+        self.total = total
+        self.list = list
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.list = try container.decodeIfPresent([ScheduleItem].self, forKey: .list) ?? []
+        self.total = try container.decodeIfPresent(Int.self, forKey: .total) ?? self.list.count
     }
 }
 

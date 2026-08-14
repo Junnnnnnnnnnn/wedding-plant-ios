@@ -49,15 +49,18 @@ public struct PlanUser: Codable, Hashable, Sendable {
 }
 
 /// `GET /plan/user/total-amount` 응답 페이로드. 단위는 만원.
+///
+/// 금액은 소수로 내려올 수 있어 `@LooseInt` 로 받는다.
+/// 그냥 `Int` 로 두면 `2150.5` 하나에 응답 전체 디코딩이 실패한다.
 public struct TotalAmount: Codable, Hashable, Sendable {
-    public var totalAmount: Int?
-    public var usedAmount: Int?
-    public var remainingAmount: Int?
+    @LooseInt public var totalAmount: Int?
+    @LooseInt public var usedAmount: Int?
+    @LooseInt public var remainingAmount: Int?
 
     public init(totalAmount: Int? = nil, usedAmount: Int? = nil, remainingAmount: Int? = nil) {
-        self.totalAmount = totalAmount
-        self.usedAmount = usedAmount
-        self.remainingAmount = remainingAmount
+        self._totalAmount = LooseInt(wrappedValue: totalAmount)
+        self._usedAmount = LooseInt(wrappedValue: usedAmount)
+        self._remainingAmount = LooseInt(wrappedValue: remainingAmount)
     }
 }
 

@@ -75,7 +75,7 @@ final class APIClientTests: XCTestCase {
         let (client, _) = makeClient(transport: transport, token: nil)
 
         let auth = try await client.send(
-            Endpoint.kakaoLogin(kakaoToken: "kakao-access-token"),
+            Endpoint.kakaoLogin(accessToken: "kakao-access-token"),
             decoding: AuthToken.self
         )
 
@@ -88,15 +88,33 @@ final class APIClientTests: XCTestCase {
 
     func test_쿼리스트링이_붙는다() async throws {
         let transport = MockTransport()
-        await transport.stub(path: "/plan/schedule/list", json: #"{"result":true,"data":[]}"#)
+        await transport.stub(path: "/plan/schedule/list", json: #"{"result":true,"data":{"total":0,"list":[]}}"#)
         let (client, _) = makeClient(transport: transport, token: try validToken())
 
-        var request = Endpoint.scheduleList()
-        request.query = ["roomId": "7", "size": "100"]
-        _ = try await client.send(request, decoding: [ScheduleItem].self)
+        _ = try await client.send(
+            Endpoint.scheduleList(status: .normal, count: 10000),
+            decoding: SchedulePage.self
+        )
+
+        // 안드로이드와 같은 쿼리를 보내야 백엔드가 같은 결과를 준다.
+        // (사전순 정렬은 APIClient 가 하므로 count, page, sort, sortColumn, status 순)
+        let sent = await transport.lastRequest()
+        XCTAssertEqual(sent?.url.query, "count=10000&page=1&sort=DESC&sortColumn=startDate&status=NORMAL")
+    }
+
+    func test_방별_일정목록은_경로가_달라진다() async throws {
+        let transport = MockTransport()
+        await transport.setFallback(HTTPResponse(status: 200, body: Data(#"{"result":true,"data":{"total":0,"list":[]}}"#.utf8)))
+        let (client, _) = makeClient(transport: transport, token: try validToken())
+
+        _ = try await client.send(
+            Endpoint.scheduleList(status: .completed, roomId: "7"),
+            decoding: SchedulePage.self
+        )
 
         let sent = await transport.lastRequest()
-        XCTAssertEqual(sent?.url.query, "roomId=7&size=100")
+        XCTAssertEqual(sent?.url.path, "/plan/schedule/room/7/list")
+        XCTAssertTrue(sent?.url.query?.contains("status=COMPLETED") ?? false)
     }
 
     func test_동적_경로_세그먼트는_인코딩된다() async throws {

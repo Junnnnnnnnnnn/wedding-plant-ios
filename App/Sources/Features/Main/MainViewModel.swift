@@ -5,78 +5,175 @@ import WPModels
 import WPNetworking
 import WPUtils
 
+/// 웹 `app/main/page.tsx` 의 데이터 로딩 부분 포팅.
+///
+/// 웹은 한 파일에 UI·상태·fetch 가 섞여 있지만, 여기서는 안드로이드와 같이 상태를 분리한다.
+/// View 는 그리기만 한다.
 @MainActor
 final class MainViewModel: ObservableObject {
-    @Published var user: PlanUser?
-    @Published var budget: BudgetSummary?
-    @Published var schedules: [ScheduleItem] = []
-    @Published var isLoading = false
+
+    enum Tab {
+        case planned
+        case completed
+    }
+
+    @Published var loading = true
+    @Published var name = ""
+    @Published var weddingDate: KstDate?
+    @Published var members: [Member] = []
+    @Published var totalBudget = 0
+    @Published var usedBudget = 0
+    @Published var remainingBudget = 0
+    @Published var tab: Tab = .planned
+    @Published var planned: [ScheduleItem] = []
+    @Published var completed: [ScheduleItem] = []
+    @Published var plannedTotal = 0
+    @Published var completedTotal = 0
+    @Published var togglingIds: Set<Int> = []
     @Published var errorMessage: String?
-    @Published var needsSignIn = false
+    /// 토큰이 만료돼 로그인 화면으로 돌려보내야 하는 상태
+    @Published var sessionExpired = false
+    @Published var isGuest = false
 
-    /// 결혼일까지 남은 일수. 결혼일이 없으면 nil.
-    var dDay: Int? {
-        guard let raw = user?.weddingDate,
-              let date = KstDate(dateString: raw)
-        else { return nil }
-        return date.daysFromToday()
+    private var roomId: String?
+
+    var visibleList: [ScheduleItem] {
+        tab == .planned ? planned : completed
     }
 
-    var weddingDateText: String? {
-        guard let raw = user?.weddingDate,
-              let date = KstDate(dateString: raw)
-        else { return nil }
-        return "\(date.year)년 \(date.month)월 \(date.day)일"
+    /// 웹: 전체 플랜이 0개일 때만 "텅~"
+    var isCompletelyEmpty: Bool {
+        planned.isEmpty && completed.isEmpty
     }
 
-    /// 다가오는 일정만, 날짜 오름차순.
-    var upcoming: [ScheduleItem] {
-        let today = KstDate.today()
-        return schedules
-            .filter { item in
-                guard let raw = item.startDate, let date = KstDate(dateString: raw) else { return false }
-                return date >= today && !(item.status?.isCompleted ?? false)
-            }
-            .sorted { lhs, rhs in
-                (lhs.startDate ?? "") < (rhs.startDate ?? "")
-            }
+    var dDayLabel: String {
+        PlanRules.dDayLabel(weddingDate: weddingDate)
     }
 
-    var completedCount: Int {
-        schedules.filter { $0.status?.isCompleted ?? false }.count
+    var usagePercent: Int {
+        PlanRules.budgetUsagePercent(total: Double(totalBudget), used: Double(usedBudget))
     }
 
-    func load(api: APIClient) async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
+    var usagePercentClamped: Int {
+        PlanRules.budgetUsagePercentClamped(total: Double(totalBudget), used: Double(usedBudget))
+    }
+
+    // MARK: - 로딩
+
+    func load(env: AppEnvironment, guest: GuestStore) async {
+        let token = await env.tokenStore.currentToken()
+        guard let token, !token.isEmpty else {
+            // 비로그인(게스트): 로컬에 저장된 값만 보여준다. API 호출 없음 (웹과 동일).
+            loading = false
+            isGuest = true
+            name = guest.name
+            weddingDate = guest.weddingDate
+            totalBudget = guest.budget ?? 0
+            usedBudget = 0
+            remainingBudget = guest.budget ?? 0
+            planned = []
+            completed = []
+            plannedTotal = 0
+            completedTotal = 0
+            return
+        }
+
+        isGuest = false
+        loading = true
+        defer { loading = false }
 
         do {
-            user = try await api.send(Endpoint.user(), decoding: PlanUser.self)
+            let user = try await env.api.send(Endpoint.user(), decoding: PlanUser.self)
+            roomId = user.roomId.map(String.init)
+            name = user.name ?? ""
+            weddingDate = user.weddingDate.flatMap { KstDate(dateString: $0) }
+            members = user.members ?? []
         } catch let error as APIError {
-            handle(error)
+            if error.requiresReauthentication {
+                sessionExpired = true
+            } else {
+                errorMessage = error.errorDescription
+            }
             return
         } catch {
             errorMessage = error.localizedDescription
             return
         }
 
-        // 아래 두 개는 실패해도 화면 전체를 막지 않는다.
-        if let amount = try? await api.send(Endpoint.totalAmount(), decoding: TotalAmount.self) {
-            budget = BudgetSummary(amount)
+        // 금액과 두 탭은 서로 독립이라 동시에 받는다.
+        // 개별 실패는 화면 전체를 막지 않고 해당 영역만 비운다.
+        async let amountTask = env.api.send(Endpoint.totalAmount(), decoding: TotalAmount.self)
+        async let plannedTask = env.api.send(
+            Endpoint.scheduleList(status: .normal, roomId: roomId),
+            decoding: SchedulePage.self
+        )
+        async let completedTask = env.api.send(
+            Endpoint.scheduleList(status: .completed, roomId: roomId),
+            decoding: SchedulePage.self
+        )
+
+        let amount = try? await amountTask
+        let plannedPage = try? await plannedTask
+        let completedPage = try? await completedTask
+
+        if let amount {
+            totalBudget = amount.totalAmount ?? 0
+            usedBudget = amount.usedAmount ?? 0
+            remainingBudget = amount.remainingAmount ?? ((amount.totalAmount ?? 0) - (amount.usedAmount ?? 0))
         }
-        if let list = try? await api.send(Endpoint.scheduleList(), decoding: [ScheduleItem].self) {
-            schedules = list
+        if let plannedPage {
+            planned = plannedPage.list
+            plannedTotal = plannedPage.total
+        }
+        if let completedPage {
+            completed = completedPage.list
+            completedTotal = completedPage.total
         }
     }
 
-    private func handle(_ error: APIError) {
-        if error.requiresReauthentication {
-            // 만료·미인증은 조용히 넘기지 않고 명시적으로 재로그인을 요구한다.
-            needsSignIn = true
-            errorMessage = error.errorDescription
+    // MARK: - 체크박스 토글
+
+    /// 웹 `handleToggleCheck()` — 계획 중 <-> 완료 전환.
+    /// 낙관적으로 먼저 리스트를 옮기고, 실패하면 되돌린다.
+    func toggle(_ item: ScheduleItem, env: AppEnvironment) async {
+        if isGuest {
+            errorMessage = "로그인하면 플랜을 완료 처리할 수 있어요."
+            return
+        }
+        guard !togglingIds.contains(item.id) else { return }
+
+        let toCompleted = !(item.status?.isCompleted ?? false)
+        let snapshot = (planned, completed, plannedTotal, completedTotal)
+
+        move(item, toCompleted: toCompleted)
+        togglingIds.insert(item.id)
+        defer { togglingIds.remove(item.id) }
+
+        do {
+            try await env.api.sendIgnoringData(
+                Endpoint.updateScheduleStatus(id: item.id, status: toCompleted ? .completed : .normal)
+            )
+        } catch {
+            // 롤백
+            (planned, completed, plannedTotal, completedTotal) = snapshot
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func move(_ item: ScheduleItem, toCompleted: Bool) {
+        var moved = item
+        moved.status = toCompleted ? .completed : ScheduleStatus(rawValue: "NORMAL")
+
+        if toCompleted {
+            planned.removeAll { $0.id == item.id }
+            completed.insert(moved, at: 0)
+            plannedTotal = max(plannedTotal - 1, 0)
+            completedTotal += 1
         } else {
-            errorMessage = error.errorDescription
+            completed.removeAll { $0.id == item.id }
+            planned.insert(moved, at: 0)
+            completedTotal = max(completedTotal - 1, 0)
+            plannedTotal += 1
         }
     }
 }
