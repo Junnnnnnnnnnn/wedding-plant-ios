@@ -13,6 +13,14 @@ final class GuestStore: ObservableObject {
         static let budget = "wp_guest_budget"
         static let weddingDate = "wp_guest_wedding_date"
         static let completedSetting = "wp_guest_completed_setting"
+        static let requiredAgreementDate = "wp_guest_required_agreement_date"
+        static let adAgreementDate = "wp_guest_ad_agreement_date"
+    }
+
+    /// 게스트가 동의한 약관 날짜.
+    struct AgreementSnapshot: Equatable {
+        var requiredAgreementDate: String
+        var adAgreementDate: String?
     }
 
     private let defaults: UserDefaults
@@ -47,6 +55,20 @@ final class GuestStore: ObservableObject {
         set { defaults.set(newValue, forKey: Key.completedSetting) }
     }
 
+    /// 웹의 `plan_guest_agreement`. 로그인 시 백엔드로 동기화된다.
+    var agreement: AgreementSnapshot? {
+        guard let required = defaults.string(forKey: Key.requiredAgreementDate) else { return nil }
+        return AgreementSnapshot(
+            requiredAgreementDate: required,
+            adAgreementDate: defaults.string(forKey: Key.adAgreementDate)
+        )
+    }
+
+    func saveAgreement(requiredAgreementDate: String, adAgreementDate: String?) {
+        defaults.set(requiredAgreementDate, forKey: Key.requiredAgreementDate)
+        defaults.set(adAgreementDate, forKey: Key.adAgreementDate)
+    }
+
     func save(name: String, budget: Int?, weddingDate: KstDate?) {
         self.name = name
         self.budget = budget
@@ -56,7 +78,10 @@ final class GuestStore: ObservableObject {
     }
 
     func clear() {
-        for key in [Key.name, Key.budget, Key.weddingDate, Key.completedSetting] {
+        for key in [
+            Key.name, Key.budget, Key.weddingDate, Key.completedSetting,
+            Key.requiredAgreementDate, Key.adAgreementDate,
+        ] {
             defaults.removeObject(forKey: key)
         }
         objectWillChange.send()

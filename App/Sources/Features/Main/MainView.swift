@@ -69,7 +69,8 @@ struct MainView: View {
             EmptyMessage(text: "텅~", size: 36)
         } else if model.visibleList.isEmpty {
             EmptyMessage(
-                text: model.tab == .completed ? "완료한 플랜이 없어요" : "모든 플랜을 완료했어요!",
+                // 이모지는 웹 원문 그대로다.
+                text: model.tab == .completed ? "완료한 플랜이 없어요" : "모든 플랜을 완료했어요! 🎉",
                 size: 20
             )
         } else {

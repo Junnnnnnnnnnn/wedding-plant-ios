@@ -27,6 +27,25 @@ extension KstDate {
     }
 }
 
+extension KstDate {
+    /// 해당 연·월의 일수. 날짜 휠에서 "일" 목록을 만들 때 쓴다.
+    ///
+    /// 윤년을 달력에 맡기므로 직접 계산하지 않는다.
+    public static func daysInMonth(year: Int, month: Int) -> Int {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = 1
+        let calendar = KST.calendar
+        guard let date = calendar.date(from: components),
+              let range = calendar.range(of: .day, in: .month, for: date)
+        else {
+            return 31
+        }
+        return range.count
+    }
+}
+
 /// 숫자 천 단위 구분. 웹의 `toLocaleString("ko-KR")` 대응 — "1,234"
 public func wpThousands(_ value: Int) -> String {
     let formatter = NumberFormatter()

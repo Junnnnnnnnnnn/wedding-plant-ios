@@ -140,6 +140,16 @@ final class KstFormatTests: XCTestCase {
         )
     }
 
+    func test_월별_일수() {
+        XCTAssertEqual(KstDate.daysInMonth(year: 2026, month: 1), 31)
+        XCTAssertEqual(KstDate.daysInMonth(year: 2026, month: 4), 30)
+        XCTAssertEqual(KstDate.daysInMonth(year: 2026, month: 2), 28)
+        // 윤년
+        XCTAssertEqual(KstDate.daysInMonth(year: 2028, month: 2), 29)
+        XCTAssertEqual(KstDate.daysInMonth(year: 2000, month: 2), 29)
+        XCTAssertEqual(KstDate.daysInMonth(year: 1900, month: 2), 28)
+    }
+
     func test_천단위_구분() {
         XCTAssertEqual(wpThousands(1234), "1,234")
         XCTAssertEqual(wpThousands(0), "0")

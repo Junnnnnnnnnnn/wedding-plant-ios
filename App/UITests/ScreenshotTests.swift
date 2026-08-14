@@ -34,7 +34,8 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: - 랜딩 → 설정
 
-    func test_01_랜딩과_초기설정() {
+    /// 웹과 동일한 6단계 플로우: 축하 → 날짜 → 예산 → 이름 → 환영 → 약관
+    func test_01_랜딩과_설정_플로우() {
         let app = makeApp(forceOnboarding: true)
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 30)
@@ -43,18 +44,50 @@ final class ScreenshotTests: XCTestCase {
         capture(app, "01-landing")
 
         let guestButton = app.buttons["landing.guest"]
-        if guestButton.waitForExistence(timeout: 10) {
-            guestButton.tap()
-            settle()
-            capture(app, "02-setting")
+        guard guestButton.waitForExistence(timeout: 10) else { return }
+        guestButton.tap()
 
-            let nameField = app.textFields["setting.name"]
-            if nameField.waitForExistence(timeout: 5) {
-                nameField.tap()
-                nameField.typeText("지수")
-                settle(1.0)
-                capture(app, "03-setting-filled")
-            }
+        // 축하 단계는 3초 뒤 자동으로 날짜 단계로 넘어간다.
+        settle(1.0)
+        capture(app, "02-celebration")
+        settle(3.0)
+        capture(app, "03-date")
+
+        let next = app.buttons["setting.next"]
+        guard next.waitForExistence(timeout: 5) else { return }
+        next.tap()
+        settle(1.0)
+        capture(app, "04-budget")
+
+        let budgetField = app.textFields["setting.budget"]
+        if budgetField.exists {
+            budgetField.tap()
+            budgetField.typeText("5000")
+            settle(0.5)
+        }
+        if next.exists { next.tap() }
+        settle(1.0)
+        capture(app, "05-name")
+
+        let nameField = app.textFields["setting.name"]
+        if nameField.exists {
+            nameField.tap()
+            nameField.typeText("지수")
+            settle(0.5)
+            capture(app, "06-name-filled")
+        }
+        if next.exists { next.tap() }
+
+        // 환영 단계는 2.5초 뒤 약관으로 자동 전환된다.
+        settle(1.0)
+        capture(app, "07-welcome")
+        settle(2.5)
+        capture(app, "08-terms")
+
+        if app.buttons["setting.agreeAll"].exists {
+            app.buttons["setting.agreeAll"].tap()
+            settle(0.8)
+            capture(app, "09-terms-agreed")
         }
     }
 
