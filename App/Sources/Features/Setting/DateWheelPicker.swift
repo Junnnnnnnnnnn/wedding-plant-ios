@@ -103,7 +103,9 @@ private struct WheelColumn: View {
 
             Picker(label, selection: $selection) {
                 ForEach(items, id: \.self) { item in
-                    Text("\(item)")
+                    // verbatim 필수. `Text("\(item)")` 는 LocalizedStringKey 로 해석돼
+                    // 로케일 숫자 포맷이 붙는다 → 연도가 "2,026" 으로 나온다.
+                    Text(verbatim: "\(item)")
                         .font(WPFont.tmoney(18, .semibold))
                         .foregroundStyle(WPColor.stone900)
                         .tag(item)

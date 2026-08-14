@@ -89,7 +89,7 @@ private struct TabItem: View {
                         .foregroundStyle(tint)
 
                     if badgeCount > 0 {
-                        Text(badgeCount > 9 ? "9+" : "\(badgeCount)")
+                        Text(verbatim: badgeCount > 9 ? "9+" : "\(badgeCount)")
                             .font(WPFont.hak(9, .black))
                             .foregroundStyle(.white)
                             .frame(width: 16, height: 16)

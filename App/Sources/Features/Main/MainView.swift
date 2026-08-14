@@ -209,7 +209,8 @@ private struct BudgetCard: View {
                 }
                 .frame(height: 8)
 
-                Text("\(model.usagePercent)%")
+                // verbatim 필수 — 숫자 자동 포맷(천 단위 구분) 방지
+                Text(verbatim: "\(model.usagePercent)%")
                     .font(WPFont.hak(14))
                     .foregroundStyle(.white)
             }
@@ -344,7 +345,7 @@ private struct TabSegment: View {
                 Text(label)
                     .font(WPFont.hak(14, .black))
                     .foregroundStyle(selected ? WPColor.primary : WPColor.gray400)
-                Text("\(count)")
+                Text(verbatim: "\(count)")
                     .font(WPFont.hak(10))
                     .foregroundStyle(selected ? WPColor.primary : WPColor.gray500)
                     .padding(.horizontal, 6)
