@@ -46,6 +46,37 @@ extension KstDate {
     }
 }
 
+// MARK: - 달력 격자용 (월 단위 이동 · 요일 인덱스)
+
+extension KstDate {
+
+    /// 요일 인덱스. **0 = 일요일 … 6 = 토요일** (웹 `Date.getDay()` 와 동일).
+    ///
+    /// ``weekdayShort`` 는 월요일 시작이라 인덱스가 다르다. 달력 격자는 일요일이 첫 칸이므로
+    /// 둘을 섞어 쓰면 한 칸씩 밀린다.
+    public var weekdayIndex: Int {
+        KST.calendar.component(.weekday, from: startOfDay) - 1
+    }
+
+    /// 그 달의 1일.
+    public var firstOfMonth: KstDate {
+        KstDate(year: year, month: month, day: 1)!
+    }
+
+    /// 월 단위 이동. 대상 달에 그 날짜가 없으면 **말일로 자른다**.
+    ///
+    /// - Note: 웹의 `new Date(y, m + 1, d)` 는 1월 31일에서 한 달을 더하면 3월 3일로 넘어간다.
+    ///   달력 커서는 항상 1일이라 실제로 문제가 되진 않지만, 조용히 다른 달로 튀는 동작을
+    ///   따라 하지는 않는다.
+    public func addingMonths(_ delta: Int) -> KstDate {
+        let zeroBased = (year * 12) + (month - 1) + delta
+        let targetYear = Int((Double(zeroBased) / 12).rounded(.down))
+        let targetMonth = zeroBased - targetYear * 12 + 1
+        let clampedDay = min(day, KstDate.daysInMonth(year: targetYear, month: targetMonth))
+        return KstDate(year: targetYear, month: targetMonth, day: clampedDay)!
+    }
+}
+
 /// 숫자 천 단위 구분. 웹의 `toLocaleString("ko-KR")` 대응 — "1,234"
 public func wpThousands(_ value: Int) -> String {
     let formatter = NumberFormatter()

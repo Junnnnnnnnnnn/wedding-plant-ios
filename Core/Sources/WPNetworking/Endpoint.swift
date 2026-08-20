@@ -138,6 +138,23 @@ public enum Endpoint {
         )
     }
 
+    /// `GET /plan/schedule/calendar?year=&month=&roomId=`
+    ///
+    /// 응답은 `{ list: [{ day: "YYYY-MM-DD", list: [...] }] }`(``CalendarPage``) 다.
+    ///
+    /// - Important: 방(`roomId`)은 **경로가 아니라 쿼리**로 넘긴다. 다른 일정 API 처럼
+    ///   `/plan/schedule/room/{id}/...` 로 만들면 404 다.
+    public static func calendar(year: Int, month: Int, roomId: String? = nil) -> HTTPRequest {
+        var query = [
+            "month": "\(month)",
+            "year": "\(year)",
+        ]
+        if let roomId = normalized(roomId) {
+            query["roomId"] = roomId
+        }
+        return HTTPRequest(path: "/plan/schedule/calendar", query: query)
+    }
+
     public static func schedule(id: Int) -> HTTPRequest {
         HTTPRequest(path: "/plan/schedule/\(id)")
     }

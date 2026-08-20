@@ -21,6 +21,8 @@ final class MainViewModel: ObservableObject {
     @Published var name = ""
     @Published var weddingDate: KstDate?
     @Published var members: [Member] = []
+    /// 이 방에서 내가 읽기 전용인지. 캘린더의 플랜 추가 버튼을 감출지 판단에 쓴다.
+    @Published var readOnly = false
     @Published var totalBudget = 0
     @Published var usedBudget = 0
     @Published var remainingBudget = 0
@@ -94,6 +96,10 @@ final class MainViewModel: ObservableObject {
             name = user.name ?? ""
             weddingDate = user.weddingDate.flatMap { KstDate(dateString: $0) }
             members = user.members ?? []
+            readOnly = PlanRules.isReadOnly(
+                members: members,
+                planUserId: (await env.tokenStore.currentToken()).flatMap(JWT.planUserId(from:))
+            )
         } catch let error as APIError {
             if error.requiresReauthentication {
                 sessionExpired = true

@@ -1,4 +1,5 @@
 import XCTest
+import WPModels
 import WPUtils
 @testable import WPDomain
 
@@ -156,4 +157,36 @@ final class KstFormatTests: XCTestCase {
         XCTAssertEqual(wpThousands(-2150), "-2,150")
         XCTAssertEqual(wpThousands(1000000), "1,000,000")
     }
+    // MARK: - 권한
+
+    private func member(_ id: String, _ permission: String) -> Member {
+        Member(planUserId: id, name: id, image: nil, permission: PlanPermission(rawValue: permission))
+    }
+
+    func test_읽기_권한이면_읽기전용() {
+        let members = [member("me", "READ"), member("other", "OWNER")]
+        XCTAssertTrue(PlanRules.isReadOnly(members: members, planUserId: "me"))
+    }
+
+    func test_쓰기나_소유자는_읽기전용이_아니다() {
+        let members = [member("me", "WRITE"), member("other", "OWNER")]
+        XCTAssertFalse(PlanRules.isReadOnly(members: members, planUserId: "me"))
+        XCTAssertFalse(PlanRules.isReadOnly(members: [member("me", "OWNER")], planUserId: "me"))
+    }
+
+    func test_확실하지_않으면_막지_않는다() {
+        let members = [member("other", "OWNER")]
+        // 멤버 목록에 내가 없음
+        XCTAssertFalse(PlanRules.isReadOnly(members: members, planUserId: "me"))
+        // planUserId 를 모름
+        XCTAssertFalse(PlanRules.isReadOnly(members: members, planUserId: nil))
+        XCTAssertFalse(PlanRules.isReadOnly(members: members, planUserId: "   "))
+        // 멤버가 아예 없음
+        XCTAssertFalse(PlanRules.isReadOnly(members: [], planUserId: "me"))
+    }
+
+    func test_앞뒤_공백은_무시하고_비교한다() {
+        XCTAssertTrue(PlanRules.isReadOnly(members: [member(" me ", "READ")], planUserId: "me"))
+    }
+
 }

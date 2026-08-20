@@ -1,4 +1,5 @@
 import Foundation
+import WPModels
 import WPUtils
 
 /// 웹에 흩어져 있던 순수 판정 로직을 한곳에 모은 것.
@@ -170,5 +171,22 @@ public enum PlanRules {
     /// 진행바 너비용 — 0...100 으로 클램프.
     public static func budgetUsagePercentClamped(total: Double, used: Double) -> Int {
         min(max(budgetUsagePercent(total: total, used: used), 0), 100)
+    }
+
+    // MARK: - 권한
+
+    /// 내가 이 방에서 읽기 전용인지.
+    ///
+    /// 멤버 목록에 내가 없거나 `planUserId` 를 모르면 **false** 를 돌려준다.
+    /// 확실하지 않을 때 버튼을 감추면 쓸 수 있는 기능을 못 쓰게 되고, 최종 판단은 어차피 서버가 한다.
+    public static func isReadOnly(members: [Member], planUserId: String?) -> Bool {
+        guard let planUserId = planUserId?.trimmingCharacters(in: .whitespaces),
+              !planUserId.isEmpty
+        else { return false }
+
+        guard let mine = members.first(where: { $0.planUserId.trimmingCharacters(in: .whitespaces) == planUserId })
+        else { return false }
+
+        return mine.permission == .read
     }
 }

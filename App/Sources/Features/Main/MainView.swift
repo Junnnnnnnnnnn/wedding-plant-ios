@@ -80,6 +80,9 @@ struct MainView: View {
         .navigationDestination(for: BudgetRoute.self) { route in
             BudgetDetailView(roomId: route.roomId.map(String.init))
         }
+        .navigationDestination(for: CalendarRoute.self) { route in
+            CalendarView(roomId: route.roomId, readOnly: route.readOnly)
+        }
         .fullScreenCover(isPresented: $showAddPlan) {
             AddPlanView(roomId: model.roomIdValue) {
                 Task { await model.load(env: env, guest: guest) }
@@ -132,6 +135,13 @@ struct MainView: View {
 /// 예산 상세 이동 경로. `Int` 는 이미 일정 상세가 쓰고 있어 따로 타입을 둔다.
 struct BudgetRoute: Hashable {
     var roomId: Int?
+}
+
+/// 캘린더 이동 경로.
+struct CalendarRoute: Hashable {
+    var roomId: Int?
+    /// 읽기 전용 멤버면 캘린더에서도 추가 버튼을 감춘다.
+    var readOnly: Bool
 }
 
 // MARK: - 헤더
@@ -287,9 +297,19 @@ private struct PlanListHeader: View {
                     Text("플랜 리스트")
                         .font(WPFont.hak(20, .bold))
                         .foregroundStyle(WPColor.textPrimary)
-                    Image(systemName: "calendar")
-                        .font(.system(size: 16))
-                        .foregroundStyle(WPColor.gray400)
+                    // 웹: 이 아이콘이 `/calendar?roomId=` 로 이동한다.
+                    NavigationLink(
+                        value: CalendarRoute(roomId: model.roomIdValue, readOnly: model.readOnly)
+                    ) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 16))
+                            .foregroundStyle(WPColor.gray400)
+                            .padding(6)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("캘린더 보기")
+                    .accessibilityIdentifier("main.calendar")
                 }
                 if model.isCompletelyEmpty {
                     Text("플랜을 추가해볼까요?")

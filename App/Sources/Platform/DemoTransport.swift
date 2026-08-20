@@ -36,6 +36,8 @@ struct DemoTransport: HTTPTransport {
             json = DemoData.categoryChart
         } else if path.hasSuffix("/plan/user") {
             json = newUser ? DemoData.newUser : DemoData.user
+        } else if path.hasSuffix("/plan/schedule/calendar") {
+            json = DemoData.calendar(query: request.url.query)
         } else if path.contains("/plan/schedule/") && !path.hasSuffix("/list") {
             // 상세: /plan/schedule/{id}
             json = DemoData.scheduleDetail(id: Int(path.split(separator: "/").last ?? "") ?? 3)
@@ -186,6 +188,51 @@ enum DemoData {
            "startDate":"\(day(-6))","status":"COMPLETED","location":"서울 성동구"}
         ]}}
         """
+    }
+
+    /// 달력. **요청한 달의 날짜만** 돌려준다.
+    ///
+    /// 앞·현재·다음 달을 각각 요청하므로, 여기서도 달을 구분해 줘야 화면 병합이 제대로
+    /// 도는지 확인할 수 있다.
+    static func calendar(query: String?) -> String {
+        let today = KstDate.today()
+        let entries: [(KstDate, String, String)] = [
+            (today.adding(days: -20), "더채플앳청담 본식 계약", "COMPLETED"),
+            (today.adding(days: -6), "본식 스냅 촬영 예약", "COMPLETED"),
+            (today.adding(days: -2), "드레스 1차 피팅", "NORMAL"),
+            (today, "헤어·메이크업 리허설", "NORMAL"),
+            (today, "청첩장 시안 확인", "NORMAL"),
+            (today, "예식 리허설", "NORMAL"),
+            (today.adding(days: 3), "항공권 예약", "NORMAL"),
+            (today.adding(days: 40), "반지 상담", "NORMAL"),
+        ]
+
+        // 요청한 연·월과 같은 날짜만 남긴다.
+        let components = (query ?? "")
+            .split(separator: "&")
+            .reduce(into: [String: String]()) { result, pair in
+                let parts = pair.split(separator: "=", maxSplits: 1)
+                if parts.count == 2 { result[String(parts[0])] = String(parts[1]) }
+            }
+        let year = components["year"].flatMap(Int.init)
+        let month = components["month"].flatMap(Int.init)
+
+        var byDay: [String: [String]] = [:]
+        var order: [String] = []
+        for (index, entry) in entries.enumerated() {
+            let (date, title, status) = entry
+            if let year, let month, date.year != year || date.month != month { continue }
+            let key = date.dateString
+            if byDay[key] == nil { order.append(key) }
+            byDay[key, default: []].append(
+                "{\"id\":\(index + 1),\"title\":\"\(title)\",\"status\":\"\(status)\"}"
+            )
+        }
+
+        let days = order.map { key in
+            "{\"day\":\"\(key)\",\"list\":[\(byDay[key]!.joined(separator: ","))]}"
+        }
+        return "{\"result\":true,\"data\":{\"list\":[\(days.joined(separator: ","))]}}"
     }
 
     /// 카테고리 목록. 제목 추천이 동작하는 것을 보려면 실제 이름이 있어야 한다.

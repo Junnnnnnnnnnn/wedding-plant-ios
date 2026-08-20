@@ -299,4 +299,60 @@ final class ScreenshotTests: XCTestCase {
             settle(1.5)
         }
     }
+
+    // MARK: - 캘린더
+
+    /// 메인의 캘린더 아이콘 → 달력. 달 이동과 날짜 시트까지 돈다.
+    func test_06_캘린더() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        guard app.buttons["main.calendar"].waitForExistence(timeout: 10) else { return }
+        app.buttons["main.calendar"].tap()
+        settle(3.0)
+        capture(app, "22-calendar")
+
+        // 다음 달 — 이번 달에만 플랜이 있으므로 빈 격자가 나온다.
+        if app.buttons["다음 달"].isHittable {
+            app.buttons["다음 달"].tap()
+            settle(2.5)
+            capture(app, "23-calendar-next-month")
+            app.buttons["이전 달"].tap()
+            settle(2.5)
+        }
+
+        // 오늘 칸에는 플랜이 3개라 "+1" 이 붙는다. 눌러서 시트를 연다.
+        let today = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "calendar.day.")
+        )
+        var opened = false
+        for index in 0..<today.count where !opened {
+            let cell = today.element(boundBy: index)
+            // 플랜이 들어 있는 칸을 고른다 (라벨에 제목이 섞여 있다).
+            if cell.isHittable, cell.label.contains("헤어") {
+                cell.tap()
+                settle(2.0)
+                capture(app, "24-calendar-day-sheet")
+                opened = true
+            }
+        }
+
+        if !opened, today.element(boundBy: 0).isHittable {
+            today.element(boundBy: 0).tap()
+            settle(2.0)
+            capture(app, "24-calendar-day-sheet")
+        }
+
+        if app.buttons["calendar.sheet.confirm"].isHittable {
+            app.buttons["calendar.sheet.confirm"].tap()
+            settle(1.5)
+        }
+
+        if app.buttons["calendar.close"].isHittable {
+            app.buttons["calendar.close"].tap()
+            settle(1.5)
+        }
+    }
 }

@@ -23,7 +23,7 @@ public enum KST {
 }
 
 /// KST 기준 달력 날짜(연·월·일). 시각 정보를 갖지 않는다.
-public struct KstDate: Hashable, Sendable, Codable, Comparable, CustomStringConvertible {
+public struct KstDate: Hashable, Sendable, Codable, Comparable, Identifiable, CustomStringConvertible {
     public let year: Int
     public let month: Int
     public let day: Int
@@ -77,6 +77,9 @@ public struct KstDate: Hashable, Sendable, Codable, Comparable, CustomStringConv
             day: components.day!
         )!
     }
+
+    /// `"YYYY-MM-DD"` — 날짜 자체가 식별자다 (달력 시트 등에서 쓴다).
+    public var id: String { dateString }
 
     /// `"YYYY-MM-DD"` 문자열.
     public var dateString: String {

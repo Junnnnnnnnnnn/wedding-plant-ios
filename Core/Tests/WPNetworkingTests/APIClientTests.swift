@@ -140,6 +140,26 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(Endpoint.amountDetail(roomId: " 7 ").path, "/plan/room/amount/detail/7")
     }
 
+    func test_달력은_roomId를_쿼리로_넘긴다() {
+        let plain = Endpoint.calendar(year: 2026, month: 8)
+        XCTAssertEqual(plain.path, "/plan/schedule/calendar")
+        XCTAssertEqual(plain.query["year"], "2026")
+        XCTAssertEqual(plain.query["month"], "8")
+        XCTAssertNil(plain.query["roomId"])
+
+        // 다른 일정 API 와 달리 경로가 아니라 쿼리다. 경로로 만들면 404.
+        let room = Endpoint.calendar(year: 2026, month: 1, roomId: "7")
+        XCTAssertEqual(room.path, "/plan/schedule/calendar")
+        XCTAssertEqual(room.query["roomId"], "7")
+
+        XCTAssertNil(Endpoint.calendar(year: 2026, month: 8, roomId: "  ").query["roomId"])
+    }
+
+    func test_달은_0을_채우지_않는다() {
+        // 웹은 `String(month + 1)` 이라 한 자리 달을 그대로 보낸다.
+        XCTAssertEqual(Endpoint.calendar(year: 2026, month: 1).query["month"], "1")
+    }
+
     func test_동적_경로_세그먼트는_인코딩된다() async throws {
         let transport = MockTransport()
         await transport.setFallback(HTTPResponse(status: 200, body: Data(#"{"result":true}"#.utf8)))
