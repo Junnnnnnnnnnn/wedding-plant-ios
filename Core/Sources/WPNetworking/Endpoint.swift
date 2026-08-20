@@ -50,12 +50,31 @@ public enum Endpoint {
         HTTPRequest(path: "/plan/user/total-amount")
     }
 
-    public static func amountDetail() -> HTTPRequest {
-        HTTPRequest(path: "/plan/user/amount/detail")
+    /// 예산 요약. **방(roomId)이 있으면 경로가 통째로 바뀐다.**
+    ///
+    /// - Important: 방에 속한 사용자가 `/plan/user/amount/detail` 을 부르면 자기 개인 수치가 와서
+    ///   화면에 엉뚱한 금액이 뜬다. 웹도 roomId 유무로 경로를 가른다.
+    public static func amountDetail(roomId: String? = nil) -> HTTPRequest {
+        if let roomId = normalized(roomId) {
+            return HTTPRequest(path: "/plan/room/amount/detail/\(escape(roomId))")
+        }
+        return HTTPRequest(path: "/plan/user/amount/detail")
     }
 
-    public static func amountCategoryChart() -> HTTPRequest {
-        HTTPRequest(path: "/plan/user/amount/category-chart")
+    /// 카테고리별 막대 데이터. ``amountDetail(roomId:)`` 와 같은 규칙으로 경로가 갈린다.
+    public static func amountCategoryChart(roomId: String? = nil) -> HTTPRequest {
+        if let roomId = normalized(roomId) {
+            return HTTPRequest(path: "/plan/room/amount/category-chart/\(escape(roomId))")
+        }
+        return HTTPRequest(path: "/plan/user/amount/category-chart")
+    }
+
+    /// 빈 문자열·공백만 있는 roomId 는 없는 것으로 본다.
+    private static func normalized(_ roomId: String?) -> String? {
+        guard let trimmed = roomId?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 
     public static func markMainGuideSeen() -> HTTPRequest {

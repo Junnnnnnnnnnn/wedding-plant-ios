@@ -30,7 +30,13 @@ struct MainView: View {
                         Header(model: model)
 
                         Spacer().frame(height: 16)
-                        BudgetCard(model: model)
+                        // 웹: 예산 카드를 누르면 `/budget-detail?roomId=` 로 이동한다.
+                        // 비로그인도 이동은 가능하고, 상세 화면 쪽에서 블러 처리한다.
+                        NavigationLink(value: BudgetRoute(roomId: model.roomIdValue)) {
+                            BudgetCard(model: model)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("main.budget")
 
                         Spacer().frame(height: 24)
                         PlanListHeader(model: model) {
@@ -70,6 +76,9 @@ struct MainView: View {
         }
         .navigationDestination(for: Int.self) { scheduleId in
             ScheduleDetailView(scheduleId: scheduleId)
+        }
+        .navigationDestination(for: BudgetRoute.self) { route in
+            BudgetDetailView(roomId: route.roomId.map(String.init))
         }
         .fullScreenCover(isPresented: $showAddPlan) {
             AddPlanView(roomId: model.roomIdValue) {
@@ -118,6 +127,11 @@ struct MainView: View {
             .padding(.top, 12)
         }
     }
+}
+
+/// 예산 상세 이동 경로. `Int` 는 이미 일정 상세가 쓰고 있어 따로 타입을 둔다.
+struct BudgetRoute: Hashable {
+    var roomId: Int?
 }
 
 // MARK: - 헤더
@@ -256,7 +270,6 @@ private struct BudgetCard: View {
             ),
             in: RoundedRectangle(cornerRadius: 24, style: .continuous)
         )
-        .accessibilityIdentifier("main.budget")
     }
 }
 

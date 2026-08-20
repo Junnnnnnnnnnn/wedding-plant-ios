@@ -71,6 +71,21 @@ public struct AmountDetail: Codable, Hashable, Sendable {
     public var plannedUseAmount: Int
     public var usedAmount: Int
 
+    /// 웹 StatCard 의 "남은 금액" — 초기 자본에서 **예정과 사용을 모두** 뺀 값.
+    public var remaining: Int { initialCapital - (plannedUseAmount + usedAmount) }
+
+    /// 웹 SpendingAnalysis 의 "사용 후 잔액" — **사용만** 뺀 값.
+    ///
+    /// - Important: 위 ``remaining`` 과 **다른 수치다.** 화면에서 둘 다 쓰이므로 헷갈리면 안 된다.
+    ///   웹·안드로이드도 같은 주의사항을 주석으로 달아뒀다.
+    public var savings: Int { initialCapital - usedAmount }
+
+    /// 전체 사용률(%). 초기 자본이 0이면 0.
+    public var usedPercent: Int {
+        guard initialCapital > 0 else { return 0 }
+        return Int((Double(usedAmount) / Double(initialCapital)) * 100)
+    }
+
     public init(
         initialCapital: Int,
         totalPlannedAndUsedAmount: Int,

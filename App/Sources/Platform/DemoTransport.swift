@@ -29,8 +29,11 @@ struct DemoTransport: HTTPTransport {
         } else if path.contains("total-amount") {
             // `/plan/user/total-amount` 와 `/plan/room/total-amount/{roomId}` 둘 다.
             json = DemoData.totalAmount
-        } else if path.hasSuffix("/plan/user/amount/detail") {
+        } else if path.contains("/amount/detail") {
+            // 개인(`/plan/user/amount/detail`)과 방(`/plan/room/amount/detail/{id}`) 둘 다.
             json = DemoData.amountDetail
+        } else if path.contains("/amount/category-chart") {
+            json = DemoData.categoryChart
         } else if path.hasSuffix("/plan/user") {
             json = newUser ? DemoData.newUser : DemoData.user
         } else if path.contains("/plan/schedule/") && !path.hasSuffix("/list") {
@@ -41,7 +44,10 @@ struct DemoTransport: HTTPTransport {
             // 접미사만 보고 판단해야 두 형태를 모두 잡는다.
             // 계획 중 / 완료는 쿼리로 갈라준다.
             let isCompleted = request.url.query?.contains("status=COMPLETED") ?? false
-            json = isCompleted ? DemoData.completedSchedules : DemoData.plannedSchedules
+            // 예산 상세는 카테고리로 좁혀서 요청한다. 데모에서도 실제로 걸러줘야
+            // 필터가 동작하는지 화면으로 확인할 수 있다.
+            let category = request.url.queryValue("categoryName")
+            json = DemoData.schedules(completed: isCompleted, categoryName: category)
         } else if path.contains("/plan/category") {
             // `/plan/category/list`, `/user/list`, `/room/{id}/list` 모두 같은 목록을 준다.
             json = DemoData.categories
@@ -57,6 +63,16 @@ struct DemoTransport: HTTPTransport {
             headers: ["Content-Type": "application/json"],
             body: Data(json.utf8)
         )
+    }
+}
+
+private extension URL {
+    /// 쿼리 한 항목을 퍼센트 디코딩해서 꺼낸다.
+    func queryValue(_ name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first { $0.name == name }?
+            .value
     }
 }
 
@@ -103,6 +119,19 @@ enum DemoData {
 
     static let totalAmount = """
     {"result":true,"data":{"totalAmount":5000,"usedAmount":2150,"remainingAmount":2850}}
+    """
+
+    /// 카테고리별 막대. 계획 없이 쓴 카테고리(비율 100%)도 하나 넣어 둔다.
+    static let categoryChart = """
+    {"result":true,"data":{"list":[
+      {"categoryName":"웨딩홀","totalAmount":1400,"usedAmount":1200},
+      {"categoryName":"스튜디오","totalAmount":600,"usedAmount":450},
+      {"categoryName":"신혼여행","totalAmount":820,"usedAmount":0},
+      {"categoryName":"예물","totalAmount":650,"usedAmount":0},
+      {"categoryName":"드레스","totalAmount":500,"usedAmount":0},
+      {"categoryName":"메이크업","totalAmount":180,"usedAmount":0},
+      {"categoryName":"본식스냅","totalAmount":0,"usedAmount":500}
+    ]}}
     """
 
     static let amountDetail = """
@@ -172,6 +201,26 @@ enum DemoData {
       {"id":8,"name":"내가 만든 카테고리","type":"USER"}
     ]}}
     """
+
+    /// 상태·카테고리로 걸러 준다. 응답 모양은 원본과 같은 `{ total, list }`.
+    static func schedules(completed: Bool, categoryName: String?) -> String {
+        let source = completed ? completedSchedules : plannedSchedules
+        guard
+            let category = categoryName?.trimmingCharacters(in: .whitespaces), !category.isEmpty,
+            let root = try? JSONSerialization.jsonObject(with: Data(source.utf8)) as? [String: Any],
+            var data = root["data"] as? [String: Any],
+            let list = data["list"] as? [[String: Any]]
+        else {
+            return source
+        }
+
+        let filtered = list.filter { ($0["categoryName"] as? String) == category }
+        data["list"] = filtered
+        data["total"] = filtered.count
+        let output: [String: Any] = ["result": true, "data": data]
+        guard let encoded = try? JSONSerialization.data(withJSONObject: output) else { return source }
+        return String(decoding: encoded, as: UTF8.self)
+    }
 
     static var roomList: String {
         """

@@ -227,4 +227,67 @@ final class ScreenshotTests: XCTestCase {
             settle(1.0)
         }
     }
+
+    // MARK: - 예산 상세
+
+    /// 메인의 예산 카드 → 예산 상세. 툴팁·탭·카테고리 필터·AI 안내까지 한 번에 돈다.
+    func test_05_예산_상세() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        guard app.buttons["main.budget"].waitForExistence(timeout: 10) else { return }
+        app.buttons["main.budget"].tap()
+        settle(3.0)
+        capture(app, "16-budget-detail")
+
+        // 잔액 배지 옆 물음표 — 위 카드의 "남은 금액" 과 다른 수치라는 안내가 뜬다.
+        let tip = app.buttons["budget.savings.help"]
+        if tip.isHittable {
+            tip.tap()
+            settle(1.0)
+            capture(app, "17-budget-savings-tooltip")
+            tip.tap()
+            settle(0.8)
+        }
+
+        // 카테고리 막대를 누르면 아래 목록이 그 카테고리로 좁혀진다.
+        let bar = app.buttons.containing(
+            NSPredicate(format: "label CONTAINS %@", "웨딩홀")
+        ).firstMatch
+        if bar.isHittable {
+            bar.tap()
+            settle(2.5)
+            capture(app, "18-budget-category-filtered")
+        }
+
+        // 사용 탭 (필터가 걸린 상태라 웨딩홀 항목만 보여야 한다)
+        if app.buttons["budget.tab.used"].isHittable {
+            app.buttons["budget.tab.used"].tap()
+            settle(2.5)
+            capture(app, "19-budget-used-tab")
+        }
+
+        if app.buttons["budget.clearFilter"].isHittable {
+            app.buttons["budget.clearFilter"].tap()
+            settle(2.5)
+            capture(app, "20-budget-filter-cleared")
+        }
+
+        if app.buttons["budget.ai"].isHittable {
+            app.buttons["budget.ai"].tap()
+            settle(1.5)
+            capture(app, "21-budget-ai-modal")
+            if app.buttons["budget.ai.close"].isHittable {
+                app.buttons["budget.ai.close"].tap()
+                settle(1.0)
+            }
+        }
+
+        if app.buttons["budget.back"].isHittable {
+            app.buttons["budget.back"].tap()
+            settle(1.5)
+        }
+    }
 }

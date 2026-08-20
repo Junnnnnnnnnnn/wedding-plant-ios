@@ -117,6 +117,29 @@ final class APIClientTests: XCTestCase {
         XCTAssertTrue(sent?.url.query?.contains("status=COMPLETED") ?? false)
     }
 
+    func test_예산_요약은_roomId_유무로_경로가_갈린다() {
+        // 개인
+        XCTAssertEqual(Endpoint.amountDetail().path, "/plan/user/amount/detail")
+        XCTAssertEqual(
+            Endpoint.amountCategoryChart().path,
+            "/plan/user/amount/category-chart"
+        )
+
+        // 방에 속하면 경로가 통째로 바뀐다. 개인 경로를 그대로 쓰면 남의 수치가 뜬다.
+        XCTAssertEqual(Endpoint.amountDetail(roomId: "7").path, "/plan/room/amount/detail/7")
+        XCTAssertEqual(
+            Endpoint.amountCategoryChart(roomId: "7").path,
+            "/plan/room/amount/category-chart/7"
+        )
+    }
+
+    func test_공백뿐인_roomId는_없는_것으로_본다() {
+        XCTAssertEqual(Endpoint.amountDetail(roomId: "   ").path, "/plan/user/amount/detail")
+        XCTAssertEqual(Endpoint.amountDetail(roomId: "").path, "/plan/user/amount/detail")
+        // 앞뒤 공백은 다듬어서 쓴다
+        XCTAssertEqual(Endpoint.amountDetail(roomId: " 7 ").path, "/plan/room/amount/detail/7")
+    }
+
     func test_동적_경로_세그먼트는_인코딩된다() async throws {
         let transport = MockTransport()
         await transport.setFallback(HTTPResponse(status: 200, body: Data(#"{"result":true}"#.utf8)))
