@@ -132,7 +132,7 @@ final class ChatViewModel: ObservableObject {
             .assign(to: &$connected)
 
         self.socket = socket
-        socket.connect(chatRoomId: chatRoomId, userId: myId ?? "")
+        socket.connect(roomId: chatRoomId, userId: myId ?? "")
     }
 
     /// 화면이 다시 보일 때. 백그라운드에 오래 있다 오면 소켓이 죽어 있을 수 있다.
