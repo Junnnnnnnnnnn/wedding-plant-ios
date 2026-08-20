@@ -21,6 +21,7 @@ struct ChatView: View {
 
     @StateObject private var model: ChatViewModel
     @State private var showRenameSheet = false
+    @State private var openSchedule: ScheduleRef?
     @FocusState private var inputFocused: Bool
 
     init(chatRoomId: Int) {
@@ -45,6 +46,11 @@ struct ChatView: View {
         .onChange(of: scenePhase) { _, phase in
             // 백그라운드에 오래 있다 돌아오면 소켓이 죽어 있을 수 있다.
             if phase == .active { model.onForeground() }
+        }
+        // 웹은 `/schedule-detail?id=...` 로 이동한다. 채팅은 전체 화면이라 커버로 띄운다.
+        .fullScreenCover(item: $openSchedule) { schedule in
+            ScheduleDetailView(scheduleId: schedule.id)
+                .environmentObject(env)
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameChatRoomSheet(currentName: model.roomName) { name in
@@ -144,7 +150,9 @@ struct ChatView: View {
                             MessageRow(
                                 line: line,
                                 showsSenderName: ChatTimeline.showsSenderName(model.lines, at: index)
-                            )
+                            ) { scheduleId in
+                                openSchedule = ScheduleRef(id: scheduleId)
+                            }
                         }
                         .id(line.id)
                     }
@@ -278,9 +286,15 @@ private struct DateDivider: View {
     }
 }
 
+/// `fullScreenCover(item:)` 은 Identifiable 을 요구한다.
+private struct ScheduleRef: Identifiable, Hashable {
+    var id: Int
+}
+
 private struct MessageRow: View {
     var line: ChatLine
     var showsSenderName: Bool
+    var onOpenSchedule: (Int) -> Void
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -305,7 +319,7 @@ private struct MessageRow: View {
                     .foregroundStyle(WPColor.gray400)
                     .padding(.leading, 4)
             }
-            Bubble(line: line)
+            Bubble(line: line, onOpenSchedule: onOpenSchedule)
         }
     }
 }
@@ -342,10 +356,11 @@ private struct TimeStamp: View {
 
 private struct Bubble: View {
     var line: ChatLine
+    var onOpenSchedule: (Int) -> Void
 
     var body: some View {
         if line.messageType == "schedule", let schedule = line.schedule {
-            ScheduleCard(schedule: schedule)
+            ScheduleCard(schedule: schedule, onOpen: onOpenSchedule)
         } else if line.messageType == "schedule" {
             Text("삭제된 일정입니다.")
                 .font(WPFont.hak(14))
@@ -390,6 +405,7 @@ private func bubbleShape(isMine: Bool) -> UnevenRoundedRectangle {
 
 private struct ScheduleCard: View {
     var schedule: ChatSchedule
+    var onOpen: (Int) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -444,6 +460,32 @@ private struct ScheduleCard: View {
                     Text(amountText)
                         .font(WPFont.hak(16, .black))
                         .foregroundStyle(WPColor.primary)
+                }
+
+                if schedule.id > 0 {
+                    Spacer().frame(height: 12)
+                    Button { onOpen(schedule.id) } label: {
+                        HStack(spacing: 4) {
+                            Text("상세보기")
+                                .font(WPFont.hak(12, .bold))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundStyle(WPColor.gray600)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            Color.white.opacity(0.8),
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(WPColor.gray200, lineWidth: 1)
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("chat.schedule.\(schedule.id)")
                 }
             }
             .padding(16)
@@ -516,7 +558,7 @@ private struct RenameChatRoomSheet: View {
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.white)
-        .presentationDetents([.height(260)])
+        .presentationDetents([.height(236)])
         .presentationCornerRadius(32)
         .onAppear { name = currentName }
     }
