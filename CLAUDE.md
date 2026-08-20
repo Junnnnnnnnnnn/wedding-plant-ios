@@ -227,6 +227,8 @@ Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)�
 | 예산 화면 금액이 엉뚱함 | 같은 이유. `roomId` 가 있으면 `/plan/room/amount/detail/{id}`, `/plan/room/amount/category-chart/{id}` 다. `Endpoint.amountDetail(roomId:)` 를 쓰면 알아서 갈린다 |
 | 달력 칸이 한 줄 밀림 | `weekdayShort` 는 **월요일 시작**, `weekdayIndex` 는 **일요일 시작**이다. 달력 격자는 일요일이 첫 칸이라 `weekdayIndex` 를 써야 한다 |
 | 달력에 방 일정이 안 보임 | `/plan/schedule/calendar` 는 `roomId` 를 **쿼리로** 받는다. 다른 일정 API 처럼 경로에 넣으면 404 |
+| 채팅이 붙는데 메시지가 안 옴 | Socket.IO 서버 PING(`2`)에 PONG(`3`)으로 답하지 않으면 서버가 끊는다. 프레임 규칙은 `SocketIOPacket` 에 있고 테스트로 고정돼 있다 |
+| 잠깐 끊긴 뒤 채팅이 영영 죽음 | 재연결에 **상한을 두면 안 된다**. 웹의 `reconnectionAttempts: 5` 를 그대로 옮기면 지하철에서 5번 실패하고 끝난다. `SocketBackoff` 는 무제한 + 최대 30초다 |
 | 안드로이드와 문구가 다름 | 안드로이드가 웹 문구를 다시 쓴 곳이 있다(예: 예산 상세의 잔액 툴팁). **화면 문구는 웹이 기준**이다. 다르면 웹을 그대로 옮기고 주석으로 남긴다 |
 | 설정 화면이 곧바로 메인으로 넘어감 | 정상 동작이다. 플랜이 완성된 사용자면 `prefill` 이 스킵한다. 플로우를 보려면 `-WPForceOnboarding` |
 | UI 테스트가 버튼을 못 찾음 | `.accessibilityIdentifier` 를 감싼 뷰에 걸면 `app.buttons[...]` 로 안 잡힌다. `Button` 자체에 붙인다 (`WPNextButton(identifier:)` 처럼) |

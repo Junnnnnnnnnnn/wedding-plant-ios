@@ -10,15 +10,18 @@ import WPNetworking
 final class AppEnvironment: ObservableObject {
     let api: APIClient
     let tokenStore: any TokenStoring
+    /// 백엔드 주소. 채팅 소켓처럼 `APIClient` 를 거치지 않는 연결에 쓴다.
+    let baseURL: URL
     /// 데모(목업) 모드 여부. CI 스크린샷 촬영과 프리뷰에서 true.
     let isDemo: Bool
 
     /// 로그인 여부. 화면 전환 판단에 쓴다.
     @Published var isAuthenticated: Bool = false
 
-    init(api: APIClient, tokenStore: any TokenStoring, isDemo: Bool) {
+    init(api: APIClient, tokenStore: any TokenStoring, baseURL: URL, isDemo: Bool) {
         self.api = api
         self.tokenStore = tokenStore
+        self.baseURL = baseURL
         self.isDemo = isDemo
     }
 
@@ -40,14 +43,19 @@ final class AppEnvironment: ObservableObject {
                 transport: DemoTransport(newUser: forceOnboarding),
                 tokenStore: store
             )
-            let env = AppEnvironment(api: client, tokenStore: store, isDemo: true)
+            let env = AppEnvironment(
+                api: client,
+                tokenStore: store,
+                baseURL: baseURL,
+                isDemo: true
+            )
             env.isAuthenticated = !forceOnboarding
             return env
         }
 
         let store = KeychainTokenStore()
         let client = APIClient(baseURL: baseURL, transport: URLSessionTransport(), tokenStore: store)
-        return AppEnvironment(api: client, tokenStore: store, isDemo: false)
+        return AppEnvironment(api: client, tokenStore: store, baseURL: baseURL, isDemo: false)
     }
 
     /// 백엔드 주소. Info.plist 의 `API_BASE_URL`(xcconfig 주입)을 우선 사용한다.

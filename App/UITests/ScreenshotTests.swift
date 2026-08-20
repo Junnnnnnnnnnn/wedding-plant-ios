@@ -355,4 +355,50 @@ final class ScreenshotTests: XCTestCase {
             settle(1.5)
         }
     }
+
+    // MARK: - 채팅
+
+    /// 참여 플랜 → 채팅방. 날짜 구분선·일정 카드·이름 변경 시트까지 남긴다.
+    func test_07_채팅() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        guard app.buttons["tab.rooms"].waitForExistence(timeout: 10) else { return }
+        app.buttons["tab.rooms"].tap()
+        settle(3.0)
+
+        // 첫 번째 방의 채팅방 행
+        let chatRow = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "planlist.chat.")
+        ).firstMatch
+        guard chatRow.waitForExistence(timeout: 10), chatRow.isHittable else { return }
+        chatRow.tap()
+        settle(3.5)
+        capture(app, "25-chat")
+
+        // 입력 중인 모습
+        let input = app.textFields["chat.input"]
+        if input.isHittable {
+            input.tap()
+            input.typeText("네 좋아요")
+            settle(1.5)
+            capture(app, "26-chat-typing")
+        }
+
+        // 채팅방 이름 변경 시트
+        if app.buttons["chat.menu"].isHittable {
+            app.buttons["chat.menu"].tap()
+            settle(1.5)
+            capture(app, "27-chat-rename")
+            app.swipeDown()
+            settle(1.5)
+        }
+
+        if app.buttons["chat.back"].isHittable {
+            app.buttons["chat.back"].tap()
+            settle(1.5)
+        }
+    }
 }

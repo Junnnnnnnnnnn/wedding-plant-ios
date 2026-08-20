@@ -10,6 +10,8 @@ import WPUtils
 struct PlanListView: View {
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var model = PlanListViewModel()
+    /// 웹은 `/chat/{id}` 로 페이지를 통째로 바꾼다. 여기서는 전체 화면으로 덮는다.
+    @State private var openChatRoom: ChatRoomRef?
 
     var body: some View {
         ZStack {
@@ -35,6 +37,10 @@ struct PlanListView: View {
             }
         }
         .task { await model.load(env: env) }
+        .fullScreenCover(item: $openChatRoom) { room in
+            ChatView(chatRoomId: room.id)
+                .environmentObject(env)
+        }
     }
 
     @ViewBuilder
@@ -57,7 +63,9 @@ struct PlanListView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(Array(model.rooms.enumerated()), id: \.element.id) { index, room in
-                        RoomCard(room: room, index: index)
+                        RoomCard(room: room, index: index) { chatRoomId in
+                            openChatRoom = ChatRoomRef(id: chatRoomId)
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -67,11 +75,17 @@ struct PlanListView: View {
     }
 }
 
+/// `fullScreenCover(item:)` 은 Identifiable 을 요구한다.
+private struct ChatRoomRef: Identifiable, Hashable {
+    var id: Int
+}
+
 // MARK: - 카드
 
 private struct RoomCard: View {
     var room: Plan
     var index: Int
+    var onOpenChat: (Int) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -112,7 +126,11 @@ private struct RoomCard: View {
                 SectionLabel("채팅방")
                 Spacer().frame(height: 12)
                 ForEach(room.chatRooms) { chatRoom in
-                    ChatRoomRow(name: chatRoom.name)
+                    Button { onOpenChat(chatRoom.id) } label: {
+                        ChatRoomRow(name: chatRoom.name)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("planlist.chat.\(chatRoom.id)")
                     Spacer().frame(height: 8)
                 }
                 Spacer().frame(height: 16)

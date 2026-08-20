@@ -209,6 +209,27 @@ public enum Endpoint {
         HTTPRequest(path: "/plan/chat/name/\(chatRoomId)")
     }
 
+    /// 채팅방 이름 변경. 조회와 **같은 경로에 PATCH** 다.
+    public static func renameChatRoom(chatRoomId: Int, name: String) throws -> HTTPRequest {
+        try .json(.patch, "/plan/chat/name/\(chatRoomId)", body: ["name": name])
+    }
+
+    /// 대화 기록. 응답은 **최신순(DESC)** 이라 화면에 그릴 때 뒤집어야 한다.
+    public static func chatHistory(
+        chatRoomId: Int,
+        page: Int = 1,
+        count: Int = 50
+    ) -> HTTPRequest {
+        HTTPRequest(
+            path: "/plan/chat/\(chatRoomId)",
+            query: [
+                "page": "\(page)",
+                "count": "\(count)",
+                "sort": "DESC",
+            ]
+        )
+    }
+
     public static func chatInfo(chatRoomId: Int) -> HTTPRequest {
         HTTPRequest(path: "/plan/chat/info/\(chatRoomId)")
     }

@@ -53,6 +53,11 @@ struct DemoTransport: HTTPTransport {
         } else if path.contains("/plan/category") {
             // `/plan/category/list`, `/user/list`, `/room/{id}/list` 모두 같은 목록을 준다.
             json = DemoData.categories
+        } else if path.contains("/plan/chat/info/") {
+            json = DemoData.chatInfo
+        } else if path.contains("/plan/chat/") && !path.contains("/name/") && !path.contains("/message/") {
+            // 대화 기록: /plan/chat/{chatRoomId}
+            json = DemoData.chatHistory
         } else if path.hasSuffix("/plan/room/list") {
             json = DemoData.roomList
         } else {
@@ -267,6 +272,48 @@ enum DemoData {
         let output: [String: Any] = ["result": true, "data": data]
         guard let encoded = try? JSONSerialization.data(withJSONObject: output) else { return source }
         return String(decoding: encoded, as: UTF8.self)
+    }
+
+    static let chatInfo = """
+    {"result":true,"data":{"id":10,"name":"본식 준비","memberList":[
+      {"planUserId":"demo-user","name":"지수","image":null,"permission":"OWNER"},
+      {"planUserId":"u2","name":"현우","image":null,"permission":"WRITE"}
+    ]}}
+    """
+
+    /// 대화 기록. 응답은 **최신순**이라 화면이 뒤집어 그린다.
+    ///
+    /// 어제와 오늘에 걸쳐 두어, 날짜 구분선이 실제로 그려지는지 볼 수 있게 했다.
+    /// 일정 카드도 한 건 섞는다.
+    static var chatHistory: String {
+        // 시각은 UTC 다. KST 로 바뀌어 표시되는지 확인하려면 그대로 둬야 한다.
+        func at(_ dayOffset: Int, _ hour: Int, _ minute: Int) -> String {
+            let day = KstDate.today().adding(days: dayOffset)
+            return String(
+                format: "%04d-%02d-%02dT%02d:%02d:00.000Z",
+                day.year, day.month, day.day, hour, minute
+            )
+        }
+
+        return """
+        {"result":true,"data":{"total":6,"list":[
+          {"id":106,"planUserId":"demo-user","planUserName":"지수","messageType":"text",
+           "text":"좋아요! 그때 봐요 :)","createDate":"\(at(0, 2, 41))","unreadCount":0},
+          {"id":105,"planUserId":"u2","planUserName":"현우","messageType":"schedule",
+           "schedule":{"id":3,"categoryName":"드레스","title":"드레스 1차 피팅","amount":500,
+                       "startDate":"\(KstDate.today().adding(days: 5).dateString)",
+                       "status":"NORMAL","location":"서울 강남구 논현동"},
+           "createDate":"\(at(0, 2, 38))","unreadCount":0},
+          {"id":104,"planUserId":"u2","planUserName":"현우","messageType":"text",
+           "text":"드레스 피팅 일정 올려둘게요","createDate":"\(at(0, 2, 35))","unreadCount":0},
+          {"id":103,"planUserId":"demo-user","planUserName":"지수","messageType":"text",
+           "text":"본식 스냅은 예약 완료했어요","createDate":"\(at(0, 1, 12))","unreadCount":1},
+          {"id":102,"planUserId":"u2","planUserName":"현우","messageType":"text",
+           "text":"청담 쪽으로 보고 있어요. 주차도 넉넉하대요","createDate":"\(at(-1, 9, 20))","unreadCount":0},
+          {"id":101,"planUserId":"demo-user","planUserName":"지수","messageType":"text",
+           "text":"웨딩홀 어디로 정할까요?","createDate":"\(at(-1, 9, 15))","unreadCount":0}
+        ]}}
+        """
     }
 
     static var roomList: String {
