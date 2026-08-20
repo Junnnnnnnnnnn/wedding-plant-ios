@@ -39,6 +39,10 @@ final class MainViewModel: ObservableObject {
 
     private var roomId: String?
 
+    /// 플랜 추가 화면에 그대로 넘겨야 같은 방에 저장된다.
+    /// 빼면 개인 스코프로 저장돼 200 인데 목록에 영영 안 나온다.
+    var roomIdValue: Int? { roomId.flatMap(Int.init) }
+
     var visibleList: [ScheduleItem] {
         tab == .planned ? planned : completed
     }

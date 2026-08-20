@@ -15,6 +15,7 @@ struct ScheduleDetailView: View {
 
     @StateObject private var model: ScheduleDetailViewModel
     @State private var showDeleteConfirm = false
+    @State private var showEdit = false
 
     init(scheduleId: Int) {
         _model = StateObject(wrappedValue: ScheduleDetailViewModel(scheduleId: scheduleId))
@@ -54,8 +55,7 @@ struct ScheduleDetailView: View {
 
                         Spacer().frame(height: 16)
                         ActionButtons(deleting: model.deleting) {
-                            // 수정 화면은 아직 없다 (일정 추가 화면과 함께 만든다).
-                            model.errorMessage = "수정 화면은 준비 중이에요."
+                            showEdit = true
                         } onDelete: {
                             showDeleteConfirm = true
                         }
@@ -81,21 +81,30 @@ struct ScheduleDetailView: View {
         }
         .navigationBarBackButtonHidden()
         .task { await model.load(env: env, guest: guest) }
+        .fullScreenCover(isPresented: $showEdit) {
+            // 수정은 추가와 같은 화면이다. editId 만 넘기면 상세를 불러와 채운다.
+            AddPlanView(editId: model.scheduleId) {
+                Task { await model.load(env: env, guest: guest) }
+            }
+            .environmentObject(env)
+            .environmentObject(guest)
+        }
         .onChange(of: model.deleted) { _, deleted in
             if deleted { dismiss() }
         }
         .onChange(of: model.sessionExpired) { _, expired in
             if expired { dismiss() }
         }
-        .overlay {
-            if showDeleteConfirm {
-                DeleteConfirmDialog(deleting: model.deleting) {
-                    showDeleteConfirm = false
-                } onConfirm: {
-                    showDeleteConfirm = false
-                    Task { await model.delete(env: env, guest: guest) }
-                }
+        // overlay 로 띄우면 딤이 하단 탭바를 덮지 못한다. 탭바는 이 화면의 형제 뷰라
+        // 화면 안쪽 overlay 범위 밖이기 때문이다. 배경이 투명한 전체 화면으로 올린다.
+        .fullScreenCover(isPresented: $showDeleteConfirm) {
+            DeleteConfirmDialog(deleting: model.deleting) {
+                showDeleteConfirm = false
+            } onConfirm: {
+                showDeleteConfirm = false
+                Task { await model.delete(env: env, guest: guest) }
             }
+            .presentationBackground(.clear)
         }
     }
 }

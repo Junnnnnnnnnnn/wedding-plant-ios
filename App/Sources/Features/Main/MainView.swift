@@ -12,6 +12,7 @@ struct MainView: View {
     @EnvironmentObject private var guest: GuestStore
     @StateObject private var model = MainViewModel()
     @State private var showSortSheet = false
+    @State private var showAddPlan = false
 
     var body: some View {
         NavigationStack {
@@ -32,7 +33,11 @@ struct MainView: View {
                         BudgetCard(model: model)
 
                         Spacer().frame(height: 24)
-                        PlanListHeader(model: model) { showSortSheet = true }
+                        PlanListHeader(model: model) {
+                            showSortSheet = true
+                        } onAddTapped: {
+                            showAddPlan = true
+                        }
 
                         Spacer().frame(height: 8)
                         Tabs(model: model)
@@ -65,6 +70,13 @@ struct MainView: View {
         }
         .navigationDestination(for: Int.self) { scheduleId in
             ScheduleDetailView(scheduleId: scheduleId)
+        }
+        .fullScreenCover(isPresented: $showAddPlan) {
+            AddPlanView(roomId: model.roomIdValue) {
+                Task { await model.load(env: env, guest: guest) }
+            }
+            .environmentObject(env)
+            .environmentObject(guest)
         }
         .sheet(isPresented: $showSortSheet) {
             PlanSortSheet(selected: model.sort) { option in
@@ -253,6 +265,7 @@ private struct BudgetCard: View {
 private struct PlanListHeader: View {
     @ObservedObject var model: MainViewModel
     var onSortTapped: () -> Void
+    var onAddTapped: () -> Void
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -283,7 +296,11 @@ private struct PlanListHeader: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("main.sort")
 
-            SmallFilledButton(label: "추가", symbol: "plus.circle")
+            Button(action: onAddTapped) {
+                SmallFilledButton(label: "추가", symbol: "plus.circle")
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("main.add")
         }
     }
 }

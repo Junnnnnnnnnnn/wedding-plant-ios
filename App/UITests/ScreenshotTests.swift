@@ -185,4 +185,42 @@ final class ScreenshotTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - 일정 추가
+
+    /// 웹처럼 입력에 따라 섹션이 하나씩 나타나는지 단계별로 남긴다.
+    func test_04_일정_추가() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        guard app.buttons["main.add"].waitForExistence(timeout: 10) else { return }
+        app.buttons["main.add"].tap()
+        settle(2.0)
+        capture(app, "13-addplan-empty")
+
+        // 제목을 넣으면 카테고리 섹션이 나타난다.
+        let title = app.textFields["addplan.title"]
+        if title.waitForExistence(timeout: 5) {
+            title.tap()
+            title.typeText("드레스 본식 대여")
+            settle(1.5)
+            capture(app, "14-addplan-category-revealed")
+        }
+
+        // 카테고리 선택 모달
+        if app.buttons["addplan.category"].exists {
+            app.buttons["addplan.category"].tap()
+            settle(1.5)
+            capture(app, "15-category-modal")
+            app.swipeDown()
+            settle(1.0)
+        }
+
+        if app.buttons["addplan.back"].exists {
+            app.buttons["addplan.back"].tap()
+            settle(1.0)
+        }
+    }
 }

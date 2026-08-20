@@ -82,7 +82,8 @@ struct PlanSortSheet: View {
             Spacer(minLength: 0)
         }
         .background(Color.white)
-        .presentationDetents([.height(520)])
+        // 내용에 맞춘 높이. 고정 520 이면 아래에 빈 공간이 크게 남는다.
+        .presentationDetents([.height(470)])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
     }
