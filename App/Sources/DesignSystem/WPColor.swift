@@ -34,6 +34,7 @@ enum WPColor {
 
     // Tailwind stone
     static let stone900 = Color(hex: 0x1C1917)
+    static let stone700 = Color(hex: 0x44403C)
     static let stone600 = Color(hex: 0x57534E)
     static let stone500 = Color(hex: 0x78716C)
     static let stone400 = Color(hex: 0xA8A29E)

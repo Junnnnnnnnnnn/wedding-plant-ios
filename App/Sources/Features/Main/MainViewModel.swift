@@ -25,6 +25,8 @@ final class MainViewModel: ObservableObject {
     @Published var usedBudget = 0
     @Published var remainingBudget = 0
     @Published var tab: Tab = .planned
+    /// 정렬. 바꾸면 서버에서 다시 받아온다 (정렬은 백엔드가 한다).
+    @Published var sort: SortOption = .default
     @Published var planned: [ScheduleItem] = []
     @Published var completed: [ScheduleItem] = []
     @Published var plannedTotal = 0
@@ -107,11 +109,21 @@ final class MainViewModel: ObservableObject {
         let amountEndpoint = roomId.map { Endpoint.roomTotalAmount(roomId: $0) } ?? Endpoint.totalAmount()
         async let amountTask = env.api.send(amountEndpoint, decoding: TotalAmount.self)
         async let plannedTask = env.api.send(
-            Endpoint.scheduleList(status: .normal, roomId: roomId),
+            Endpoint.scheduleList(
+                status: .normal,
+                roomId: roomId,
+                sortColumn: sort.column.parameter,
+                descending: sort.descending
+            ),
             decoding: SchedulePage.self
         )
         async let completedTask = env.api.send(
-            Endpoint.scheduleList(status: .completed, roomId: roomId),
+            Endpoint.scheduleList(
+                status: .completed,
+                roomId: roomId,
+                sortColumn: sort.column.parameter,
+                descending: sort.descending
+            ),
             decoding: SchedulePage.self
         )
 
@@ -124,14 +136,22 @@ final class MainViewModel: ObservableObject {
             usedBudget = amount.usedAmount ?? 0
             remainingBudget = amount.remainingAmount ?? ((amount.totalAmount ?? 0) - (amount.usedAmount ?? 0))
         }
+        // 서버가 정렬해 주지만, 날짜 미정 항목을 뒤로 미는 보정은 클라이언트가 한다.
         if let plannedPage {
-            planned = plannedPage.list
+            planned = ScheduleSort.sorted(plannedPage.list, by: sort.column, descending: sort.descending)
             plannedTotal = plannedPage.total
         }
         if let completedPage {
-            completed = completedPage.list
+            completed = ScheduleSort.sorted(completedPage.list, by: sort.column, descending: sort.descending)
             completedTotal = completedPage.total
         }
+    }
+
+    /// 정렬을 바꾸고 목록을 다시 받아온다.
+    func setSort(_ option: SortOption, env: AppEnvironment, guest: GuestStore) async {
+        guard option != sort else { return }
+        sort = option
+        await load(env: env, guest: guest)
     }
 
     // MARK: - 체크박스 토글

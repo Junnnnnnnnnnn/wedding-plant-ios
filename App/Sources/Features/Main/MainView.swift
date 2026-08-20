@@ -11,6 +11,7 @@ struct MainView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
     @StateObject private var model = MainViewModel()
+    @State private var showSortSheet = false
 
     var body: some View {
         ZStack {
@@ -25,7 +26,7 @@ struct MainView: View {
                         BudgetCard(model: model)
 
                         Spacer().frame(height: 24)
-                        PlanListHeader(model: model)
+                        PlanListHeader(model: model) { showSortSheet = true }
 
                         Spacer().frame(height: 8)
                         Tabs(model: model)
@@ -55,6 +56,11 @@ struct MainView: View {
         }
         .task {
             await model.load(env: env, guest: guest)
+        }
+        .sheet(isPresented: $showSortSheet) {
+            PlanSortSheet(selected: model.sort) { option in
+                Task { await model.setSort(option, env: env, guest: guest) }
+            }
         }
     }
 
@@ -233,6 +239,7 @@ private struct BudgetCard: View {
 
 private struct PlanListHeader: View {
     @ObservedObject var model: MainViewModel
+    var onSortTapped: () -> Void
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -254,7 +261,15 @@ private struct PlanListHeader: View {
 
             Spacer(minLength: 0)
 
-            SmallOutlineButton(label: "시작", symbol: "arrow.down")
+            Button(action: onSortTapped) {
+                SmallOutlineButton(
+                    label: model.sort.buttonLabel,
+                    symbol: model.sort.descending ? "arrow.down" : "arrow.up"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("main.sort")
+
             SmallFilledButton(label: "추가", symbol: "plus.circle")
         }
     }

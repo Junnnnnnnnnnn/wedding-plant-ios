@@ -161,3 +161,38 @@ final class PortingNotesTests: XCTestCase {
         }
     }
 }
+
+/// 정렬 선택지는 안드로이드와 **라벨까지 동일**해야 한다.
+final class SortOptionTests: XCTestCase {
+
+    func test_여섯_가지_선택지() {
+        XCTAssertEqual(SortOption.allCases.count, 6)
+    }
+
+    func test_기본값은_시작일_최신순() {
+        XCTAssertEqual(SortOption.default, .dateDesc)
+        XCTAssertEqual(SortOption.default.buttonLabel, "시작")
+        XCTAssertTrue(SortOption.default.descending)
+    }
+
+    func test_시트_라벨() {
+        XCTAssertEqual(SortOption.priceAsc.sheetLabel, "낮은 가격순")
+        XCTAssertEqual(SortOption.priceDesc.sheetLabel, "높은 가격순")
+        XCTAssertEqual(SortOption.dateAsc.sheetLabel, "플랜 시작일 오래된순")
+        XCTAssertEqual(SortOption.dateDesc.sheetLabel, "플랜 시작일 최신순")
+        XCTAssertEqual(SortOption.nameAsc.sheetLabel, "제목 가나다순")
+        XCTAssertEqual(SortOption.nameDesc.sheetLabel, "제목 가나다역순")
+    }
+
+    func test_버튼_라벨은_세_종류() {
+        XCTAssertEqual(SortOption.priceAsc.buttonLabel, "가격")
+        XCTAssertEqual(SortOption.dateAsc.buttonLabel, "시작")
+        XCTAssertEqual(SortOption.nameAsc.buttonLabel, "제목")
+    }
+
+    func test_백엔드_파라미터() {
+        XCTAssertEqual(SortOption.priceDesc.column.parameter, "amount")
+        XCTAssertEqual(SortOption.dateDesc.column.parameter, "startDate")
+        XCTAssertEqual(SortOption.nameAsc.column.parameter, "title")
+    }
+}
