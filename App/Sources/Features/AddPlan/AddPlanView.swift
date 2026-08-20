@@ -471,9 +471,9 @@ private struct CategorySuggestions: View {
 
 /// 웹의 카테고리 선택 모달
 private struct CategoryModal: View {
-    var categories: [Category]
+    var categories: [PlanCategory]
     var added: [String]
-    var onSelect: (Category) -> Void
+    var onSelect: (PlanCategory) -> Void
     var onAdd: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -536,7 +536,7 @@ private struct CategoryModal: View {
                     FlowRow(spacing: 8, lineSpacing: 8) {
                         ForEach(allNames, id: \.self) { name in
                             Button {
-                                onSelect(categories.first { $0.name == name } ?? Category(name: name, type: "USER"))
+                                onSelect(categories.first { $0.name == name } ?? PlanCategory(name: name, type: "USER"))
                             } label: {
                                 HStack(spacing: 4) {
                                     Text(name)

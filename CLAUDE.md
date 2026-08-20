@@ -227,6 +227,7 @@ Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)�
 | 설정 화면이 곧바로 메인으로 넘어감 | 정상 동작이다. 플랜이 완성된 사용자면 `prefill` 이 스킵한다. 플로우를 보려면 `-WPForceOnboarding` |
 | UI 테스트가 버튼을 못 찾음 | `.accessibilityIdentifier` 를 감싼 뷰에 걸면 `app.buttons[...]` 로 안 잡힌다. `Button` 자체에 붙인다 (`WPNextButton(identifier:)` 처럼) |
 | 카테고리 색이 웹과 다름 | `PlanRules.categoryColorHex` 는 JS 의 **Int32 오버플로 해시**를 재현해야 한다. `&<<` `&-` `&+` 와 `Int64` abs 를 쓴다 |
+| `'Category' is ambiguous for type lookup` | Objective-C 런타임에 `typedef struct objc_category *Category` 가 있다. 모델 이름을 `PlanCategory` 로 쓴다 (안드로이드의 `Category` 를 그대로 옮기면 안 된다) |
 | pull 후 폰트·스킴이 안 보임 | `project.yml` 이 바뀌었으면 `xcodegen generate` 를 다시 돌려야 한다 (`./scripts/mac-setup.sh`) |
 
 ## 문서

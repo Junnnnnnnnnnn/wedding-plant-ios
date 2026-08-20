@@ -1,7 +1,11 @@
 import Foundation
 
 /// `GET /plan/category/*/list` 응답의 `data.list` 항목.
-public struct Category: Codable, Hashable, Sendable, Identifiable {
+///
+/// - Note: 이름이 `Category` 가 아닌 이유 — Objective-C 런타임에 이미
+///   `typedef struct objc_category *Category` 가 있어서 App 타깃에서 타입 이름이 모호해진다.
+///   (안드로이드는 `Category` 지만 iOS 에서는 쓸 수 없다)
+public struct PlanCategory: Codable, Hashable, Sendable, Identifiable {
     public var id: Int
     public var name: String
     public var color: String?
@@ -28,18 +32,18 @@ public struct Category: Codable, Hashable, Sendable, Identifiable {
 }
 
 /// 목록 응답 래퍼. `{ total, list }`
-public struct CategoryPage: Codable, Hashable, Sendable {
+public struct PlanCategoryPage: Codable, Hashable, Sendable {
     public var total: Int
-    public var list: [Category]
+    public var list: [PlanCategory]
 
-    public init(total: Int = 0, list: [Category] = []) {
+    public init(total: Int = 0, list: [PlanCategory] = []) {
         self.total = total
         self.list = list
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.list = try container.decodeIfPresent([Category].self, forKey: .list) ?? []
+        self.list = try container.decodeIfPresent([PlanCategory].self, forKey: .list) ?? []
         self.total = try container.decodeIfPresent(Int.self, forKey: .total) ?? self.list.count
     }
 }

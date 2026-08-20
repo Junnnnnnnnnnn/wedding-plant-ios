@@ -16,7 +16,7 @@ final class AddPlanViewModel: ObservableObject {
     // MARK: 입력
 
     @Published var title = ""
-    @Published var category: Category?
+    @Published var category: PlanCategory?
     @Published var payType: PlanPayType?
     @Published var amount = ""
     @Published var date: KstDate = KstDate.today()
@@ -28,7 +28,7 @@ final class AddPlanViewModel: ObservableObject {
 
     // MARK: 목록·상태
 
-    @Published var categories: [Category] = []
+    @Published var categories: [PlanCategory] = []
     /// 이번 세션에서 사용자가 새로 만든 카테고리 (저장 시 `addCategoryNameList` 로 전송)
     @Published var addedCategories: [String] = []
     @Published var loadingDetail = false
@@ -110,7 +110,7 @@ final class AddPlanViewModel: ObservableObject {
         // 카테고리가 필수라 게스트는 플랜을 아예 만들 수 없다.
         let request = Endpoint.categories(roomId: roomId, loggedIn: loggedIn)
 
-        guard let page = try? await env.api.send(request, decoding: CategoryPage.self) else { return }
+        guard let page = try? await env.api.send(request, decoding: PlanCategoryPage.self) else { return }
         categories = page.list.sorted { $0.name < $1.name }
         syncSelectedCategory()
     }
@@ -177,7 +177,7 @@ final class AddPlanViewModel: ObservableObject {
         memo: String?
     ) {
         self.title = title
-        self.category = Category(name: categoryName)
+        self.category = PlanCategory(name: categoryName)
         self.payType = PlanPayType.from(api: payType) ?? .other
         self.amount = amount.map(String.init) ?? ""
         self.date = startDate.flatMap { KstDate(dateString: $0) } ?? KstDate.today()
@@ -212,7 +212,7 @@ final class AddPlanViewModel: ObservableObject {
 
     /// 제목 추천 칩을 눌렀을 때 — 이름으로 실제 카테고리를 찾아 선택한다.
     func selectCategory(named name: String) {
-        category = categories.first { $0.name == name } ?? Category(name: name, type: "USER")
+        category = categories.first { $0.name == name } ?? PlanCategory(name: name, type: "USER")
     }
 
     /// 모달에서 새 카테고리를 만든 경우 — 서버에 미리 만들지 않고 저장 시 함께 보낸다(웹과 동일).
@@ -225,7 +225,7 @@ final class AddPlanViewModel: ObservableObject {
             return
         }
         addedCategories.append(trimmed)
-        category = Category(name: trimmed, type: "USER")
+        category = PlanCategory(name: trimmed, type: "USER")
     }
 
     func setLocation(_ value: String) {
@@ -352,7 +352,7 @@ final class AddPlanViewModel: ObservableObject {
     ///
     /// `saving` 을 먼저 세워 중복 제출을 막는다. 웹은 이 가드가 없어서
     /// 저장 버튼을 빠르게 두 번 누르면 같은 플랜이 두 건 들어갔다.
-    private func saveAsGuest(category: Category, payType: PlanPayType, guest: GuestStore) {
+    private func saveAsGuest(category: PlanCategory, payType: PlanPayType, guest: GuestStore) {
         guard guest.canAddSchedule else {
             guestLimitReached = true
             return
