@@ -386,7 +386,8 @@ private struct DayPlansSheet: View {
                     }
                 }
             }
-            .frame(maxHeight: 400)
+            // 내용만큼만 차지하게 고정한다. 자동 높이로 두면 시트 아래가 텅 빈다.
+            .frame(height: listHeight)
 
             Spacer().frame(height: 24)
 
@@ -403,10 +404,25 @@ private struct DayPlansSheet: View {
         }
         .padding(24)
         .padding(.bottom, 16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .top)
         .background(Color.white)
-        .presentationDetents([.medium, .large])
+        // 웹은 내용 높이만큼만 올라오는 시트다. 기본 detent 를 쓰면 아래가 비어 보인다.
+        .presentationDetents([.height(sheetHeight)])
+        .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
+    }
+
+    /// 목록 영역 높이. 웹의 `max-h-[400px]` 과 같은 상한을 둔다.
+    private var listHeight: CGFloat {
+        // 행 하나 = 카드 72 + 간격 12
+        let rows: CGFloat = plans.isEmpty ? 130 : CGFloat(plans.count) * 84
+        let addButton: CGFloat = readOnly ? 0 : 72
+        return min(rows + addButton, 400)
+    }
+
+    /// 시트 전체 높이 — 위아래 여백 + 제목 + 목록 + "확인" 버튼.
+    private var sheetHeight: CGFloat {
+        listHeight + 196
     }
 }
 
