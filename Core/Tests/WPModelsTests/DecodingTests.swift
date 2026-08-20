@@ -135,3 +135,45 @@ final class DecodingTests: XCTestCase {
         )
     }
 }
+
+/// 일정 상세 응답. 웹 PAY_TYPE_LABELS 와 지도 링크 판정을 고정한다.
+final class ScheduleDetailTests: XCTestCase {
+
+    private func decode(_ json: String) throws -> ScheduleDetail {
+        try JSONDecoder().decode(ScheduleDetail.self, from: Data(json.utf8))
+    }
+
+    func test_결제방식_라벨() throws {
+        XCTAssertEqual(try decode(#"{"id":1,"payType":"CASH"}"#).payTypeLabel, "현금")
+        XCTAssertEqual(try decode(#"{"id":1,"payType":"CREDIT"}"#).payTypeLabel, "카드")
+        XCTAssertEqual(try decode(#"{"id":1,"payType":"OTHER"}"#).payTypeLabel, "기타")
+        XCTAssertEqual(try decode(#"{"id":1}"#).payTypeLabel, "미정")
+        XCTAssertEqual(try decode(#"{"id":1,"payType":""}"#).payTypeLabel, "미정")
+    }
+
+    func test_좌표가_0_0이면_지도를_띄우지_않는다() throws {
+        let zero = try decode(#"{"id":1,"location":"서울","locationLat":0,"locationLng":0}"#)
+        XCTAssertFalse(zero.hasCoordinates)
+        XCTAssertNil(zero.kakaoMapURL)
+
+        let real = try decode(#"{"id":1,"location":"서울","locationLat":37.5,"locationLng":127.0}"#)
+        XCTAssertTrue(real.hasCoordinates)
+        XCTAssertNotNil(real.kakaoMapURL)
+    }
+
+    func test_장소명이_없으면_지도_링크가_없다() throws {
+        let noName = try decode(#"{"id":1,"locationLat":37.5,"locationLng":127.0}"#)
+        XCTAssertTrue(noName.hasCoordinates)
+        XCTAssertNil(noName.kakaoMapURL)
+    }
+
+    func test_금액이_소수로_와도_디코딩된다() throws {
+        XCTAssertEqual(try decode(#"{"id":1,"amount":1200.0}"#).amount, 1200)
+        XCTAssertNil(try decode(#"{"id":1,"amount":null}"#).amount)
+    }
+
+    func test_완료_판정() throws {
+        XCTAssertTrue(try decode(#"{"id":1,"status":"COMPLETED"}"#).isCompleted)
+        XCTAssertFalse(try decode(#"{"id":1,"status":"NORMAL"}"#).isCompleted)
+    }
+}

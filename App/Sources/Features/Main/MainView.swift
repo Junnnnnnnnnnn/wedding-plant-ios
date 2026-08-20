@@ -14,6 +14,12 @@ struct MainView: View {
     @State private var showSortSheet = false
 
     var body: some View {
+        NavigationStack {
+            content
+        }
+    }
+
+    private var content: some View {
         ZStack {
             WPScreenBackground()
 
@@ -57,6 +63,9 @@ struct MainView: View {
         .task {
             await model.load(env: env, guest: guest)
         }
+        .navigationDestination(for: Int.self) { scheduleId in
+            ScheduleDetailView(scheduleId: scheduleId)
+        }
         .sheet(isPresented: $showSortSheet) {
             PlanSortSheet(selected: model.sort) { option in
                 Task { await model.setSort(option, env: env, guest: guest) }
@@ -82,12 +91,16 @@ struct MainView: View {
         } else {
             VStack(spacing: 12) {
                 ForEach(model.visibleList) { item in
-                    PlanRow(
-                        item: item,
-                        toggling: model.togglingIds.contains(item.id)
-                    ) {
-                        Task { await model.toggle(item, env: env) }
+                    // 카드를 누르면 상세로. 체크박스는 카드 안에서 따로 처리한다.
+                    NavigationLink(value: item.id) {
+                        PlanRow(
+                            item: item,
+                            toggling: model.togglingIds.contains(item.id)
+                        ) {
+                            Task { await model.toggle(item, env: env) }
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.top, 12)
