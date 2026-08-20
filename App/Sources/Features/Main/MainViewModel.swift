@@ -96,10 +96,9 @@ final class MainViewModel: ObservableObject {
             name = user.name ?? ""
             weddingDate = user.weddingDate.flatMap { KstDate(dateString: $0) }
             members = user.members ?? []
-            readOnly = PlanRules.isReadOnly(
-                members: members,
-                planUserId: (await env.tokenStore.currentToken()).flatMap(JWT.planUserId(from:))
-            )
+            let token = await env.tokenStore.currentToken()
+            let planUserId = token.flatMap { JWTDecoder.planUserId(from: $0) }
+            readOnly = PlanRules.isReadOnly(members: members, planUserId: planUserId)
         } catch let error as APIError {
             if error.requiresReauthentication {
                 sessionExpired = true

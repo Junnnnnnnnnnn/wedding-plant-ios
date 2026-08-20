@@ -214,8 +214,8 @@ enum DemoData {
                 let parts = pair.split(separator: "=", maxSplits: 1)
                 if parts.count == 2 { result[String(parts[0])] = String(parts[1]) }
             }
-        let year = components["year"].flatMap(Int.init)
-        let month = components["month"].flatMap(Int.init)
+        let year = components["year"].flatMap { Int($0) }
+        let month = components["month"].flatMap { Int($0) }
 
         var byDay: [String: [String]] = [:]
         var order: [String] = []
