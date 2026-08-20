@@ -421,13 +421,10 @@ final class ScreenshotTests: XCTestCase {
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 30)
 
-        // "공유 플랜 연결 중..." 이 잠깐 보인다.
-        settle(0.6)
-        capture(app, "28-share-joining")
-
         // 참여가 끝나면 참여 플랜 목록으로 넘어간다.
-        settle(4.0)
-        capture(app, "29-share-joined")
+        // ("공유 플랜 연결 중..." 은 데모에서 200ms 만에 지나가 찍히지 않는다)
+        settle(4.5)
+        capture(app, "28-share-joined")
     }
 
     /// 비로그인으로 공유 링크를 열면 로그인 안내가 뜬다.
@@ -436,6 +433,6 @@ final class ScreenshotTests: XCTestCase {
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 30)
         settle(3.0)
-        capture(app, "30-share-login-required")
+        capture(app, "29-share-login-required")
     }
 }
