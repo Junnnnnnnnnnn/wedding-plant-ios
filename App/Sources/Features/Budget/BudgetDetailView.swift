@@ -102,10 +102,10 @@ struct BudgetDetailView: View {
         }
         .navigationBarBackButtonHidden()
         .task { await model.load(env: env, guest: guest) }
-        .overlay {
-            if showAiModal {
-                AiPreparingModal { showAiModal = false }
-            }
+        // 오버레이로 띄우면 딤이 하단 탭바를 덮지 못한다. 웹은 `fixed inset-0` 로 전부 덮는다.
+        .fullScreenCover(isPresented: $showAiModal) {
+            AiPreparingModal { showAiModal = false }
+                .presentationBackground(.clear)
         }
     }
 
@@ -475,6 +475,8 @@ private struct SavingsTooltip: View {
             .lineSpacing(6)
             .foregroundStyle(.white)
             .frame(width: 256, alignment: .leading)
+            // 오버레이는 배지 높이만 제안한다. 없으면 한 줄로 잘린다.
+            .fixedSize(horizontal: false, vertical: true)
             .padding(12)
             .background(WPColor.textPrimary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .shadow(color: Color.black.opacity(0.2), radius: 12, y: 6)
@@ -527,8 +529,10 @@ private struct CategoryBar: View {
         }
         .buttonStyle(.plain)
         // 웹 `opacity-30 grayscale scale-[0.98]`
+        // CSS 는 filter(grayscale) 를 적용한 뒤 opacity 를 먹인다. 순서를 뒤집으면
+        // 반투명 레이어를 회색조로 만들게 되어 막대가 훨씬 어둡게 나온다.
+        .grayscale(dimmed ? 1 : 0)
         .opacity(dimmed ? 0.3 : 1)
-        .saturation(dimmed ? 0 : 1)
         .scaleEffect(dimmed ? 0.98 : 1)
         .offset(x: active ? 4 : 0)
         .animation(.easeOut(duration: 0.3), value: dimmed)

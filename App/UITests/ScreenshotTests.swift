@@ -262,12 +262,21 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "18-budget-category-filtered")
         }
 
+        // 탭과 리스트는 화면 아래라 스크롤해야 눌린다.
+        app.swipeUp()
+        settle(1.5)
+        capture(app, "19-budget-list")
+
         // 사용 탭 (필터가 걸린 상태라 웨딩홀 항목만 보여야 한다)
         if app.buttons["budget.tab.used"].isHittable {
             app.buttons["budget.tab.used"].tap()
             settle(2.5)
-            capture(app, "19-budget-used-tab")
+            capture(app, "19b-budget-used-tab")
         }
+
+        // 다시 위로 올려 필터 해제 칩을 누른다.
+        app.swipeDown()
+        settle(1.5)
 
         if app.buttons["budget.clearFilter"].isHittable {
             app.buttons["budget.clearFilter"].tap()
