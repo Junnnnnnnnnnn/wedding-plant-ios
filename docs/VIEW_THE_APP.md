@@ -65,6 +65,16 @@ gh repo create wedding-plant-ios --private --source=. --remote=origin --push
 
 ---
 
+## 가장 빠른 방법 — 스크립트 하나
+
+```powershell
+.\scripts\preview.ps1           # 최근 성공한 CI 에서 받아 폴더 열기
+.\scripts\preview.ps1 -Watch    # 지금 도는 CI 가 끝날 때까지 기다렸다 받기
+```
+
+아티팩트를 내려받고, UUID 파일명을 사람이 읽을 이름(`04-main.png` 등)으로 바꾼 뒤
+탐색기로 폴더를 열어 준다. `simulator.mp4` 도 같이 들어 있다.
+
 ## 2회차부터 — 화면 보고 싶을 때
 
 ```powershell

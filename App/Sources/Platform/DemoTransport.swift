@@ -33,6 +33,9 @@ struct DemoTransport: HTTPTransport {
             json = DemoData.amountDetail
         } else if path.hasSuffix("/plan/user") {
             json = newUser ? DemoData.newUser : DemoData.user
+        } else if path.contains("/plan/schedule/") && !path.hasSuffix("/list") {
+            // 상세: /plan/schedule/{id}
+            json = DemoData.scheduleDetail(id: Int(path.split(separator: "/").last ?? "") ?? 3)
         } else if path.contains("/plan/schedule") && path.hasSuffix("/list") {
             // roomId 가 있으면 경로가 `/plan/schedule/room/{id}/list` 로 바뀐다.
             // 접미사만 보고 판단해야 두 형태를 모두 잡는다.
@@ -124,6 +127,20 @@ enum DemoData {
           {"id":6,"categoryName":"예물","title":"반지 상담","amount":650,
            "startDate":"\(day(40))","status":"NORMAL","location":"서울 종로구"}
         ]}}
+        """
+    }
+
+    /// 일정 상세. 장소·메모·추가 카테고리가 모두 있는 항목으로 만들어 카드가 다 보이게 한다.
+    static func scheduleDetail(id: Int) -> String {
+        """
+        {"result":true,"data":{
+          "id":\(id),"title":"드레스 1차 피팅","categoryName":"드레스",
+          "payType":"CREDIT","amount":500,"startDate":"\(day(-2))","status":"NORMAL",
+          "location":"서울 강남구 논현동 웨딩스트리트",
+          "locationLat":37.5108,"locationLng":127.0224,
+          "memo":"슬리브 길이 조정 요청. 베일은 다음 방문에 함께 확인하기로 했어요.",
+          "addCategoryNameList":["헤어","메이크업","부케"]
+        }}
         """
     }
 

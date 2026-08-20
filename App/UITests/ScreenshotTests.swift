@@ -132,4 +132,57 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "08-main-again")
         }
     }
+
+    // MARK: - 정렬 시트 · 일정 상세
+
+    /// 새로 만든 화면들. 여기서 찍지 않으면 CI 아티팩트에 영영 안 나온다.
+    func test_03_정렬시트와_일정상세() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        // 정렬 시트
+        if app.buttons["main.sort"].waitForExistence(timeout: 10) {
+            app.buttons["main.sort"].tap()
+            settle(1.5)
+            capture(app, "09-sort-sheet")
+
+            // 다른 정렬을 골라 목록이 바뀌는지도 남긴다.
+            if app.buttons["높은 가격순"].exists {
+                app.buttons["높은 가격순"].tap()
+                settle(2.5)
+                capture(app, "10-sorted-by-price")
+            } else {
+                app.swipeDown()
+                settle(1.0)
+            }
+        }
+
+        // 일정 상세 — 목록 첫 카드를 누른다.
+        let firstPlan = app.buttons.containing(
+            NSPredicate(format: "label CONTAINS %@", "드레스")
+        ).firstMatch
+        if firstPlan.waitForExistence(timeout: 10) {
+            firstPlan.tap()
+            settle(3.0)
+            capture(app, "11-schedule-detail")
+
+            // 삭제 확인 다이얼로그 (취소가 왼쪽인지 눈으로 확인하기 위함)
+            if app.buttons["detail.delete"].exists {
+                app.buttons["detail.delete"].tap()
+                settle(1.5)
+                capture(app, "12-delete-confirm")
+                if app.buttons["취소"].exists {
+                    app.buttons["취소"].tap()
+                    settle(1.0)
+                }
+            }
+
+            if app.buttons["detail.back"].exists {
+                app.buttons["detail.back"].tap()
+                settle(1.5)
+            }
+        }
+    }
 }
