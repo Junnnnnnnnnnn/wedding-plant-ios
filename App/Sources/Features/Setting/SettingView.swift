@@ -136,7 +136,8 @@ private struct DateStep: View {
             subtitle: "예신, 예랑님. 가장 빛날 그날까지 함께해요.",
             onNext: { model.goTo(.budget) }
         ) {
-            DateWheelPicker(value: $model.date)
+            // 온보딩에서는 결혼식이 과거일 수 없다 (프로필 수정에는 하한이 없다).
+            DateWheelPicker(value: $model.date, minDate: KstDate.today())
                 .accessibilityIdentifier("setting.date")
         }
     }

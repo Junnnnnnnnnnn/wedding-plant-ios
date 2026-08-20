@@ -12,16 +12,29 @@ import WPUtils
 struct DateWheelPicker: View {
     @Binding var value: KstDate
 
-    /// 웹과 동일: 올해부터 100년
+    /// 선택 가능한 하한. `nil` 이면 제한 없음.
+    ///
+    /// 온보딩에서는 결혼식이 **과거일 수 없으므로** 오늘을 넘긴다.
+    /// 반대로 프로필 수정에서는 이미 지난 결혼일도 정상이라 하한을 두지 않는다.
+    var minDate: KstDate?
+
+    /// 웹과 동일: 올해부터 100년. 하한이 있으면 그 해부터.
     private var years: [Int] {
-        let thisYear = KstDate.today().year
-        return Array(thisYear...(thisYear + 99))
+        let start = minDate?.year ?? KstDate.today().year
+        return Array(start...(start + 99))
     }
 
-    private var months: [Int] { Array(1...12) }
+    private var months: [Int] {
+        guard let minDate, value.year == minDate.year else { return Array(1...12) }
+        return Array(minDate.month...12)
+    }
 
     private var days: [Int] {
-        Array(1...KstDate.daysInMonth(year: value.year, month: value.month))
+        let last = KstDate.daysInMonth(year: value.year, month: value.month)
+        guard let minDate, value.year == minDate.year, value.month == minDate.month else {
+            return Array(1...last)
+        }
+        return Array(min(minDate.day, last)...last)
     }
 
     var body: some View {
@@ -50,10 +63,13 @@ struct DateWheelPicker: View {
                     get: { value.month },
                     set: { apply(month: $0) }
                 ),
-                // 월은 순환한다 (웹 handleMonthClick 의 modulo)
+                // 월은 순환한다 (웹 handleMonthClick 의 modulo).
+                // 하한 때문에 목록이 짧아질 수 있으므로 값이 아니라 **인덱스**로 순환한다.
                 onStep: { direction in
-                    let next = ((value.month - 1 + direction) + 12) % 12
-                    apply(month: months[next])
+                    let list = months
+                    guard let index = list.firstIndex(of: value.month), !list.isEmpty else { return }
+                    let next = ((index + direction) + list.count) % list.count
+                    apply(month: list[next])
                 }
             )
 
@@ -66,9 +82,10 @@ struct DateWheelPicker: View {
                     set: { apply(day: $0) }
                 ),
                 onStep: { direction in
-                    let count = days.count
-                    let next = ((value.day - 1 + direction) + count) % count
-                    apply(day: days[next])
+                    let list = days
+                    guard let index = list.firstIndex(of: value.day), !list.isEmpty else { return }
+                    let next = ((index + direction) + list.count) % list.count
+                    apply(day: list[next])
                 }
             )
         }
@@ -80,9 +97,10 @@ struct DateWheelPicker: View {
         let m = month ?? value.month
         let maxDay = KstDate.daysInMonth(year: y, month: m)
         let d = min(day ?? value.day, maxDay)
-        if let next = KstDate(year: y, month: m, day: d) {
-            value = next
-        }
+        guard var next = KstDate(year: y, month: m, day: d) else { return }
+        // 하한 아래로 내려가면 하한으로 끌어올린다.
+        if let minDate, next < minDate { next = minDate }
+        value = next
     }
 }
 
