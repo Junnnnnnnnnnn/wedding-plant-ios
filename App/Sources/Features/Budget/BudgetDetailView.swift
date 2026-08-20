@@ -390,13 +390,14 @@ private struct AnalysisSection: View {
                 Spacer(minLength: 8)
 
                 SavingsBadge(savings: model.savings, onTapHelp: onToggleTip)
-                    .overlay(alignment: .topTrailing) {
-                        if showTip {
-                            SavingsTooltip()
-                                // 배지 아래로 내려 붙인다 (웹 `top-full mt-2`)
-                                .offset(y: 36)
-                        }
-                    }
+            }
+
+            // 웹은 이 말풍선을 배지 아래에 떠 있게(absolute) 두지만, 오버레이로 띄우면
+            // 높이를 배지 기준으로 제안받아 글자가 잘린다. 흐름 안에 두어 전문이 보이게 한다.
+            if showTip {
+                SavingsTooltip()
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 8)
             }
 
             Spacer().frame(height: 32)
@@ -475,7 +476,6 @@ private struct SavingsTooltip: View {
             .lineSpacing(6)
             .foregroundStyle(.white)
             .frame(width: 256, alignment: .leading)
-            // 오버레이는 배지 높이만 제안한다. 없으면 한 줄로 잘린다.
             .fixedSize(horizontal: false, vertical: true)
             .padding(12)
             .background(WPColor.textPrimary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -489,6 +489,13 @@ private struct CategoryBar: View {
     var dimmed: Bool
     var onTap: () -> Void
 
+    /// 웹 `opacity-30 grayscale` 을 **계산해서 얻은 최종 색**.
+    ///
+    /// SwiftUI 의 `.grayscale()` + `.opacity()` 를 버튼에 걸어 봤지만 막대만 그대로 진하게
+    /// 남는다(글자에는 먹는다). 필터에 기대지 말고 색을 직접 지정한다.
+    /// `#ee2b8c` → 회색조 `#5b5b5b` → 흰 배경 위 30% ≈ `#cfcfcf`.
+    private static let dimmedGray = Color(hex: 0xCFCFCF)
+
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
@@ -497,7 +504,7 @@ private struct CategoryBar: View {
                     Text(item.categoryName)
                         .font(WPFont.tmoney(11, .black))
                         .tracking(WPFont.trackingTight(11))
-                        .foregroundStyle(active ? WPColor.primary : WPColor.textPrimary.opacity(0.7))
+                        .foregroundStyle(nameColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
 
@@ -506,11 +513,11 @@ private struct CategoryBar: View {
                     HStack(spacing: 2) {
                         Text(verbatim: "\(wpThousands(item.used)) / \(wpThousands(item.total))")
                             .font(WPFont.hak(11, .bold))
-                            .foregroundStyle(WPColor.primary)
+                            .foregroundStyle(dimmed ? Self.dimmedGray : WPColor.primary)
                         // 웹: 단위만 더 작고 회색
                         Text("만원")
                             .font(WPFont.hak(10, .semibold))
-                            .foregroundStyle(WPColor.gray500)
+                            .foregroundStyle(dimmed ? Self.dimmedGray : WPColor.gray500)
                     }
                 }
 
@@ -519,7 +526,7 @@ private struct CategoryBar: View {
                         // 웹 `bg-[#ee2b8c0a]`
                         Capsule().fill(WPColor.primary.opacity(Double(0x0A) / 255))
                         Capsule()
-                            .fill(WPColor.primary)
+                            .fill(dimmed ? Self.dimmedGray : WPColor.primary)
                             .frame(width: geo.size.width * item.ratio)
                     }
                 }
@@ -528,15 +535,16 @@ private struct CategoryBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // 웹 `opacity-30 grayscale scale-[0.98]`
-        // CSS 는 filter(grayscale) 를 적용한 뒤 opacity 를 먹인다. 순서를 뒤집으면
-        // 반투명 레이어를 회색조로 만들게 되어 막대가 훨씬 어둡게 나온다.
-        .grayscale(dimmed ? 1 : 0)
-        .opacity(dimmed ? 0.3 : 1)
+        // 웹 `scale-[0.98]` / 선택된 항목은 `translate-x-1`
         .scaleEffect(dimmed ? 0.98 : 1)
         .offset(x: active ? 4 : 0)
         .animation(.easeOut(duration: 0.3), value: dimmed)
         .animation(.easeOut(duration: 0.3), value: active)
+    }
+
+    private var nameColor: Color {
+        if dimmed { return Self.dimmedGray }
+        return active ? WPColor.primary : WPColor.textPrimary.opacity(0.7)
     }
 }
 
