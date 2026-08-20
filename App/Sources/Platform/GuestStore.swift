@@ -17,6 +17,7 @@ final class GuestStore: ObservableObject {
         static let requiredAgreementDate = "wp_guest_required_agreement_date"
         static let adAgreementDate = "wp_guest_ad_agreement_date"
         static let schedules = "wp_guest_schedules"
+        static let shareAfterLogin = "wp_share_after_login"
     }
 
     /// 게스트가 동의한 약관 날짜.
@@ -48,6 +49,15 @@ final class GuestStore: ObservableObject {
             return KstDate(dateString: raw)
         }
         set { defaults.set(newValue?.dateString, forKey: Key.weddingDate) }
+    }
+
+    /// 웹의 `plan_share_after_login`.
+    ///
+    /// 공유 링크로 들어왔는데 로그인이 안 돼 있으면 코드를 여기 남겨 두고, 로그인 직후
+    /// 이어서 참여시킨다. 안 남기면 사용자가 링크를 다시 눌러야 한다.
+    var shareAfterLogin: String? {
+        get { defaults.string(forKey: Key.shareAfterLogin) }
+        set { defaults.set(newValue, forKey: Key.shareAfterLogin) }
     }
 
     /// 웹의 `HAS_COMPLETED_GUEST_SETTING_KEY`.

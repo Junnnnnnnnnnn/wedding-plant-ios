@@ -13,10 +13,10 @@
 ## 한 줄 요약
 
 안드로이드 앱은 **완성**됐고(65개 파일), iOS 는 그 절반쯤 왔다.
-Core 로직과 주요 화면 11개가 웹과 1:1 로 맞춰져 있고, 남은 건 공유 참여 화면 + 푸시다.
+**웹의 화면은 전부 이식했다.** 남은 건 카카오 로그인 실연동 · 인앱 알림(SSE) · 푸시 · 배포다.
 
 - 저장소: <https://github.com/Junnnnnnnnnnn/wedding-plant-ios> (**공개**)
-- Core 테스트: **222개 통과** (Windows/Linux)
+- Core 테스트: **234개 통과** (Windows/Linux)
 - SwiftUI: CI 시뮬레이터 빌드 통과, 스크린샷으로 육안 확인
 
 ---
@@ -36,7 +36,7 @@ Core 로직과 주요 화면 11개가 웹과 1:1 로 맞춰져 있고, 남은 �
 | 예산 상세 | `/budget-detail` | **웹과 1:1** (통계 카드·AI 안내·카테고리 막대·예정/사용 탭·게스트 블러) |
 | 캘린더 | `/calendar` | **웹과 1:1** (42칸 격자, 달 이동, 날짜별 시트, 읽기 권한이면 추가 버튼 숨김) |
 | 채팅 | `/chat/[id]` | **웹과 1:1** (Socket.IO 직접 구현, 무제한 재연결, 날짜 구분선·일정 카드·이름 변경) |
-| 공유 참여 | `/share/[code]` | **없음** |
+| 공유 참여 | `/share/[code]` | **웹과 1:1** (자동 참여 → 참여 플랜 목록, 비로그인이면 코드를 남기고 로그인 안내) |
 | 인앱 알림(SSE) | `NotificationContext` | **없음**. 웹은 채팅방마다 SSE 를 열어 토스트·미읽음 배지를 띄운다 |
 | 푸시(APNs) | - | **없음**. Core 에 엔드포인트·페이로드 모델만 준비됨 |
 
@@ -50,13 +50,7 @@ Core 로직과 주요 화면 11개가 웹과 1:1 로 맞춰져 있고, 남은 �
 
 ## 다음에 할 일 (우선순위)
 
-### 1. 공유 참여 (`/share/[code]`)
-
-7K 로 작다. 로그인 후 분기는 `PostLoginRouter` 에 이미 있다.
-단, **미리보기 API 3종이 백엔드에 없다**(`/plan/user/{shareCode}` 등). 웹도 같은 상황이라
-참여(`POST /plan/room/{shareCode}`)만 살리고 미리보기는 안내로 처리해야 한다.
-
-### 2. 카카오 로그인 실연동
+### 1. 카카오 로그인 실연동
 
 - SwiftPM 에 `kakao-ios-sdk` 추가, 카카오 콘솔에 iOS 플랫폼 + Bundle ID 등록
 - 본문 키는 **`kakaoToken`** (`accessToken` 이면 400)
@@ -64,11 +58,17 @@ Core 로직과 주요 화면 11개가 웹과 1:1 로 맞춰져 있고, 남은 �
 - 로그인 후 분기는 이미 Core 에 있다 → `PostLoginRouter` (전 분기 테스트 완료)
 - 게스트 데이터 이관도 Core 에 있다 → `GuestMigration`
 
-### 3. 채팅 마무리
+### 2. 채팅 마무리 (실서버 확인)
 
 소켓 자체는 붙었지만 **실서버로 확인하지 못했다**(CI 시뮬레이터에는 백엔드가 없다).
 Mac 에서 백엔드를 띄우고 메시지 송수신·재연결을 한 번 확인할 것.
 프레임 조립·해석은 `SocketIOPacketTests` 로 고정해 뒀다.
+
+### 3. 인앱 알림(SSE)
+
+웹 `NotificationContext` — 채팅방마다 `EventSource` 를 열어 토스트·미읽음 배지를 띄운다.
+**읽기 타임아웃을 끄면 안 된다.** 서버가 조용히 끊었을 때 영원히 기다리게 되어,
+앱은 멀쩡한데 알림만 안 오는 상태가 된다. keep-alive 주기(30초)의 3배를 타임아웃으로 둘 것.
 
 ### 4. 푸시(APNs)
 
@@ -77,7 +77,15 @@ Mac 에서 백엔드를 띄우고 메시지 송수신·재연결을 한 번 확�
 
 **로그아웃 시 토큰 해제는 JWT 를 지우기 전에** 해야 한다. 안 하면 로그아웃해도 알림이 계속 간다.
 
-### 5. 배포
+### 5. 공유 링크를 Universal Link 로
+
+지금은 커스텀 스킴(`weddingplant://share/{code}`)으로만 열린다. 웹과 같은 주소로 열리게 하려면
+`com.apple.developer.associated-domains` 엔타이틀먼트 + 웹 서버의 `apple-app-site-association`
+파일이 필요하다. 도메인은 공개 저장소에 넣지 않으므로 `Config/Local.xcconfig` 쪽으로 뺄 것.
+
+시뮬레이터에서 확인: `xcrun simctl openurl booted "weddingplant://share/ABC123"`
+
+### 6. 배포
 
 Apple Developer Program 미가입. 승인에 며칠 걸리니 미리.
 Mac 이 있으므로 무료 Apple ID + USB 로도 설치 가능 → `docs/RUN_ON_MAC.md` §3-6

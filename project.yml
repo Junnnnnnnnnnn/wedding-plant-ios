@@ -87,6 +87,14 @@ targets:
           - TmoneyRoundWindExtraBold.ttf
         # xcconfig 에서 주입된다. AppEnvironment.baseURL() 이 이 키를 읽는다.
         API_BASE_URL: $(API_BASE_URL)
+        # 공유 링크. 웹과 같은 주소(`/share/{code}`)는 Universal Link 로 받는 게 정석이지만
+        # `com.apple.developer.associated-domains` 엔타이틀먼트 + 실제 도메인이 필요하다
+        # (도메인은 공개 저장소에 넣지 않는다). 그때까지는 커스텀 스킴으로 열어 확인한다:
+        #   xcrun simctl openurl booted "weddingplant://share/ABC123"
+        CFBundleURLTypes:
+          - CFBundleURLName: com.zipshowkorea.weddingplant.share
+            CFBundleURLSchemes:
+              - weddingplant
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

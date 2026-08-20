@@ -12,11 +12,22 @@ final class ScreenshotTests: XCTestCase {
         continueAfterFailure = true
     }
 
-    private func makeApp(forceOnboarding: Bool = false) -> XCUIApplication {
+    private func makeApp(
+        forceOnboarding: Bool = false,
+        loggedOut: Bool = false,
+        shareCode: String? = nil
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-WPDemoMode"]
         if forceOnboarding {
             app.launchArguments.append("-WPForceOnboarding")
+        }
+        if loggedOut {
+            app.launchArguments.append("-WPLoggedOut")
+        }
+        if let shareCode {
+            // 공유 링크(Universal Link)를 흉내 낸다.
+            app.launchArguments += ["-WPShareCode", shareCode]
         }
         return app
     }
@@ -400,5 +411,31 @@ final class ScreenshotTests: XCTestCase {
             app.buttons["chat.back"].tap()
             settle(1.5)
         }
+    }
+
+    // MARK: - 공유 참여
+
+    /// 공유 링크로 진입 → 자동 참여 → 참여 플랜 목록.
+    func test_08_공유_참여() {
+        let app = makeApp(shareCode: "DEMO-SHARE")
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+
+        // "공유 플랜 연결 중..." 이 잠깐 보인다.
+        settle(0.6)
+        capture(app, "28-share-joining")
+
+        // 참여가 끝나면 참여 플랜 목록으로 넘어간다.
+        settle(4.0)
+        capture(app, "29-share-joined")
+    }
+
+    /// 비로그인으로 공유 링크를 열면 로그인 안내가 뜬다.
+    func test_09_공유_참여_비로그인() {
+        let app = makeApp(loggedOut: true, shareCode: "DEMO-SHARE")
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+        capture(app, "30-share-login-required")
     }
 }

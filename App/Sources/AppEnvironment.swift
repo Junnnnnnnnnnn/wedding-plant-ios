@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import WPDomain
 import WPNetworking
 
 /// 앱 전역 의존성 컨테이너.
@@ -17,6 +18,9 @@ final class AppEnvironment: ObservableObject {
 
     /// 로그인 여부. 화면 전환 판단에 쓴다.
     @Published var isAuthenticated: Bool = false
+
+    /// 공유 링크로 들어왔을 때의 코드. 값이 있으면 참여 화면을 덮어 띄운다.
+    @Published var pendingShareCode: String?
 
     init(api: APIClient, tokenStore: any TokenStoring, baseURL: URL, isDemo: Bool) {
         self.api = api
@@ -37,7 +41,9 @@ final class AppEnvironment: ObservableObject {
             // (기본 데모 유저는 플랜이 완성돼 있어 설정 화면이 곧바로 메인으로 넘어간다)
             let forceOnboarding = ProcessInfo.processInfo.arguments.contains("-WPForceOnboarding")
 
-            let store = InMemoryTokenStore(token: DemoData.token)
+            // 비로그인 화면(공유 참여의 로그인 안내 등)을 보려면 토큰이 없어야 한다.
+            let loggedOut = ProcessInfo.processInfo.arguments.contains("-WPLoggedOut")
+            let store = InMemoryTokenStore(token: loggedOut ? nil : DemoData.token)
             let client = APIClient(
                 baseURL: baseURL,
                 transport: DemoTransport(newUser: forceOnboarding),
@@ -49,7 +55,7 @@ final class AppEnvironment: ObservableObject {
                 baseURL: baseURL,
                 isDemo: true
             )
-            env.isAuthenticated = !forceOnboarding
+            env.isAuthenticated = !forceOnboarding && !loggedOut
             return env
         }
 
@@ -67,6 +73,16 @@ final class AppEnvironment: ObservableObject {
         }
         // 설정이 없으면 시뮬레이터에서 로컬 백엔드를 본다.
         return URL(string: "http://localhost:3111")!
+    }
+
+    /// 공유 링크(Universal Link / 커스텀 스킴)를 받는다.
+    ///
+    /// - Returns: 공유 링크로 인식했는지. 아니면 다른 처리기가 볼 수 있게 false.
+    @discardableResult
+    func handle(url: URL) -> Bool {
+        guard let code = ShareLink.shareCode(from: url) else { return false }
+        pendingShareCode = code
+        return true
     }
 
     /// 저장된 토큰을 읽어 로그인 상태를 갱신한다.
