@@ -200,6 +200,35 @@ public enum Endpoint {
         HTTPRequest(path: "/plan/category/room/\(roomId)/list")
     }
 
+    /// 상황에 맞는 카테고리 목록 경로를 고른다.
+    ///
+    /// | 상황 | 경로 |
+    /// | --- | --- |
+    /// | 방이 있음 | `/plan/category/room/{roomId}/list` |
+    /// | 로그인함 | `/plan/category/user/list` |
+    /// | **비로그인** | `/plan/category/list` (인증 헤더 없이) |
+    ///
+    /// 안드로이드는 게스트에게도 `user/list` 를 불러서 카테고리가 하나도 안 보였고,
+    /// 카테고리가 필수라 **게스트는 플랜을 아예 만들 수 없었다.**
+    public static func categories(roomId: Int?, loggedIn: Bool) -> HTTPRequest {
+        if let roomId { return roomCategoryList(roomId: roomId) }
+        return loggedIn ? userCategoryList() : categoryList()
+    }
+
+    // MARK: - 장소 검색
+
+    /// `GET /plan/place/search` — 장소 키워드 검색 (백엔드 프록시).
+    ///
+    /// - Important: 이 엔드포인트는 **아직 백엔드에 없다.** 호출하면 404 가 온다.
+    ///   화면은 안내 문구로 처리하고, 서버에 생기면 그대로 붙게 만들 것.
+    ///   (카카오 REST 키를 앱 번들에 넣지 않으려고 프록시로 가는 설계다)
+    public static func searchPlaces(query: String, size: Int = 10) -> HTTPRequest {
+        HTTPRequest(
+            path: "/plan/place/search",
+            query: ["query": query.trimmingCharacters(in: .whitespaces), "size": "\(size)"]
+        )
+    }
+
     // MARK: - 푸시 기기 토큰
 
     /// 백엔드가 허용하는 플랫폼 값. 다른 값을 보내면 400.

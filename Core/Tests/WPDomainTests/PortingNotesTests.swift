@@ -1,6 +1,7 @@
 import XCTest
 import WPModels
 import WPUtils
+import WPNetworking
 @testable import WPDomain
 
 /// `wedding-plant-android/docs/IOS_PORTING_NOTES.md` 가 경고한 함정들을 고정한다.
@@ -194,5 +195,52 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.priceDesc.column.parameter, "amount")
         XCTAssertEqual(SortOption.dateDesc.column.parameter, "startDate")
         XCTAssertEqual(SortOption.nameAsc.column.parameter, "title")
+    }
+}
+
+/// 카테고리 경로 분기. 게스트가 인증 없이 부를 수 있어야 한다.
+final class CategoryEndpointTests: XCTestCase {
+
+    func test_방이_있으면_방_경로() {
+        let request = Endpoint.categories(roomId: 7, loggedIn: true)
+        XCTAssertEqual(request.path, "/plan/category/room/7/list")
+        XCTAssertTrue(request.requiresAuth)
+    }
+
+    func test_로그인했고_방이_없으면_user_경로() {
+        let request = Endpoint.categories(roomId: nil, loggedIn: true)
+        XCTAssertEqual(request.path, "/plan/category/user/list")
+        XCTAssertTrue(request.requiresAuth)
+    }
+
+    func test_비로그인은_인증_없이_기본_경로() {
+        // 이걸 틀리면 게스트에게 카테고리가 하나도 안 보이고, 카테고리가 필수라
+        // 게스트는 플랜을 아예 만들 수 없다.
+        let request = Endpoint.categories(roomId: nil, loggedIn: false)
+        XCTAssertEqual(request.path, "/plan/category/list")
+        XCTAssertFalse(request.requiresAuth)
+    }
+
+    func test_장소검색_쿼리() {
+        let request = Endpoint.searchPlaces(query: "  강남 웨딩홀  ", size: 10)
+        XCTAssertEqual(request.path, "/plan/place/search")
+        XCTAssertEqual(request.query["query"], "강남 웨딩홀")
+        XCTAssertEqual(request.query["size"], "10")
+    }
+}
+
+/// 결제 유형 라벨은 웹 PAY_TYPE_LABELS 와 동일해야 한다.
+final class PlanPayTypeTests: XCTestCase {
+
+    func test_라벨() {
+        XCTAssertEqual(PlanPayType.cash.label, "현금")
+        XCTAssertEqual(PlanPayType.credit.label, "카드")
+        XCTAssertEqual(PlanPayType.other.label, "기타")
+    }
+
+    func test_api_값에서_복원() {
+        XCTAssertEqual(PlanPayType.from(api: "CREDIT"), .credit)
+        XCTAssertNil(PlanPayType.from(api: nil))
+        XCTAssertNil(PlanPayType.from(api: "UNKNOWN"))
     }
 }

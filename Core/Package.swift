@@ -35,6 +35,6 @@ let package = Package(
         .testTarget(name: "WPModelsTests", dependencies: ["WPModels"]),
         .testTarget(name: "WPUtilsTests", dependencies: ["WPUtils"]),
         .testTarget(name: "WPNetworkingTests", dependencies: ["WPNetworking", "WPModels"]),
-        .testTarget(name: "WPDomainTests", dependencies: ["WPDomain", "WPModels", "WPUtils"]),
+        .testTarget(name: "WPDomainTests", dependencies: ["WPDomain", "WPModels", "WPUtils", "WPNetworking"]),
     ]
 )
