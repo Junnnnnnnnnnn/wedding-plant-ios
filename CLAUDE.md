@@ -110,6 +110,28 @@ xcconfig 에서 `//` 는 주석이다. URL 은 `http:/$()/example.com` 처럼 `$
 
 ## 백엔드 계약
 
+> **먼저 읽을 것: `wedding-plant-android/docs/IOS_PORTING_NOTES.md`**
+> 안드로이드 팀이 iOS 를 위해 남긴 문서다. 코드만 봐서는 모르는 백엔드 함정과
+> 실제로 겪은 버그가 정리돼 있다. 아래는 그중 이 저장소에 이미 반영한 것들이다.
+
+### 절대 틀리면 안 되는 것
+
+| 항목 | 규칙 |
+| --- | --- |
+| 카카오 로그인 본문 키 | **`kakaoToken`**. `accessToken` 으로 보내면 400 |
+| `POST /plan/schedule` | **`roomId` 필수.** 빼면 200 인데 목록에 영영 안 나옴 |
+| `PATCH /plan/schedule/{id}` | 날짜를 미정으로 되돌리려면 **명시적 `null`**. 키를 빼면 "변경 없음" |
+| 프로필 수정 | `PATCH /plan/user` 는 **항상 400**. `POST /plan/setting` 을 쓴다 |
+| `DELETE /plan/schedule/{id}` | 200 + **빈 본문**. 성공인데 파싱 실패로 뒤집지 말 것 |
+| 채팅 메시지 `id` | **숫자**. String 으로 디코딩하면 방 전체가 빈 화면 |
+| `createDate` | **UTC**. 앞 10글자를 자르면 9시간 어긋난다 → `KstInstant` |
+| 게스트 카테고리 | `/plan/category/list` 를 **인증 없이**. 안 그러면 게스트가 플랜을 못 만듦 |
+| 멤버 목록 래퍼 | `list` 또는 `members` — **둘 다 방어** |
+| 푸시 페이로드 | 값이 전부 **문자열**. `chatRoomId` 도 `"1"` |
+| 세션 정리 | **401/403 에서만.** 5xx·네트워크 오류로 지우면 강제 로그아웃 |
+
+
+
 - 모든 API 는 `${API_BASE_URL}/plan/...`, 응답은 일관되게 `{ result: Bool, data: ... }` → `APIEnvelope<T>`
 - 엔드포인트는 전부 `Core/Sources/WPNetworking/Endpoint.swift` 에 모은다. 화면에서 경로 문자열을 직접 만들지 않는다.
 - **금액 단위는 만원.**

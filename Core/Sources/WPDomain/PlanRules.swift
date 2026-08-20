@@ -90,6 +90,75 @@ public enum PlanRules {
         return categoryColors[index]
     }
 
+    /// `add-plen` 의 카테고리 **칩** 색상 (웹 `getColorByLabel`).
+    ///
+    /// - Important: 해시 식은 ``categoryColorHex(_:)`` 와 같지만 **팔레트가 8색으로 다르다.**
+    ///   섞어 쓰면 같은 카테고리가 화면마다 다른 색으로 보인다.
+    public static let categoryPastelColors: [UInt32] = [
+        0xFFE4E9, // 연분홍
+        0xFFE5D9, // 살구색
+        0xE8DDF5, // 연보라
+        0xD5F0E5, // 민트
+        0xFFF0D6, // 연노랑
+        0xD4EBF7, // 연하늘
+        0xE6F4EA, // 라이트 그린
+        0xFCE4EC, // 코튼 캔디
+    ]
+
+    public static func categoryPastelHex(_ label: String) -> UInt32 {
+        var hash: Int32 = 0
+        for unit in label.utf16 {
+            hash = Int32(unit) &+ ((hash &<< 5) &- hash)
+        }
+        let index = Int(abs(Int64(hash)) % Int64(categoryPastelColors.count))
+        return categoryPastelColors[index]
+    }
+
+    // MARK: - 카테고리 추천
+
+    /// 토큰 경계로 볼 문자 (웹 `TOKEN_BOUNDARY` 와 동일)
+    private static let tokenBoundary: Set<Character> = [
+        " ", "\t", "\n", ",", ".", "/", "·", "(", ")", "[", "]", "{", "}", "-", "_", "|",
+    ]
+
+    /// 제목에서 카테고리를 추천할 때 쓰는 매칭 규칙 (웹 `matchesCategoryLabel` 이식).
+    ///
+    /// 예전 웹은 단순히 `제목.contains(라벨)` 이었다. 그래서 "홀" 같은 한 글자 라벨이
+    /// "홀리데이 스냅"에, "기타" 가 "기타 소품"에 계속 따라붙었다.
+    ///
+    /// - 한 글자 라벨은 아예 추천하지 않는다 (신호 대비 잡음이 큼)
+    /// - 두 글자 라벨은 **토큰 경계**에 있을 때만 (문자열 처음·끝이거나 공백·구두점 옆)
+    /// - 세 글자 이상은 부분 문자열 매칭
+    public static func matchesCategoryLabel(_ inputText: String, _ rawLabel: String) -> Bool {
+        let label = rawLabel.trimmingCharacters(in: .whitespaces).lowercased()
+        guard label.count >= 2 else { return false }
+        if label.count >= 3 { return inputText.contains(label) }
+
+        let text = Array(inputText)
+        let needle = Array(label)
+        guard needle.count <= text.count else { return false }
+
+        for start in 0...(text.count - needle.count) {
+            guard Array(text[start..<(start + needle.count)]) == needle else { continue }
+            let before = start == 0 ? nil : text[start - 1]
+            let afterIndex = start + needle.count
+            let after = afterIndex >= text.count ? nil : text[afterIndex]
+            let okBefore = before.map { tokenBoundary.contains($0) } ?? true
+            let okAfter = after.map { tokenBoundary.contains($0) } ?? true
+            if okBefore && okAfter { return true }
+        }
+        return false
+    }
+
+    /// 제목으로 카테고리를 추천한다. **더 구체적인(긴) 라벨을 위로** 올린다 (웹과 동일).
+    public static func suggestCategories(title: String, categories: [String]) -> [String] {
+        let text = title.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !text.isEmpty else { return [] }
+        return categories
+            .filter { matchesCategoryLabel(text, $0) }
+            .sorted { $0.count > $1.count }
+    }
+
     // MARK: - 예산
 
     /// 예산 사용률(%). 총예산이 0 이하면 0. **100 을 넘어도 그대로 반환**한다(웹과 동일).

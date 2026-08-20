@@ -147,12 +147,20 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
     public var title: String
     public var payType: String
     public var amount: Int
-    /// "YYYY-MM-DD"
-    public var startDate: String
+    /// "YYYY-MM-DD". `nil` 이면 **명시적 null 로 직렬화**된다.
+    ///
+    /// 날짜를 "미정" 으로 되돌리려면 `PATCH` 에서 키를 빼면 안 되고 `null` 을 보내야 한다.
+    /// 키를 생략하면 백엔드가 "변경 없음" 으로 처리해 기존 날짜가 그대로 남는다.
+    public var startDate: String?
     public var location: String
     public var locationLat: Double
     public var locationLng: Double
     public var memo: String
+    /// **생성(POST)에는 반드시 넣어야 한다.**
+    ///
+    /// 메인 화면은 `/plan/schedule/room/{roomId}/list` 를 읽는다. `roomId` 를 빼면
+    /// 개인 스코프로 저장되어 **200 으로 성공하는데 목록에는 영영 안 나타난다.**
+    /// 값은 `GET /plan/user` 응답의 `roomId` 를 쓴다. 수정(PATCH)에는 붙이지 않는다.
     public var roomId: Int?
     public var addCategoryNameList: [String]?
 
@@ -161,7 +169,7 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
         title: String,
         payType: String = PayType.other.rawValue,
         amount: Int = 0,
-        startDate: String,
+        startDate: String?,
         location: String = "",
         locationLat: Double = 0,
         locationLng: Double = 0,
@@ -180,6 +188,33 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
         self.memo = memo
         self.roomId = roomId
         self.addCategoryNameList = addCategoryNameList
+    }
+
+    /// 합성 인코딩은 `Optional` 이 nil 이면 **키를 통째로 생략**한다.
+    /// 그런데 백엔드는 `startDate` 키가 없으면 "변경 없음" 으로 처리하므로,
+    /// 날짜를 "미정" 으로 되돌리려면 **명시적 `null`** 을 보내야 한다. 그래서 직접 구현한다.
+    ///
+    /// 반대로 `roomId`·`addCategoryNameList` 는 없을 때 **키가 빠져야** 한다
+    /// (수정 요청에 `roomId` 를 붙이면 안 되므로).
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(categoryName, forKey: .categoryName)
+        try container.encode(title, forKey: .title)
+        try container.encode(payType, forKey: .payType)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(location, forKey: .location)
+        try container.encode(locationLat, forKey: .locationLat)
+        try container.encode(locationLng, forKey: .locationLng)
+        try container.encode(memo, forKey: .memo)
+
+        if let startDate {
+            try container.encode(startDate, forKey: .startDate)
+        } else {
+            try container.encodeNil(forKey: .startDate)
+        }
+
+        try container.encodeIfPresent(roomId, forKey: .roomId)
+        try container.encodeIfPresent(addCategoryNameList, forKey: .addCategoryNameList)
     }
 
     /// 로컬 게스트 일정을 백엔드 등록 바디로 변환한다.

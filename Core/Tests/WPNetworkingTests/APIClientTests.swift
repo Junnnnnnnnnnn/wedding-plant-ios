@@ -75,7 +75,7 @@ final class APIClientTests: XCTestCase {
         let (client, _) = makeClient(transport: transport, token: nil)
 
         let auth = try await client.send(
-            Endpoint.kakaoLogin(accessToken: "kakao-access-token"),
+            Endpoint.kakaoLogin(kakaoToken: "kakao-access-token"),
             decoding: AuthToken.self
         )
 

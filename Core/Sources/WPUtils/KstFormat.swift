@@ -55,3 +55,70 @@ public func wpThousands(_ value: Int) -> String {
     formatter.usesGroupingSeparator = true
     return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
 }
+
+// MARK: - ISO 8601 (UTC) → KST
+
+/// 서버가 내려주는 ISO 8601 시각을 KST 로 해석한다.
+///
+/// `createDate` 는 `"2026-08-19T13:02:00.594Z"` 처럼 **UTC** 다.
+/// 앞 10글자를 그대로 잘라 쓰면 **9시간 어긋난다** — UTC 15:00~24:00 구간은 KST 로 이미 다음 날이다.
+/// 채팅 날짜 구분선이 자정 근처에서 하루 밀리는 것도 같은 원인이다.
+public enum KstInstant {
+
+    /// ISO 8601 문자열을 `Date` 로. 시간대 표기가 없으면 KST 로 간주한다.
+    public static func parse(_ raw: String?) -> Date? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else {
+            return nil
+        }
+
+        // 소수점 이하 초가 있는 경우와 없는 경우 둘 다 대응한다.
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFraction.date(from: trimmed) { return date }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        if let date = plain.date(from: trimmed) { return date }
+
+        // 시간대 표기가 없는 형식("2026-08-19T13:02:00") → KST 로 간주
+        let naive = DateFormatter()
+        naive.locale = Locale(identifier: "en_US_POSIX")
+        naive.timeZone = KST.timeZone
+        for format in ["yyyy-MM-dd'T'HH:mm:ss.SSS", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd HH:mm:ss"] {
+            naive.dateFormat = format
+            if let date = naive.date(from: trimmed) { return date }
+        }
+        return nil
+    }
+
+    /// ISO 시각의 **KST 기준 날짜**. 채팅 날짜 구분선에 쓴다.
+    ///
+    /// 파싱에 실패하면 앞 10글자를 날짜로 읽어 본다(이미 "YYYY-MM-DD" 인 경우).
+    public static func kstDate(_ raw: String?) -> KstDate? {
+        if let date = parse(raw) {
+            return KstDate.today(now: date)
+        }
+        return raw.flatMap { KstDate(dateString: $0) }
+    }
+
+    /// KST 기준 "오전 10:30". 안드로이드 `Kst.formatTimeKst` 와 같은 출력.
+    ///
+    /// 웹은 `toLocaleTimeString("ko-KR")` 이 브라우저 시간대로 알아서 바꿔 주지만
+    /// 앱에서는 직접 변환해야 한다.
+    public static func timeText(_ raw: String?) -> String {
+        guard let date = parse(raw) else { return "" }
+        let components = KST.calendar.dateComponents([.hour, .minute], from: date)
+        guard let hour = components.hour, let minute = components.minute else { return "" }
+
+        let meridiem = hour < 12 ? "오전" : "오후"
+        let display: Int
+        if hour == 0 {
+            display = 12
+        } else if hour > 12 {
+            display = hour - 12
+        } else {
+            display = hour
+        }
+        return String(format: "%@ %d:%02d", meridiem, display, minute)
+    }
+}

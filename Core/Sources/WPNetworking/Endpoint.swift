@@ -15,13 +15,14 @@ public enum Endpoint {
 
     /// 카카오 access token 을 앱 JWT 로 교환. 인증 불필요.
     ///
-    /// - Note: 바디 키는 `accessToken` 이다. 웹은 서버 라우트를 거치며 `kakaoToken` 을 쓰지만,
-    ///   네이티브는 SDK 가 준 access token 을 그대로 보내며 안드로이드 구현과 동일하게 맞춘다.
-    public static func kakaoLogin(accessToken: String) throws -> HTTPRequest {
+    /// - Important: 바디 키는 반드시 **`kakaoToken`** 이다 (웹 `KakaoLoginAlert.tsx` 와 동일).
+    ///   `accessToken` 등 다른 이름으로 보내면 백엔드가 **HTTP 400** 으로 거절한다.
+    ///   응답의 `data.token` 이 앱 JWT 다.
+    public static func kakaoLogin(kakaoToken: String) throws -> HTTPRequest {
         try .json(
             .post,
             "/plan/auth/kakao/login",
-            body: ["accessToken": accessToken],
+            body: ["kakaoToken": kakaoToken],
             requiresAuth: false
         )
     }
@@ -32,6 +33,15 @@ public enum Endpoint {
         HTTPRequest(path: "/plan/user")
     }
 
+    /// - Warning: **프로필 수정에는 쓰지 말 것.** `createSetting(_:)`(POST `/plan/setting`)을 쓴다.
+    ///
+    ///   `PATCH /plan/user` 는 `requiredAgreementDate`·`adAgreementDate` 를 **둘 다 문자열 필수**로
+    ///   검증하는데 `GET /plan/user` 응답에는 그 두 필드가 없다. null 을 보내면 **항상 400** 이고,
+    ///   `adAgreementDate` 를 채우면 마케팅 미동의자에게 수신 동의가 기록된다.
+    ///
+    ///   `/plan/setting` 은 같은 값을 갱신하면서 `adAgreementDate` 생략을 허용한다.
+    ///   `requiredAgreementDate` 는 여전히 필수라 값이 없으면 **KST 오늘**을 보낸다.
+    @available(*, deprecated, message: "프로필 수정은 createSetting(_:) 을 쓰세요. PATCH /plan/user 는 항상 400 입니다.")
     public static func updateUser(_ body: PlanSettingRequest) throws -> HTTPRequest {
         try .json(.patch, "/plan/user", body: body)
     }
@@ -173,8 +183,13 @@ public enum Endpoint {
 
     // MARK: - 카테고리
 
+    /// 카테고리 목록. **비로그인 게스트용이라 인증 헤더를 붙이지 않는다.**
+    ///
+    /// 로그인 상태라면 `userCategoryList()`, 방이 있으면 `roomCategoryList(roomId:)` 를 쓴다.
+    /// 안드로이드는 게스트에게도 `user/list` 를 불러서 카테고리가 하나도 안 보였고,
+    /// 카테고리가 필수라 **게스트가 플랜을 아예 만들 수 없었다.**
     public static func categoryList() -> HTTPRequest {
-        HTTPRequest(path: "/plan/category/list")
+        HTTPRequest(path: "/plan/category/list", requiresAuth: false)
     }
 
     public static func userCategoryList() -> HTTPRequest {
@@ -183,6 +198,34 @@ public enum Endpoint {
 
     public static func roomCategoryList(roomId: Int) -> HTTPRequest {
         HTTPRequest(path: "/plan/category/room/\(roomId)/list")
+    }
+
+    // MARK: - 푸시 기기 토큰
+
+    /// 백엔드가 허용하는 플랫폼 값. 다른 값을 보내면 400.
+    public enum DevicePlatform: String, Sendable {
+        case ios = "IOS"
+        case android = "ANDROID"
+    }
+
+    /// APNs(FCM 경유) 기기 토큰 등록.
+    ///
+    /// 토큰은 재설치·데이터 삭제·장기 미사용으로 바뀐다. 갱신 콜백마다 재등록하고,
+    /// **설치 후 첫 로그인에는 갱신 콜백이 오지 않으므로 로그인 직후에도 한 번 등록**한다.
+    public static func registerDeviceToken(_ token: String) throws -> HTTPRequest {
+        try .json(
+            .post,
+            "/plan/user/device-token",
+            body: ["token": token, "platform": DevicePlatform.ios.rawValue]
+        )
+    }
+
+    /// 기기 토큰 해제. **로그아웃 시 JWT 를 지우기 전에** 호출해야 한다.
+    ///
+    /// 해제하지 않으면 로그아웃해도 그 기기로 알림이 계속 간다 —
+    /// 기기를 넘기거나 공용 기기를 쓰면 남의 채팅 내용이 그대로 뜬다.
+    public static func unregisterDeviceToken(_ token: String) throws -> HTTPRequest {
+        try .json(.delete, "/plan/user/device-token", body: ["token": token])
     }
 
     // MARK: - 알림 (SSE)
