@@ -60,23 +60,23 @@ final class ScreenshotTests: XCTestCase {
         capture(app, "04-budget")
 
         let budgetField = app.textFields["setting.budget"]
-        if budgetField.exists {
+        if budgetField.isHittable {
             budgetField.tap()
             budgetField.typeText("5000")
             settle(0.5)
         }
-        if next.exists { next.tap() }
+        if next.isHittable { next.tap() }
         settle(1.0)
         capture(app, "05-name")
 
         let nameField = app.textFields["setting.name"]
-        if nameField.exists {
+        if nameField.isHittable {
             nameField.tap()
             nameField.typeText("지수")
             settle(0.5)
             capture(app, "06-name-filled")
         }
-        if next.exists { next.tap() }
+        if next.isHittable { next.tap() }
 
         // 환영 단계는 2.5초 뒤 약관으로 자동 전환된다.
         settle(1.0)
@@ -84,7 +84,7 @@ final class ScreenshotTests: XCTestCase {
         settle(2.5)
         capture(app, "08-terms")
 
-        if app.buttons["setting.agreeAll"].exists {
+        if app.buttons["setting.agreeAll"].isHittable {
             app.buttons["setting.agreeAll"].tap()
             settle(0.8)
             capture(app, "09-terms-agreed")
@@ -109,24 +109,24 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "05-plan-list")
         }
 
-        if app.buttons["tab.settings"].exists {
+        if app.buttons["tab.settings"].isHittable {
             app.buttons["tab.settings"].tap()
             settle(2.5)
             capture(app, "06-user")
         }
 
         // 피드 탭은 웹과 동일하게 "준비중" 알림만 띄운다.
-        if app.buttons["tab.feed"].exists {
+        if app.buttons["tab.feed"].isHittable {
             app.buttons["tab.feed"].tap()
             settle(1.5)
             capture(app, "07-feed-preparing")
-            if app.buttons["닫기"].exists {
+            if app.buttons["닫기"].isHittable {
                 app.buttons["닫기"].tap()
                 settle(1.0)
             }
         }
 
-        if app.buttons["tab.home"].exists {
+        if app.buttons["tab.home"].isHittable {
             app.buttons["tab.home"].tap()
             settle(1.5)
             capture(app, "08-main-again")
@@ -149,7 +149,7 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "09-sort-sheet")
 
             // 다른 정렬을 골라 목록이 바뀌는지도 남긴다.
-            if app.buttons["높은 가격순"].exists {
+            if app.buttons["높은 가격순"].isHittable {
                 app.buttons["높은 가격순"].tap()
                 settle(2.5)
                 capture(app, "10-sorted-by-price")
@@ -169,17 +169,17 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "11-schedule-detail")
 
             // 삭제 확인 다이얼로그 (취소가 왼쪽인지 눈으로 확인하기 위함)
-            if app.buttons["detail.delete"].exists {
+            if app.buttons["detail.delete"].isHittable {
                 app.buttons["detail.delete"].tap()
                 settle(1.5)
                 capture(app, "12-delete-confirm")
-                if app.buttons["취소"].exists {
+                if app.buttons["취소"].isHittable {
                     app.buttons["취소"].tap()
                     settle(1.0)
                 }
             }
 
-            if app.buttons["detail.back"].exists {
+            if app.buttons["detail.back"].isHittable {
                 app.buttons["detail.back"].tap()
                 settle(1.5)
             }
@@ -210,15 +210,19 @@ final class ScreenshotTests: XCTestCase {
         }
 
         // 카테고리 선택 모달
-        if app.buttons["addplan.category"].exists {
+        if app.buttons["addplan.category"].isHittable {
             app.buttons["addplan.category"].tap()
             settle(1.5)
             capture(app, "15-category-modal")
+
+            // 시트를 닫는다. 닫힘 애니메이션이 끝나야 아래 화면이 다시 눌린다.
             app.swipeDown()
-            settle(1.0)
+            settle(2.0)
         }
 
-        if app.buttons["addplan.back"].exists {
+        // 스크린샷용 테스트는 단언으로 실패시키지 않는다.
+        // 눌리지 않는 요소를 tap 하면 XCTest 가 예외를 던지므로 isHittable 로 먼저 확인한다.
+        if app.buttons["addplan.back"].isHittable {
             app.buttons["addplan.back"].tap()
             settle(1.0)
         }

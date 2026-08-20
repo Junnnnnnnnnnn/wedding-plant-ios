@@ -42,6 +42,9 @@ struct DemoTransport: HTTPTransport {
             // 계획 중 / 완료는 쿼리로 갈라준다.
             let isCompleted = request.url.query?.contains("status=COMPLETED") ?? false
             json = isCompleted ? DemoData.completedSchedules : DemoData.plannedSchedules
+        } else if path.contains("/plan/category") {
+            // `/plan/category/list`, `/user/list`, `/room/{id}/list` 모두 같은 목록을 준다.
+            json = DemoData.categories
         } else if path.hasSuffix("/plan/room/list") {
             json = DemoData.roomList
         } else {
@@ -155,6 +158,20 @@ enum DemoData {
         ]}}
         """
     }
+
+    /// 카테고리 목록. 제목 추천이 동작하는 것을 보려면 실제 이름이 있어야 한다.
+    static let categories = """
+    {"result":true,"data":{"total":8,"list":[
+      {"id":1,"name":"웨딩홀","type":"SYSTEM"},
+      {"id":2,"name":"스튜디오","type":"SYSTEM"},
+      {"id":3,"name":"드레스","type":"SYSTEM"},
+      {"id":4,"name":"메이크업","type":"SYSTEM"},
+      {"id":5,"name":"신혼여행","type":"SYSTEM"},
+      {"id":6,"name":"예물","type":"SYSTEM"},
+      {"id":7,"name":"본식스냅","type":"SYSTEM"},
+      {"id":8,"name":"내가 만든 카테고리","type":"USER"}
+    ]}}
+    """
 
     static var roomList: String {
         """

@@ -562,6 +562,7 @@ private struct CategoryModal: View {
         }
         .background(Color.white)
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.hidden)
         .presentationCornerRadius(32)
     }
 
