@@ -58,11 +58,15 @@
 - 로그인 후 분기는 이미 Core 에 있다 → `PostLoginRouter` (전 분기 테스트 완료)
 - 게스트 데이터 이관도 Core 에 있다 → `GuestMigration`
 
-### 2. 채팅 마무리 (실서버 확인)
+### 2. 채팅 실서버 확인 → `docs/TEST_CHAT_ON_DEVICE.md`
 
 소켓 자체는 붙었지만 **실서버로 확인하지 못했다**(CI 시뮬레이터에는 백엔드가 없다).
-Mac 에서 백엔드를 띄우고 메시지 송수신·재연결을 한 번 확인할 것.
-프레임 조립·해석은 `SocketIOPacketTests` 로 고정해 뒀다.
+안드로이드 → iOS 수신 확인 절차는 `docs/TEST_CHAT_ON_DEVICE.md` 에 정리했다.
+**푸시 없이 확인 가능하다** — 앱을 켜고 그 방을 보고 있으면 소켓으로 온다.
+
+카카오 로그인 전이라 실기기 로그인은 **개발용 토큰 붙여넣기**로 한다
+(첫 화면 아래 버튼, `#if DEBUG`). 프레임 조립·해석은 `SocketIOPacketTests` 로 고정해 뒀다.
+안 붙을 때는 Xcode 콘솔에서 `WPSocket` 으로 필터한다.
 
 ### 3. 인앱 알림(SSE)
 
@@ -70,10 +74,20 @@ Mac 에서 백엔드를 띄우고 메시지 송수신·재연결을 한 번 확�
 **읽기 타임아웃을 끄면 안 된다.** 서버가 조용히 끊었을 때 영원히 기다리게 되어,
 앱은 멀쩡한데 알림만 안 오는 상태가 된다. keep-alive 주기(30초)의 3배를 타임아웃으로 둘 것.
 
-### 4. 푸시(APNs)
+### 4. 푸시(APNs — FCM 경유)
 
-백엔드는 준비돼 있다. Core 에 `Endpoint.registerDeviceToken/unregisterDeviceToken`,
-`PushPayload` 가 있다. 남은 건 `UNUserNotificationCenter` 연동과 토큰 갱신 콜백.
+백엔드가 이미 FCM 이므로 iOS 도 **FCM 등록 토큰**을 같은 엔드포인트에 보내면 된다
+(`platform: IOS`). Core 에 `Endpoint.registerDeviceToken/unregisterDeviceToken`,
+`PushPayload` 가 있다. 남은 건 FirebaseMessaging 연동과 `UNUserNotificationCenter` 다.
+
+필요한 것: **Apple Developer Program(유료)** → APNs 인증 키(.p8) → Firebase 콘솔 업로드 →
+`GoogleService-Info.plist`(저장소가 공개라 gitignore) → Push Notifications capability.
+
+> **백엔드 수정이 필요한 항목:** 지금은 `notification` 없이 `data` 만 보낸다.
+> 안드로이드는 그걸로 앱이 직접 알림을 만들지만, **iOS 에서 data-only 는 무음 푸시**라
+> 배너가 뜨지 않고 전송도 보장되지 않는다. iOS 대상에는 `notification`
+> (또는 `apns.payload.aps.alert`)을 함께 실어야 한다. `data` 는 그대로 둬야
+> 알림을 눌렀을 때 `chatRoomId` 로 방을 찾아갈 수 있다.
 
 **로그아웃 시 토큰 해제는 JWT 를 지우기 전에** 해야 한다. 안 하면 로그아웃해도 알림이 계속 간다.
 

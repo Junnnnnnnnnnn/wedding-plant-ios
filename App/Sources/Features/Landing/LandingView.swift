@@ -17,6 +17,9 @@ struct LandingView: View {
     @State private var showSetting = false
     @State private var isLoading = false
     @State private var errorMessage: String?
+    #if DEBUG
+    @State private var showDevLogin = false
+    #endif
 
     var body: some View {
         ZStack {
@@ -89,11 +92,31 @@ struct LandingView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("landing.guest")
 
+                #if DEBUG
+                // 카카오 SDK 연동 전, 실기기에서 백엔드 붙은 화면을 보기 위한 통로.
+                // 릴리스 빌드에는 포함되지 않는다.
+                Spacer().frame(height: 8)
+                Button { showDevLogin = true } label: {
+                    Text("개발용 토큰으로 로그인")
+                        .font(WPFont.hak(11, .medium))
+                        .foregroundStyle(WPColor.stone400)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("landing.devLogin")
+                #endif
+
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 32)
             .padding(.vertical, 80)
         }
+        #if DEBUG
+        .sheet(isPresented: $showDevLogin) {
+            DevTokenLoginSheet().environmentObject(env)
+        }
+        #endif
         .fullScreenCover(isPresented: $showSetting) {
             SettingView {
                 showSetting = false

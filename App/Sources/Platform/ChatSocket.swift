@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import OSLog
 import WPNetworking
 
 /// 채팅 실시간 연결. 웹 `socket.io-client` 와 **같은 프로토콜**로 붙는다.
@@ -54,6 +55,10 @@ final class ChatSocket: NSObject, ObservableObject {
 
     /// 서버가 알려주는 침묵 허용 시간. 핸드셰이크 값으로 갱신된다.
     private var silenceTimeout: Duration = .seconds(45)
+
+    /// 실기기에서 왜 안 붙는지 보려면 이 로그가 유일한 단서다.
+    /// Xcode 콘솔에서 `WPSocket` 으로 필터하면 프레임이 순서대로 보인다.
+    private static let log = Logger(subsystem: "com.zipshowkorea.weddingplant", category: "WPSocket")
 
     init(baseURL: URL, tokenStore: any TokenStoring) {
         self.baseURL = baseURL
@@ -112,9 +117,23 @@ final class ChatSocket: NSObject, ObservableObject {
     }
 
     private func write(_ frame: String) {
-        task?.send(.string(frame)) { _ in
+        Self.log.debug("→ \(Self.redacted(frame), privacy: .public)")
+        task?.send(.string(frame)) { error in
             // 전송 실패는 곧 연결 종료로 이어지고, 재연결 루프가 알아서 처리한다.
+            if let error {
+                Self.log.debug("전송 실패: \(error.localizedDescription, privacy: .public)")
+            }
         }
+    }
+
+    /// 로그에 JWT 가 그대로 찍히지 않게 가린다.
+    private static func redacted(_ frame: String) -> String {
+        guard frame.contains("\"token\"") else { return frame }
+        return frame.replacingOccurrences(
+            of: #""token":"[^"]*""#,
+            with: #""token":"<가림>""#,
+            options: .regularExpression
+        )
     }
 
     // MARK: - 연결
@@ -122,7 +141,11 @@ final class ChatSocket: NSObject, ObservableObject {
     private func openSocket() {
         teardown()
 
-        guard let url = socketURL() else { return }
+        guard let url = socketURL() else {
+            Self.log.error("소켓 주소를 만들지 못했습니다: \(self.baseURL.absoluteString, privacy: .public)")
+            return
+        }
+        Self.log.debug("연결 시도 \(url.absoluteString, privacy: .public)")
 
         let configuration = URLSessionConfiguration.default
         configuration.waitsForConnectivity = true
@@ -170,6 +193,7 @@ final class ChatSocket: NSObject, ObservableObject {
             } catch {
                 // 사용자에게 오류를 띄우지 않는다. 자동 재연결이 계속 돌고 있고,
                 // 잠깐 끊길 때마다 배너가 뜨면 오히려 고장난 것처럼 보인다.
+                Self.log.debug("연결 끊김: \(error.localizedDescription, privacy: .public)")
                 scheduleReconnect()
                 return
             }
@@ -179,6 +203,7 @@ final class ChatSocket: NSObject, ObservableObject {
     private func handle(frame: String) {
         // 무엇이든 받았다면 연결은 살아 있다.
         restartWatchdog()
+        Self.log.debug("← \(frame.prefix(400), privacy: .public)")
 
         switch SocketIOPacket.decode(frame) {
         case let .open(_, pingInterval, pingTimeout):
@@ -191,6 +216,7 @@ final class ChatSocket: NSObject, ObservableObject {
             write(SocketIOPacket.pong)
 
         case .connected:
+            Self.log.debug("네임스페이스 접속 완료, 방 입장")
             connected = true
             reconnectAttempt = 0
             // 재연결이어도 방에는 다시 들어가야 메시지를 받는다.
@@ -248,6 +274,7 @@ final class ChatSocket: NSObject, ObservableObject {
         reconnectAttempt += 1
 
         let delay = SocketBackoff.delay(attempt: reconnectAttempt)
+        Self.log.debug("\(self.reconnectAttempt)번째 재연결을 \(delay, format: .fixed(precision: 1))초 뒤에 시도")
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, !Task.isCancelled else { return }

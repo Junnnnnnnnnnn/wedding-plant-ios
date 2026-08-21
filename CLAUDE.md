@@ -244,6 +244,7 @@ Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)�
 | `docs/RUN_ON_MAC.md` | Mac 에서 구동·실기기 설치 |
 | `docs/INSTALL_ON_IPHONE.md` | Mac 없이 아이폰 설치 (TestFlight / Sideloadly) |
 | `docs/TESTING.md` | 테스트 실행·작성 |
+| `docs/TEST_CHAT_ON_DEVICE.md` | 실기기에서 채팅 수신 확인 (푸시 없이) |
 | `docs/VIEW_THE_APP.md` | CI 스크린샷·동영상으로 화면 확인 |
 | `docs/IOS_DEV_ON_WINDOWS.md` | 전체 전략, 인증서 발급, 웹→iOS 포팅 매핑 |
 | `Core/README.md` | Core 설계 규칙 |
