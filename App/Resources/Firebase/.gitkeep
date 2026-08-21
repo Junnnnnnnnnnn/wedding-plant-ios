@@ -1,0 +1,8 @@
+Firebase(FCM) 설정 파일을 두는 곳.
+
+Firebase 콘솔에서 iOS 앱을 등록하고 `GoogleService-Info.plist` 를 받아 이 폴더에 둔 뒤
+`xcodegen generate` 를 다시 돌리면 앱 번들에 들어간다.
+
+저장소가 공개라 그 파일은 커밋하지 않는다(.gitignore). 파일이 없어도 앱은 그대로
+빌드·실행되고, FCM 대신 APNs 원시 토큰을 등록한다 — `PushTokenProvider` 참고.
+자세한 절차는 `docs/PUSH_SETUP.md`.

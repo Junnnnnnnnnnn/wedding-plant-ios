@@ -82,7 +82,7 @@
 **남은 건 전부 계정·콘솔 작업이다:**
 1. Apple Developer Program(유료) — 무료 계정은 `aps-environment` 서명이 안 된다
 2. APNs 인증 키(.p8) → Firebase 콘솔 업로드
-3. `GoogleService-Info.plist` → `App/Resources/` (gitignore 됨)
+3. `GoogleService-Info.plist` → `App/Resources/Firebase/` (gitignore 됨)
 4. `Config/Local.xcconfig` 에 `WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements`
 
 > **백엔드 수정 필요:** 지금은 `notification` 없이 `data` 만 보낸다.

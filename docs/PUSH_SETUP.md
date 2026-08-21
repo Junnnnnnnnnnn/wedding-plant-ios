@@ -62,7 +62,8 @@ iOS 대상에는 알림 본문을 함께 실어야 한다:
 
 1. 기존 프로젝트(안드로이드와 같은 것)에 **iOS 앱 추가**
    - 번들 ID: `com.zipshowkorea.weddingplant`
-2. `GoogleService-Info.plist` 다운로드 → **`App/Resources/`** 에 둔다
+2. `GoogleService-Info.plist` 다운로드 → **`App/Resources/Firebase/`** 에 둔다
+   - 넣은 뒤 `xcodegen generate` 를 다시 돌려야 번들에 들어간다
    - 저장소가 공개라 `.gitignore` 되어 있다. 각자 받아서 두면 된다
 3. 프로젝트 설정 → 클라우드 메시징 → **APNs 인증 키 업로드**
    - 2번에서 받은 `.p8` + Key ID + Team ID
