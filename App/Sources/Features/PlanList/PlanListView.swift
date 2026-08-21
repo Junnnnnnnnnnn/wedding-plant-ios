@@ -9,6 +9,7 @@ import WPUtils
 /// 안드로이드 `ui/planlist/PlanListScreen.kt` 를 1:1 로 옮긴 것.
 struct PlanListView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var push: PushService
     @StateObject private var model = PlanListViewModel()
     /// 웹은 `/chat/{id}` 로 페이지를 통째로 바꾼다. 여기서는 전체 화면으로 덮는다.
     @State private var openChatRoom: ChatRoomRef?
@@ -40,6 +41,7 @@ struct PlanListView: View {
         .fullScreenCover(item: $openChatRoom) { room in
             ChatView(chatRoomId: room.id)
                 .environmentObject(env)
+                .environmentObject(push)
         }
     }
 

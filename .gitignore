@@ -36,6 +36,10 @@ signing/
 *.key
 *.pem
 
+# Firebase(FCM) 설정. 프로젝트 식별자가 들어 있고 저장소가 공개이므로 커밋하지 않는다.
+# Firebase 콘솔에서 iOS 앱을 등록하고 내려받아 App/Resources/ 에 둔다.
+App/Resources/GoogleService-Info.plist
+
 # 환경 설정
 # 개인별 빌드 설정. Config/Base.xcconfig 와 Local.example.xcconfig 는 커밋한다.
 Config/Local.xcconfig

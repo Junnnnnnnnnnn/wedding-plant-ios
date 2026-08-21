@@ -16,6 +16,7 @@ import WPUtils
 ///   전체 화면으로 띄운다(참여 플랜에서 `fullScreenCover`).
 struct ChatView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var push: PushService
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -42,7 +43,16 @@ struct ChatView: View {
         }
         .background(Color.white)
         .task { await model.start(env: env) }
-        .onDisappear { model.leave() }
+        .onAppear {
+            // 이 방을 보고 있는 동안에는 이 방 알림을 띄우지 않는다 (소켓으로 이미 화면에 뜬다).
+            push.currentChatRoomId = model.chatRoomId
+        }
+        .onDisappear {
+            model.leave()
+            if push.currentChatRoomId == model.chatRoomId {
+                push.currentChatRoomId = nil
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             // 백그라운드에 오래 있다 돌아오면 소켓이 죽어 있을 수 있다.
             if phase == .active { model.onForeground() }

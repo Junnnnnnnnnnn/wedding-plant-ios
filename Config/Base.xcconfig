@@ -12,5 +12,14 @@
 // 실기기에서는 localhost 가 아이폰 자신을 가리키므로 Local.xcconfig 에서 반드시 바꿔야 한다.
 API_BASE_URL = http:/$()/localhost:3111
 
+// 푸시 알림 엔타이틀먼트.
+//
+// 비워 두면 엔타이틀먼트 파일을 쓰지 않는다 — 무료 Apple ID 로도 실기기 설치가 된다.
+// 유료 Apple Developer Program 이 준비되면 Local.xcconfig 에서 켠다:
+//   WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements
+// (무료 계정으로 켜면 "no valid aps-environment entitlement" 로 서명이 실패한다)
+WP_ENTITLEMENTS =
+CODE_SIGN_ENTITLEMENTS = $(WP_ENTITLEMENTS)
+
 // 개인 설정으로 덮어쓰기. 파일이 없어도 빌드가 깨지지 않는다.
 #include? "Local.xcconfig"

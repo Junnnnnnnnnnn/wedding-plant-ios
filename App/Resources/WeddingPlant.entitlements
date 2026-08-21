@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  푸시 알림. 이 파일은 유료 Apple Developer Program 계정에서만 서명된다.
+	  무료 계정으로 빌드하면 "no valid aps-environment entitlement" 로 서명이 실패하므로,
+	  기본값은 이 파일을 쓰지 않는 것이다 (Config/Base.xcconfig 의 WP_ENTITLEMENTS).
+
+	  유료 계정이 준비되면 Config/Local.xcconfig 에 아래 한 줄을 넣는다:
+	    WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements
+	-->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

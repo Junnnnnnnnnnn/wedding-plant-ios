@@ -229,6 +229,8 @@ Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)�
 | 달력에 방 일정이 안 보임 | `/plan/schedule/calendar` 는 `roomId` 를 **쿼리로** 받는다. 다른 일정 API 처럼 경로에 넣으면 404 |
 | 채팅이 붙는데 메시지가 안 옴 | Socket.IO 서버 PING(`2`)에 PONG(`3`)으로 답하지 않으면 서버가 끊는다. 프레임 규칙은 `SocketIOPacket` 에 있고 테스트로 고정돼 있다 |
 | 잠깐 끊긴 뒤 채팅이 영영 죽음 | 재연결에 **상한을 두면 안 된다**. 웹의 `reconnectionAttempts: 5` 를 그대로 옮기면 지하철에서 5번 실패하고 끝난다. `SocketBackoff` 는 무제한 + 최대 30초다 |
+| iOS 만 푸시 배너가 안 뜸 | 백엔드가 `data` 만 보내면 iOS 에서는 **무음 푸시**다. `apns.payload.aps.alert` 를 함께 실어야 한다 |
+| `no valid aps-environment entitlement` | 무료 Apple ID 다. 푸시는 유료 계정에서만 된다. `WP_ENTITLEMENTS` 를 비워 두면 나머지는 그대로 빌드된다 |
 | 안드로이드와 문구가 다름 | 안드로이드가 웹 문구를 다시 쓴 곳이 있다(예: 예산 상세의 잔액 툴팁). **화면 문구는 웹이 기준**이다. 다르면 웹을 그대로 옮기고 주석으로 남긴다 |
 | 설정 화면이 곧바로 메인으로 넘어감 | 정상 동작이다. 플랜이 완성된 사용자면 `prefill` 이 스킵한다. 플로우를 보려면 `-WPForceOnboarding` |
 | UI 테스트가 버튼을 못 찾음 | `.accessibilityIdentifier` 를 감싼 뷰에 걸면 `app.buttons[...]` 로 안 잡힌다. `Button` 자체에 붙인다 (`WPNextButton(identifier:)` 처럼) |
@@ -245,6 +247,7 @@ Mac 이면 시뮬레이터, Windows 면 CI 아티팩트(`docs/VIEW_THE_APP.md`)�
 | `docs/INSTALL_ON_IPHONE.md` | Mac 없이 아이폰 설치 (TestFlight / Sideloadly) |
 | `docs/TESTING.md` | 테스트 실행·작성 |
 | `docs/TEST_CHAT_ON_DEVICE.md` | 실기기에서 채팅 수신 확인 (푸시 없이) |
+| `docs/PUSH_SETUP.md` | 백그라운드 푸시 설정 (유료 계정 · FCM) |
 | `docs/VIEW_THE_APP.md` | CI 스크린샷·동영상으로 화면 확인 |
 | `docs/IOS_DEV_ON_WINDOWS.md` | 전체 전략, 인증서 발급, 웹→iOS 포팅 매핑 |
 | `Core/README.md` | Core 설계 규칙 |

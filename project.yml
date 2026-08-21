@@ -15,6 +15,14 @@ options:
 packages:
   WeddingPlantCore:
     path: Core
+  # FCM(백그라운드 알림). 백엔드가 안드로이드와 같은 FCM 으로 보내므로 iOS 도 FCM 토큰을 쓴다.
+  #
+  # `GoogleService-Info.plist` 가 없으면(공개 저장소·CI) Firebase 를 켜지 않고
+  # APNs 원시 토큰으로 물러난다 — PushTokenProvider 참고. 그래서 이 의존성이 있어도
+  # 설정 파일 없이 빌드·실행된다.
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "11.0.0"
 
 settings:
   base:
@@ -45,6 +53,10 @@ targets:
         buildPhase: resources
       - path: App/Resources/Images
         buildPhase: resources
+      # Firebase 설정. 커밋하지 않으므로 없을 수 있다.
+      - path: App/Resources/GoogleService-Info.plist
+        buildPhase: resources
+        optional: true
     # 환경 설정은 xcconfig 로 주입한다. Config/Base.xcconfig 가 Config/Local.xcconfig 를
     # 선택적으로 include 하므로, 각자 로컬 값은 커밋 없이 덮어쓸 수 있다.
     configFiles:
@@ -68,6 +80,8 @@ targets:
         product: WPNetworking
       - package: WeddingPlantCore
         product: WPDomain
+      - package: Firebase
+        product: FirebaseMessaging
     info:
       path: App/Resources/Info.plist
       properties:
@@ -95,6 +109,9 @@ targets:
           - CFBundleURLName: com.zipshowkorea.weddingplant.share
             CFBundleURLSchemes:
               - weddingplant
+        # 데이터 전용 푸시로 앱을 깨우려면 필요하다. Info.plist 키라 무료 계정에서도 넣을 수 있다.
+        UIBackgroundModes:
+          - remote-notification
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

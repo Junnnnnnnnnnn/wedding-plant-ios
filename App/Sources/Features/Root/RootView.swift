@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
+    @EnvironmentObject private var push: PushService
     @State private var tab: WPTab = .home
 
     var body: some View {
@@ -17,6 +18,18 @@ struct RootView: View {
             }
         }
         .tint(WPColor.primary)
+        // 앱이 켜져 있을 때 온 알림은 배너 대신 토스트로 (배너까지 뜨면 두 번 알리는 셈이다).
+        .overlay(alignment: .top) {
+            if let toast = push.toast {
+                PushToast(text: toast) { push.toast = nil }
+            }
+        }
+        // 알림을 눌러 들어온 채팅방.
+        .fullScreenCover(item: pushChatBinding) { room in
+            ChatView(chatRoomId: room.id)
+                .environmentObject(env)
+                .environmentObject(push)
+        }
         // 공유 링크로 들어오면 어느 화면에 있든 참여 화면이 덮는다 (웹은 `/share/{code}` 페이지).
         .fullScreenCover(item: shareCodeBinding) { pending in
             ShareJoinView(shareCode: pending.code) {
@@ -34,6 +47,13 @@ struct RootView: View {
         }
     }
 
+    private var pushChatBinding: Binding<PendingChatRoom?> {
+        Binding(
+            get: { push.pendingChatRoomId.map(PendingChatRoom.init(id:)) },
+            set: { if $0 == nil { push.pendingChatRoomId = nil } }
+        )
+    }
+
     /// `fullScreenCover(item:)` 이 Identifiable 을 요구해서 감싼다.
     private var shareCodeBinding: Binding<PendingShare?> {
         Binding(
@@ -46,6 +66,40 @@ struct RootView: View {
 private struct PendingShare: Identifiable, Hashable {
     var code: String
     var id: String { code }
+}
+
+private struct PendingChatRoom: Identifiable, Hashable {
+    var id: Int
+}
+
+/// 앱이 켜져 있을 때 온 알림을 위쪽에 잠깐 띄운다.
+private struct PushToast: View {
+    var text: String
+    var onDismiss: () -> Void
+
+    var body: some View {
+        Text(text)
+            .font(WPFont.hak(14, .bold))
+            .foregroundStyle(.white)
+            .lineLimit(2)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                WPColor.textPrimary.opacity(0.95),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .shadow(color: Color.black.opacity(0.2), radius: 12, y: 6)
+            .padding(.horizontal, 16)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .onTapGesture(perform: onDismiss)
+            .task {
+                // 3초 뒤 자동으로 사라진다.
+                try? await Task.sleep(for: .seconds(3))
+                onDismiss()
+            }
+    }
 }
 
 /// 웹의 `BottomTabBar` 가 붙은 화면 셸.

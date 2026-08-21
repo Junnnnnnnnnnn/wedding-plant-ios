@@ -11,6 +11,7 @@ import WPUtils
 /// ```
 struct UserView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var push: PushService
     @EnvironmentObject private var guest: GuestStore
     @StateObject private var model = UserViewModel()
 
@@ -139,6 +140,10 @@ struct UserView: View {
                     } onConfirm: {
                         confirmSignOut = false
                         Task {
+                            // 기기 토큰 해제는 **JWT 를 지우기 전에**.
+                            // DELETE /plan/user/device-token 은 Authorization 이 필요하다.
+                            // 안 하면 로그아웃해도 그 기기로 알림이 계속 간다.
+                            await push.unregisterBeforeSignOut(env: env)
                             await env.signOut()
                             guest.clear()
                         }

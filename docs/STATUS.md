@@ -16,7 +16,7 @@
 **웹의 화면은 전부 이식했다.** 남은 건 카카오 로그인 실연동 · 인앱 알림(SSE) · 푸시 · 배포다.
 
 - 저장소: <https://github.com/Junnnnnnnnnnn/wedding-plant-ios> (**공개**)
-- Core 테스트: **234개 통과** (Windows/Linux)
+- Core 테스트: **248개 통과** (Windows/Linux)
 - SwiftUI: CI 시뮬레이터 빌드 통과, 스크린샷으로 육안 확인
 
 ---
@@ -38,7 +38,7 @@
 | 채팅 | `/chat/[id]` | **웹과 1:1** (Socket.IO 직접 구현, 무제한 재연결, 날짜 구분선·일정 카드·이름 변경) |
 | 공유 참여 | `/share/[code]` | **웹과 1:1** (자동 참여 → 참여 플랜 목록, 비로그인이면 코드를 남기고 로그인 안내) |
 | 인앱 알림(SSE) | `NotificationContext` | **없음**. 웹은 채팅방마다 SSE 를 열어 토스트·미읽음 배지를 띄운다 |
-| 푸시(APNs) | - | **없음**. Core 에 엔드포인트·페이로드 모델만 준비됨 |
+| 푸시(APNs, FCM 경유) | - | **코드는 완료**. 유료 개발자 계정 + Firebase 설정 파일이 있어야 동작한다 → `docs/PUSH_SETUP.md` |
 
 ## 아직 동작하지 않는 UI (모양만 있음)
 
@@ -74,22 +74,21 @@
 **읽기 타임아웃을 끄면 안 된다.** 서버가 조용히 끊었을 때 영원히 기다리게 되어,
 앱은 멀쩡한데 알림만 안 오는 상태가 된다. keep-alive 주기(30초)의 3배를 타임아웃으로 둘 것.
 
-### 4. 푸시(APNs — FCM 경유)
+### 4. 푸시(APNs — FCM 경유) → `docs/PUSH_SETUP.md`
 
-백엔드가 이미 FCM 이므로 iOS 도 **FCM 등록 토큰**을 같은 엔드포인트에 보내면 된다
-(`platform: IOS`). Core 에 `Endpoint.registerDeviceToken/unregisterDeviceToken`,
-`PushPayload` 가 있다. 남은 건 FirebaseMessaging 연동과 `UNUserNotificationCenter` 다.
+앱 쪽 배선은 끝났다. 권한 요청 · 토큰 등록/해제 타이밍 · 포그라운드 배너 억제 ·
+보고 있는 방 무시 · 알림 탭 라우팅. 판단 규칙은 `PushRouting`(Core)에 테스트로 고정.
 
-필요한 것: **Apple Developer Program(유료)** → APNs 인증 키(.p8) → Firebase 콘솔 업로드 →
-`GoogleService-Info.plist`(저장소가 공개라 gitignore) → Push Notifications capability.
+**남은 건 전부 계정·콘솔 작업이다:**
+1. Apple Developer Program(유료) — 무료 계정은 `aps-environment` 서명이 안 된다
+2. APNs 인증 키(.p8) → Firebase 콘솔 업로드
+3. `GoogleService-Info.plist` → `App/Resources/` (gitignore 됨)
+4. `Config/Local.xcconfig` 에 `WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements`
 
-> **백엔드 수정이 필요한 항목:** 지금은 `notification` 없이 `data` 만 보낸다.
-> 안드로이드는 그걸로 앱이 직접 알림을 만들지만, **iOS 에서 data-only 는 무음 푸시**라
-> 배너가 뜨지 않고 전송도 보장되지 않는다. iOS 대상에는 `notification`
-> (또는 `apns.payload.aps.alert`)을 함께 실어야 한다. `data` 는 그대로 둬야
-> 알림을 눌렀을 때 `chatRoomId` 로 방을 찾아갈 수 있다.
-
-**로그아웃 시 토큰 해제는 JWT 를 지우기 전에** 해야 한다. 안 하면 로그아웃해도 알림이 계속 간다.
+> **백엔드 수정 필요:** 지금은 `notification` 없이 `data` 만 보낸다.
+> **iOS 에서 data-only 는 무음 푸시**라 배너가 뜨지 않는다. iOS 대상에는
+> `apns.payload.aps.alert` 를 함께 실어야 한다. `data` 는 그대로 둬야
+> 알림을 눌렀을 때 `chatRoomId` 로 방을 찾아간다.
 
 ### 5. 공유 링크를 Universal Link 로
 
