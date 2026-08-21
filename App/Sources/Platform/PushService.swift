@@ -38,8 +38,10 @@ final class PushService: NSObject, ObservableObject {
     /// 마지막으로 백엔드에 등록한 토큰. 로그아웃 때 해제에 쓴다.
     private var registeredToken: String?
 
-    init(tokenProvider: any PushTokenProviding = PushTokenProvider()) {
-        self.tokenProvider = tokenProvider
+    /// 기본 구현을 기본값 인자로 두면 @MainActor 밖에서 평가돼 컴파일되지 않는다.
+    /// nil 을 받아 init 안(=MainActor)에서 만든다.
+    init(tokenProvider: (any PushTokenProviding)? = nil) {
+        self.tokenProvider = tokenProvider ?? PushTokenProvider()
         super.init()
     }
 
