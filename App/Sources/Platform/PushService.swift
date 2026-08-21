@@ -119,7 +119,14 @@ final class PushService: NSObject, ObservableObject {
     ///   `Authorization` 이 필요하다. 해제하지 않으면 로그아웃해도 그 기기로 알림이 계속 가고,
     ///   기기를 넘기거나 공용 기기를 쓰면 남의 채팅 내용이 그대로 뜬다.
     func unregisterBeforeSignOut(env: AppEnvironment) async {
-        guard let token = registeredToken ?? (await tokenProvider.currentToken()) else { return }
+        // `??` 오른쪽은 autoclosure 라 await 를 넣을 수 없다.
+        let token: String?
+        if let registeredToken {
+            token = registeredToken
+        } else {
+            token = await tokenProvider.currentToken()
+        }
+        guard let token else { return }
         do {
             try await env.api.sendIgnoringData(Endpoint.unregisterDeviceToken(token))
             Self.log.notice("기기 토큰 해제 완료")
@@ -140,9 +147,9 @@ extension PushService: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        let userInfo = notification.request.content.userInfo
+        // `[AnyHashable: Any]` 는 Sendable 이 아니다. 여기서 값 타입으로 바꿔 넘긴다.
+        let payload = PushPayload(userInfo: notification.request.content.userInfo)
         return await MainActor.run {
-            let payload = PushPayload(userInfo: userInfo)
             switch PushRouting.display(
                 for: payload,
                 appActive: true,
@@ -165,9 +172,8 @@ extension PushService: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        let userInfo = response.notification.request.content.userInfo
+        let payload = PushPayload(userInfo: response.notification.request.content.userInfo)
         await MainActor.run {
-            let payload = PushPayload(userInfo: userInfo)
             if case let .chatRoom(id) = PushRouting.destination(for: payload) {
                 pendingChatRoomId = id
             }
