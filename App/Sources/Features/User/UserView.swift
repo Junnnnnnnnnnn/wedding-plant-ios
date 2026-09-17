@@ -17,6 +17,7 @@ struct UserView: View {
 
     @State private var showDatePicker = false
     @State private var confirmSignOut = false
+    @State private var confirmWithdraw = false
 
     var body: some View {
         ZStack {
@@ -133,8 +134,36 @@ struct UserView: View {
 
             Spacer().frame(height: 32)
 
+            // 개인정보처리방침은 **로그인 여부와 상관없이 항상** 보여야 한다. 앱 안에
+            // 접근 경로가 있는지를 심사에서 본다 (안드로이드도 같은 자리에 둔다).
+            Link("개인정보처리방침", destination: AppLinks.privacyPolicy)
+                .font(WPFont.hak(12, .regular))
+                .underline()
+                .foregroundStyle(WPColor.gray400)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(4)
+
+            Spacer().frame(height: 16)
+
             if model.loggedIn {
-                if confirmSignOut {
+                // 한 번에 하나만 묻는다. 로그아웃을 확인하는 중에는 탈퇴 줄이,
+                // 탈퇴를 확인하는 중에는 로그아웃 버튼이 사라진다 (웹·안드로이드와 동일).
+                if confirmWithdraw {
+                    WithdrawConfirm(
+                        withdrawing: model.withdrawing,
+                        error: model.withdrawError
+                    ) {
+                        confirmWithdraw = false
+                        model.withdrawError = nil
+                    } onConfirm: {
+                        Task {
+                            let ok = await model.withdraw(env: env, push: push, guest: guest)
+                            // 성공하면 로그인 화면으로 돌아가 이 화면이 사라진다.
+                            // 실패했을 때만 확인 상태를 유지해 다시 시도하게 둔다.
+                            if ok { confirmWithdraw = false }
+                        }
+                    }
+                } else if confirmSignOut {
                     SignOutConfirm {
                         confirmSignOut = false
                     } onConfirm: {
@@ -153,6 +182,19 @@ struct UserView: View {
                         confirmSignOut = true
                     }
                     .accessibilityIdentifier("user.signOut")
+
+                    Spacer().frame(height: 8)
+
+                    // 위험한 동작일수록 눈에 덜 띄어야 실수로 눌리지 않는다.
+                    // 로그아웃 버튼 아래 조용한 줄로 둔다 (웹·안드로이드와 동일).
+                    Button("회원 탈퇴") { confirmWithdraw = true }
+                        .font(WPFont.hak(12, .regular))
+                        .underline()
+                        .foregroundStyle(WPColor.gray400)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(8)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("user.withdraw")
                 }
             } else {
                 SoftActionButton(label: "카카오로 로그인", symbol: "person.fill") {
@@ -362,6 +404,83 @@ private struct SoftActionButton: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// 회원 탈퇴 확인.
+///
+/// 탈퇴는 되돌릴 수 없다. "정말요?" 만 묻는 확인은 사용자가 답을 모르는 질문이라,
+/// 무엇이 사라지고 무엇이 남는지 먼저 적는다. 후기가 남는 것도 여기서 밝힌다 —
+/// 나중에 알게 되면 속았다고 느낀다. (웹·안드로이드와 같은 문구)
+private struct WithdrawConfirm: View {
+    var withdrawing: Bool
+    var error: String?
+    var onCancel: () -> Void
+    var onConfirm: () -> Void
+
+    private let lines = [
+        "일정과 예산이 사라지고 되돌릴 수 없습니다.",
+        "함께 준비하던 사람의 방에서 나가집니다.",
+        "올린 견적 후기는 작성자 없이 남습니다.",
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("정말 탈퇴하시겠어요?")
+                .font(WPFont.hak(14, .bold))
+                .foregroundStyle(WPColor.textPrimary)
+
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(lines, id: \.self) { line in
+                    Text(line)
+                        .font(WPFont.hak(12.5, .regular))
+                        .lineSpacing(6)
+                        .foregroundStyle(WPColor.gray500)
+                }
+            }
+
+            if let error {
+                Text(error)
+                    .font(WPFont.hak(12.5, .regular))
+                    .foregroundStyle(WPColor.danger)
+            }
+
+            HStack(spacing: 8) {
+                Button(action: onCancel) {
+                    Text("취소")
+                        .font(WPFont.hak(14, .bold))
+                        .foregroundStyle(WPColor.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(WPColor.stone200, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(withdrawing)
+
+                Button(action: onConfirm) {
+                    Text(withdrawing ? "탈퇴 중..." : "탈퇴하기")
+                        .font(WPFont.hak(14, .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(WPColor.danger, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(withdrawing)
+                .accessibilityIdentifier("user.withdrawConfirm")
+            }
+            .opacity(withdrawing ? 0.6 : 1)
+        }
+        .padding(16)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(WPColor.stone200, lineWidth: 1)
+        )
     }
 }
 

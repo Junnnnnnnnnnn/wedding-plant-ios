@@ -46,6 +46,14 @@ public enum Endpoint {
         try .json(.patch, "/plan/user", body: body)
     }
 
+    /// 회원 탈퇴. 계정과 개인정보를 지운다.
+    ///
+    /// 앱 화면 안에서 삭제까지 끝나야 한다 — "메일로 요청하세요" 는 애플·구글 심사에서
+    /// 반려 사유다. 웹 `SettingsPage` · 안드로이드 `UserScreen` 과 같은 API 를 쓴다.
+    public static func withdraw() -> HTTPRequest {
+        HTTPRequest(method: .delete, path: "/plan/user")
+    }
+
     public static func totalAmount() -> HTTPRequest {
         HTTPRequest(path: "/plan/user/total-amount")
     }

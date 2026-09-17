@@ -20,6 +20,9 @@ final class UserViewModel: ObservableObject {
     /// 저장 성공 직후 2초간 버튼이 "저장되었어요" 로 바뀐다 (웹과 동일)
     @Published var saved = false
     @Published var errorMessage: String?
+    /// 탈퇴 진행 중. 버튼을 두 번 누르는 것을 막는다.
+    @Published var withdrawing = false
+    @Published var withdrawError: String?
 
     var dDayLabel: String { PlanRules.dDayLabel(weddingDate: date) }
 
@@ -117,6 +120,42 @@ final class UserViewModel: ObservableObject {
         } catch {
             errorMessage = "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
         }
+    }
+
+    // MARK: - 회원 탈퇴
+
+    /// 계정을 지운다. 성공하면 로그아웃까지 끝낸 상태로 돌아온다.
+    ///
+    /// **앱 화면 안에서 삭제가 끝나야 한다** — "메일로 요청하세요" 는 심사 반려 사유이고,
+    /// 개인정보처리방침에도 이 경로가 적혀 있다.
+    ///
+    /// 순서가 중요하다. 기기 토큰 해제(`DELETE /plan/user/device-token`)는 JWT 를 요구하므로
+    /// **토큰을 지우기 전에** 부른다. 로그아웃과 같은 순서다.
+    ///
+    /// - Returns: 성공 여부. 실패하면 화면이 그대로 남아 다시 시도할 수 있다.
+    @discardableResult
+    func withdraw(env: AppEnvironment, push: PushService, guest: GuestStore) async -> Bool {
+        guard !withdrawing else { return false }
+        withdrawing = true
+        withdrawError = nil
+        defer { withdrawing = false }
+
+        // 기기 토큰 해제가 **먼저**다. 탈퇴한 뒤에는 그 JWT 로 어떤 API 도 통과하지
+        // 못해 해제가 401 로 실패하고, 서버에는 이 기기가 남아 알림이 계속 간다.
+        await push.unregisterBeforeSignOut(env: env)
+
+        do {
+            try await env.api.sendIgnoringData(Endpoint.withdraw())
+        } catch {
+            // 해제는 이미 끝났지만 계정은 남는다. 다음 실행 때 다시 등록되므로
+            // 알림이 영영 끊기지는 않는다.
+            withdrawError = "탈퇴하지 못했습니다. 잠시 후 다시 시도해 주세요."
+            return false
+        }
+
+        await env.signOut()
+        guest.clear()
+        return true
     }
 
     /// 저장 완료 표시는 2초 뒤 원래대로 돌아간다 (웹과 동일).
