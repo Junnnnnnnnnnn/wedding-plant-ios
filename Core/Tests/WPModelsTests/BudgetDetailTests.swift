@@ -56,7 +56,7 @@ final class BudgetDetailTests: XCTestCase {
         XCTAssertEqual(zero.usedPercent, 0)
     }
 
-    func test_사용률은_내림한다() {
+    func test_사용률은_반올림한다() {
         // 2150 / 5000 = 43%
         XCTAssertEqual(sample.usedPercent, 43)
 
@@ -66,8 +66,8 @@ final class BudgetDetailTests: XCTestCase {
             plannedUseAmount: 0,
             usedAmount: 2
         )
-        // 66.66... → 66
-        XCTAssertEqual(odd.usedPercent, 66)
+        // 66.66... → 67. 웹 `Math.round` 와 같아야 한다 (예전에는 내려서 66 이었다).
+        XCTAssertEqual(odd.usedPercent, 67)
     }
 
     // MARK: - CategoryChartItem

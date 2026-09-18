@@ -89,9 +89,13 @@ public struct AmountDetail: Codable, Hashable, Sendable {
     public var savings: Int { initialCapital - usedAmount }
 
     /// 전체 사용률(%). 초기 자본이 0이면 0.
+    ///
+    /// **반올림한다.** 웹은 `Math.round` 인데 여기만 내림이라 `2 / 3` 이
+    /// 웹 67% · iOS 66% 로 갈렸다. 안드로이드는 도넛 쪽에서 반올림하고
+    /// 뷰모델의 내림 값은 화면에 내지 않아 증상이 없었다.
     public var usedPercent: Int {
         guard initialCapital > 0 else { return 0 }
-        return Int((Double(usedAmount) / Double(initialCapital)) * 100)
+        return Int((Double(usedAmount) / Double(initialCapital) * 100).rounded())
     }
 
     public init(
