@@ -63,9 +63,34 @@ final class SocialLoginService {
     }
 
     /// 카카오톡이 깔려 있으면 앱으로, 아니면 카카오계정 웹으로.
+    ///
+    /// **카카오톡 로그인은 앱이 깔려 있어도 실패한다.** 콘솔에 이 플랫폼(번들 ID)이
+    /// 등록되지 않았거나, URL 스킴이 키와 어긋나거나, 카카오톡 쪽이 일시적으로
+    /// 응답하지 않는 경우다. 그때 그대로 오류를 내면 **카카오톡을 깐 사람만 로그인이
+    /// 안 되는** 상태가 되고, 원인이 화면에 드러나지 않아 앱이 고장 난 것처럼 보인다.
+    /// 그래서 웹 로그인으로 한 번 떨어뜨린다 — 안드로이드 `KakaoAuth` 와 같은 규칙이다.
+    ///
+    /// **취소는 떨어뜨리지 않는다.** 사용자가 카카오톡에서 직접 닫은 것이라,
+    /// 곧바로 웹 로그인 창을 다시 띄우면 안 하겠다는 사람에게 두 번 묻는 셈이다.
     private func kakaoAccessToken() async throws -> String {
+        if UserApi.isKakaoTalkLoginAvailable() {
+            do {
+                return try await login { UserApi.shared.loginWithKakaoTalk(completion: $0) }
+            } catch SocialLoginError.cancelled {
+                throw SocialLoginError.cancelled
+            } catch {
+                // 웹 로그인으로 떨어진다.
+            }
+        }
+        return try await login { UserApi.shared.loginWithKakaoAccount(completion: $0) }
+    }
+
+    /// 콜백으로 오는 SDK 호출 하나를 async 로 감싼다.
+    private func login(
+        _ start: (@escaping (OAuthToken?, Error?) -> Void) -> Void
+    ) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
-            let handler: (OAuthToken?, Error?) -> Void = { token, error in
+            start { token, error in
                 if let error {
                     continuation.resume(throwing: Self.mapKakao(error))
                 } else if let accessToken = token?.accessToken {
@@ -73,12 +98,6 @@ final class SocialLoginService {
                 } else {
                     continuation.resume(throwing: SocialLoginError.failed)
                 }
-            }
-
-            if UserApi.isKakaoTalkLoginAvailable() {
-                UserApi.shared.loginWithKakaoTalk(completion: handler)
-            } else {
-                UserApi.shared.loginWithKakaoAccount(completion: handler)
             }
         }
     }
