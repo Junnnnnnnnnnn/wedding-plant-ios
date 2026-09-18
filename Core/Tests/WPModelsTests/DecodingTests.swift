@@ -87,7 +87,10 @@ final class DecodingTests: XCTestCase {
     func test_알_수_없는_permission도_디코딩된다() throws {
         let member = try decode(Member.self, #"{ "planUserId": "u1", "name": "하객", "permission": "VIEWER" }"#)
         XCTAssertEqual(member.permission.rawValue, "VIEWER")
-        XCTAssertFalse(member.permission.canEdit)
+        // 판정은 **"READ 면 거절"** 이라 모르는 권한은 막지 않는다.
+        // 확실하지 않을 때 버튼을 감추면 쓸 수 있는 기능을 못 쓰게 되고,
+        // 최종 판단은 어차피 서버가 한다. 자세한 근거는 `PermissionTests`.
+        XCTAssertTrue(member.permission.canEdit)
     }
 
     func test_RoomList는_total이_없으면_list_길이로_보정한다() throws {

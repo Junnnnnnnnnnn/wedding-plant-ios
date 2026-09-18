@@ -3,75 +3,93 @@ import WPDomain
 import WPModels
 import WPUtils
 
-/// 웹 `app/main/page.tsx` 이식.
+/// 웹 `app/main/page.tsx` 의 **폰 트리(`md:hidden`)** 이식 — 시안 C안 01.
+/// 안드로이드 `ui/main/MainScreen.kt` 와 같은 화면이다.
 ///
-/// 구성(웹 순서 그대로):
-/// 이름·초대 → 결혼식 날짜·D-Day → 예산 카드 → 플랜 리스트 헤더(정렬·추가) → 탭 → 리스트 → 로그인 버튼
+/// ```
+/// [분홍 머리 면]  이름 · 이니셜 아바타
+///                 결혼식까지 / N일 남았어요        ← 32pt, 이 화면에서 사람이 보는 값
+///                 2026년 11월 14일 (토) · 예식장
+///                 [남은 예산 N만 원 / M만 원 중 K만 원 지출·예정  >]
+/// 이번 달에 할 일 N                               추가
+///   회색 채움 카드 (체크 · 제목 · 태그 · 날짜 · 금액)
+/// 그 다음  계획 중 N · 완료 M                      전체
+///   구분선 목록
+/// ```
+///
+/// **걷어낸 것**: "플랜 리스트" 제목, 카테고리 칩, 정렬 버튼, 계획 중/완료 탭,
+/// 56pt 아이콘 타일, 예정/임박 배지, 떠 있는 예산 카드. 카테고리로 좁혀 보기와
+/// 완료 되짚기는 `전체`(캘린더)가 맡는다.
+///
+/// **아직 안 옮긴 것** — 각각 iOS 에 없는 부품에 묶여 있다.
+/// 가이드 오버레이(머리 면의 `?`), 초대 띠(`SoloPlanBanner`), 자랑하기 토글.
+/// 눌러도 아무 일이 없는 버튼을 미리 두지 않는다.
 struct MainView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
     @StateObject private var model = MainViewModel()
-    @State private var showSortSheet = false
+    @State private var path = NavigationPath()
     @State private var showAddPlan = false
 
+    /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
+    @State private var today = KstDate.today()
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
         }
     }
 
     private var content: some View {
-        ZStack {
-            WPScreenBackground()
+        let buckets = model.timeBuckets(today: today)
 
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        Header(model: model)
+        return VStack(spacing: 0) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    head
 
-                        Spacer().frame(height: 16)
-                        // 웹: 예산 카드를 누르면 `/budget-detail?roomId=` 로 이동한다.
-                        // 비로그인도 이동은 가능하고, 상세 화면 쪽에서 블러 처리한다.
-                        NavigationLink(value: BudgetRoute(roomId: model.roomIdValue)) {
-                            BudgetCard(model: model)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("main.budget")
+                    SectionHeader(
+                        title: "이번 달에 할 일",
+                        meta: model.planLoading ? nil : "\(buckets.thisMonth.count)",
+                        // READ 권한이면 추가를 감춘다 —
+                        // **눌러야만 실패를 아는 버튼은 두지 않는다.**
+                        actionLabel: model.canWrite ? "추가" : nil,
+                        onAction: { showAddPlan = true }
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
 
-                        Spacer().frame(height: 24)
-                        PlanListHeader(model: model) {
-                            showSortSheet = true
-                        } onAddTapped: {
-                            showAddPlan = true
-                        }
+                    listSection(buckets)
 
-                        Spacer().frame(height: 8)
-                        Tabs(model: model)
-
-                        listSection
-
-                        // 웹: 비로그인일 때만 리스트 아래에 노출
-                        if model.isGuest {
-                            Spacer().frame(height: 16)
-                            LoginButton {
-                                env.isAuthenticated = false
-                            }
-                        }
+                    // 웹: 비로그인일 때만 목록 아래에 노출
+                    if model.isGuest {
+                        LoginButton { env.isAuthenticated = false }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
                     }
-                    .padding(16)
                 }
-                .accessibilityIdentifier("main.scroll")
+                .padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
+            .accessibilityIdentifier("main.scroll")
 
-                if let message = model.errorMessage {
-                    InfoBanner(message: message, actionLabel: "닫기") {
-                        model.errorMessage = nil
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+            if let message = model.errorMessage {
+                InfoBanner(message: message, actionLabel: "닫기") {
+                    model.errorMessage = nil
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white)
+        // 분홍 머리 면이 상태바 뒤까지 깔리도록 스크롤 영역을 위로 넓힌다.
+        // 면은 스크롤 영역 **안**에 있어 내용과 함께 올라간다(웹 `data-mobile-head`).
+        .ignoresSafeArea(edges: .top)
+        .toolbar(.hidden, for: .navigationBar)
         .task {
+            today = KstDate.today()
             await model.load(env: env, guest: guest)
         }
         .navigationDestination(for: Int.self) { scheduleId in
@@ -90,471 +108,298 @@ struct MainView: View {
             .environmentObject(env)
             .environmentObject(guest)
         }
-        .sheet(isPresented: $showSortSheet) {
-            PlanSortSheet(selected: model.sort) { option in
-                Task { await model.setSort(option, env: env, guest: guest) }
+    }
+
+    // MARK: - 머리 면
+
+    private var head: some View {
+        BrandHead {
+            HStack(spacing: 8) {
+                if model.planLoading {
+                    SkeletonBox(width: 110, height: 22, onBrand: true)
+                } else {
+                    // 이름은 "누구의 플랜인지" 확인시키는 라벨이라 18pt 로 낮춘다(예전 30pt).
+                    Text(model.displayName.isEmpty ? "이름" : model.displayName)
+                        .font(WPFont.tmoney(18, .bold))
+                        .tracking(-0.02 * 18)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    HeadAvatars(initials: model.headerInitials)
+                }
+                Spacer(minLength: 0)
+            }
+
+            if model.planLoading {
+                Spacer().frame(height: 16)
+                SkeletonBox(width: 240, height: 74, onBrand: true)
+                Spacer().frame(height: 8)
+                SkeletonBox(width: 190, height: 16, onBrand: true)
+            } else {
+                let sentence = model.dDaySentence
+                Spacer().frame(height: 16)
+                Text("\(sentence.0)\n\(sentence.1)")
+                    .font(WPFont.hak(32, .bold))
+                    .tracking(-0.045 * 32)
+                    .lineSpacing(37 - 32)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer().frame(height: 8)
+                Text(subtitleText)
+                    .font(WPFont.hak(14))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .lineLimit(1)
+            }
+
+            Spacer().frame(height: 16)
+
+            if model.planLoading {
+                // 아래 실제 요약 상자와 **같은 크기** — 받는 순간 목록이 튀지 않게.
+                VStack(alignment: .leading, spacing: 4) {
+                    SkeletonBox(width: 160, height: 18, onBrand: true)
+                    SkeletonBox(width: 208, height: 15, onBrand: true)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            } else {
+                // 면이 이미 분홍이라 여기서는 한 줄 요약 + 부연만 낸다.
+                // 큰 숫자·막대는 예산 상세가 맡는다.
+                HeadInset(action: { path.append(BudgetRoute(roomId: model.roomIdValue)) }) {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("남은 예산 \(withThousands(model.remainingBudget))만 원")
+                                .font(WPFont.hak(14, .bold))
+                                .foregroundStyle(.white)
+                            Text("\(withThousands(model.totalBudget))만 원 중 \(withThousands(model.usedBudget))만 원 지출·예정")
+                                .font(WPFont.hak(12))
+                                .foregroundStyle(.white.opacity(0.75))
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .accessibilityIdentifier("main.budget")
             }
         }
     }
 
+    private var subtitleText: String {
+        var text = model.weddingDate?.weddingDateText ?? ""
+        if !model.weddingVenue.isEmpty {
+            text += text.isEmpty ? model.weddingVenue : " · \(model.weddingVenue)"
+        }
+        // 빈 문자열이면 줄이 사라져 아래가 튀므로 공백 한 칸을 남긴다.
+        return text.isEmpty ? " " : text
+    }
+
+    // MARK: - 목록
+
     @ViewBuilder
-    private var listSection: some View {
-        if model.loading {
-            ProgressView()
-                .tint(WPColor.primary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 220)
+    private func listSection(
+        _ buckets: (thisMonth: [ScheduleItem], later: [ScheduleItem])
+    ) -> some View {
+        if model.planLoading {
+            // 받기 전에 "없다" 고 말하지 않는다 — 빈 상태 대신 뼈대를 낸다.
+            ForEach(0..<5, id: \.self) { _ in SkeletonCard() }
         } else if model.isCompletelyEmpty {
-            EmptyMessage(text: "텅~", size: 36)
-        } else if model.visibleList.isEmpty {
-            EmptyMessage(
-                // 이모지는 웹 원문 그대로다.
-                text: model.tab == .completed ? "완료한 플랜이 없어요" : "모든 플랜을 완료했어요! 🎉",
-                size: 20
-            )
+            // 웹: 전체 플랜이 0개일 때만 "텅~"
+            Text("텅~")
+                .font(WPFont.hak(36, .semibold))
+                .foregroundStyle(WPColor.stone400)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 64)
         } else {
-            VStack(spacing: 12) {
-                ForEach(model.visibleList) { item in
-                    // 카드를 누르면 상세로. 체크박스는 카드 안에서 따로 처리한다.
-                    NavigationLink(value: item.id) {
-                        PlanRow(
-                            item: item,
-                            toggling: model.togglingIds.contains(item.id)
-                        ) {
-                            Task { await model.toggle(item, env: env) }
-                        }
+            ForEach(buckets.thisMonth) { item in
+                TaskCard(
+                    item: item,
+                    toggling: model.togglingIds.contains(item.id),
+                    onToggle: { Task { await model.toggle(item, env: env) } },
+                    onOpen: { path.append(item.id) }
+                )
+            }
+
+            if buckets.thisMonth.isEmpty {
+                Text(buckets.later.isEmpty ? "할 일을 추가해 볼까요?" : "이번 달은 비어 있어요")
+                    .font(WPFont.hak(15))
+                    .foregroundStyle(WPColor.fgSubtle)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 64)
+            }
+
+            // 앞으로 할 일은 구분선 목록으로 낮춘다 — 지금 당장이 아니라 카드만큼의
+            // 무게가 필요 없고, 같은 화면에 훨씬 많이 들어온다.
+            if !buckets.later.isEmpty {
+                SectionHeader(
+                    title: "그 다음",
+                    meta: laterMeta(buckets.later.count),
+                    actionLabel: "전체",
+                    onAction: {
+                        path.append(
+                            CalendarRoute(roomId: model.roomIdValue, readOnly: model.readOnly)
+                        )
                     }
-                    .buttonStyle(.plain)
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 4)
+
+                ForEach(buckets.later) { item in
+                    LaterRow(item: item) { path.append(item.id) }
                 }
             }
-            .padding(.top, 12)
         }
+    }
+
+    private func laterMeta(_ count: Int) -> String {
+        var text = "계획 중 \(count)"
+        if model.completedTotal > 0 { text += " · 완료 \(model.completedTotal)" }
+        return text
     }
 }
 
-/// 예산 상세 이동 경로. `Int` 는 이미 일정 상세가 쓰고 있어 따로 타입을 둔다.
+// MARK: - 라우트
+
 struct BudgetRoute: Hashable {
     var roomId: Int?
 }
 
-/// 캘린더 이동 경로.
 struct CalendarRoute: Hashable {
     var roomId: Int?
-    /// 읽기 전용 멤버면 캘린더에서도 추가 버튼을 감춘다.
     var readOnly: Bool
 }
 
-// MARK: - 헤더
+// MARK: - 머리 면 조각
 
-private struct Header: View {
-    @ObservedObject var model: MainViewModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
-                Text(model.name.isEmpty ? "이름" : model.name)
-                    // 웹: font-user-content text-3xl font-semibold text-[#1b0d14]
-                    .font(WPFont.tmoney(30, .semibold))
-                    .foregroundStyle(WPColor.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                Spacer().frame(width: 8)
-
-                if model.members.isEmpty {
-                    InviteButton()
-                } else {
-                    // OWNER 를 맨 앞으로, 최대 2명 (웹과 동일)
-                    let ordered = model.members.sorted { lhs, _ in lhs.permission == .owner }
-                    HStack(spacing: -8) {
-                        ForEach(Array(ordered.prefix(2).enumerated()), id: \.element.id) { index, member in
-                            MemberAvatar(name: member.name, index: index, size: 40)
-                        }
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "questionmark.circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(WPColor.stone400)
-                    .frame(width: 48, height: 48)
-                    .accessibilityLabel("가이드 보기")
-            }
-
-            HStack(spacing: 8) {
-                if let date = model.weddingDate {
-                    Text("결혼식: \(date.weddingDateText)")
-                        .font(WPFont.hak(12))
-                        .foregroundStyle(WPColor.gray500)
-                }
-                DDayBadge(label: model.dDayLabel)
-                    .accessibilityIdentifier("main.dday")
-                Spacer(minLength: 0)
-            }
-        }
-    }
-}
-
-/// 웹: `h-10 rounded-full px-4 bg-stone-100 border border-stone-200 text-sm font-semibold` + Mail 아이콘
-private struct InviteButton: View {
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "envelope")
-                .font(.system(size: 14))
-                .foregroundStyle(WPColor.stone600)
-            Text("초대")
-                .font(WPFont.hak(14, .semibold))
-                .foregroundStyle(WPColor.textPrimary)
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 40)
-        .background(WPColor.stone100, in: Capsule())
-        .overlay(Capsule().stroke(WPColor.stone200, lineWidth: 1))
-    }
-}
-
-// MARK: - 예산 카드
-
-private struct BudgetCard: View {
-    @ObservedObject var model: MainViewModel
+/// 웹 `headerAvatars` — 최대 두 개의 이니셜.
+/// 왕관·하트 배지는 달지 않는다 — 26pt 위에서 안 읽히고, 누가 방장인지는 멤버 목록이 말한다.
+private struct HeadAvatars: View {
+    var initials: [String]
 
     var body: some View {
-        // 웹: 남은 금액이 1000 이상이면 32px, 미만이면 42px
-        let amountSize: CGFloat = abs(model.remainingBudget) >= 1000 ? 32 : 42
-
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "wonsign")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.3), in: Circle())
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("남은 예산")
-                        .font(WPFont.hak(14, .semibold))
-                        .foregroundStyle(.white)
-                    Text("\(wpThousands(model.remainingBudget))만 원")
-                        .font(WPFont.hak(amountSize, .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                }
-                Spacer(minLength: 0)
-            }
-
-            Spacer().frame(height: 12)
-
-            Text("\(wpThousands(model.usedBudget))만 원 지출/예정")
-                .font(WPFont.hak(20, .semibold))
-                .foregroundStyle(.white)
-                .padding(.leading, 52)
-
-            Spacer().frame(height: 16)
-
-            HStack(spacing: 8) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.3))
-                        Capsule()
-                            .fill(Color.white)
-                            .frame(width: geo.size.width * CGFloat(model.usagePercentClamped) / 100)
-                    }
-                }
-                .frame(height: 8)
-
-                // verbatim 필수 — 숫자 자동 포맷(천 단위 구분) 방지
-                Text(verbatim: "\(model.usagePercent)%")
-                    .font(WPFont.hak(14))
-                    .foregroundStyle(.white)
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [WPColor.budgetGradientStart, WPColor.budgetGradientEnd],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-        )
-    }
-}
-
-// MARK: - 플랜 리스트 헤더
-
-private struct PlanListHeader: View {
-    @ObservedObject var model: MainViewModel
-    var onSortTapped: () -> Void
-    var onAddTapped: () -> Void
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text("플랜 리스트")
-                        .font(WPFont.hak(20, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-                    // 웹: 이 아이콘이 `/calendar?roomId=` 로 이동한다.
-                    NavigationLink(
-                        value: CalendarRoute(roomId: model.roomIdValue, readOnly: model.readOnly)
-                    ) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 16))
-                            .foregroundStyle(WPColor.gray400)
-                            .padding(6)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("캘린더 보기")
-                    .accessibilityIdentifier("main.calendar")
-                }
-                if model.isCompletelyEmpty {
-                    Text("플랜을 추가해볼까요?")
-                        .font(WPFont.hak(14, .medium))
-                        .foregroundStyle(WPColor.gray400)
-                }
-            }
-
-            Spacer(minLength: 0)
-
-            Button(action: onSortTapped) {
-                SmallOutlineButton(
-                    label: model.sort.buttonLabel,
-                    symbol: model.sort.descending ? "arrow.down" : "arrow.up"
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("main.sort")
-
-            Button(action: onAddTapped) {
-                SmallFilledButton(label: "추가", symbol: "plus.circle")
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("main.add")
-        }
-    }
-}
-
-private struct SmallOutlineButton: View {
-    var label: String
-    var symbol: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(label)
-                .font(WPFont.hak(12, .bold))
-                .foregroundStyle(WPColor.stone600)
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(WPColor.stone600)
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 36)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(WPColor.stone200, lineWidth: 2)
-        )
-    }
-}
-
-private struct SmallFilledButton: View {
-    var label: String
-    var symbol: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(label)
-                .font(WPFont.hak(12, .bold))
-                .foregroundStyle(.white)
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 36)
-        .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-}
-
-// MARK: - 탭
-
-/// 웹: `bg-gray-100/50 p-1.5 rounded-2xl border border-gray-100` 안의 세그먼트 2개
-private struct Tabs: View {
-    @ObservedObject var model: MainViewModel
-
-    var body: some View {
-        HStack(spacing: 0) {
-            TabSegment(
-                label: "계획 중",
-                count: model.plannedTotal,
-                selected: model.tab == .planned
-            ) { model.tab = .planned }
-
-            TabSegment(
-                label: "완료",
-                count: model.completedTotal,
-                selected: model.tab == .completed
-            ) { model.tab = .completed }
-        }
-        .padding(6)
-        .background(
-            WPColor.gray100.opacity(0.5),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(WPColor.gray100, lineWidth: 1)
-        )
-    }
-}
-
-private struct TabSegment: View {
-    var label: String
-    var count: Int
-    var selected: Bool
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
+        HStack(spacing: -8) {
+            ForEach(Array(initials.enumerated()), id: \.offset) { _, label in
                 Text(label)
-                    .font(WPFont.hak(14, .black))
-                    .foregroundStyle(selected ? WPColor.primary : WPColor.gray400)
-                Text(verbatim: "\(count)")
-                    .font(WPFont.hak(10))
-                    .foregroundStyle(selected ? WPColor.primary : WPColor.gray500)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        selected ? WPColor.primary.opacity(0.06) : WPColor.gray200,
-                        in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    )
+                    .font(WPFont.hak(11, .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(Color.white.opacity(0.2), in: Circle())
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.5), lineWidth: 2))
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(
-                Group {
-                    if selected {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white)
-                            .shadow(color: .black.opacity(0.06), radius: 1, y: 1)
-                    }
-                }
-            )
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
     }
 }
 
-// MARK: - 리스트
+// MARK: - 카드
 
-private struct EmptyMessage: View {
-    var text: String
-    var size: CGFloat
-
-    var body: some View {
-        Text(text)
-            .font(WPFont.hak(size, .semibold))
-            .foregroundStyle(WPColor.stone400)
-            .frame(maxWidth: .infinity)
-            .frame(height: 220)
-    }
-}
-
-private struct PlanRow: View {
+/// 시안 C안 01 의 카드 — SEED 채움 카드 `rounded-2xl bg-[#f7f8f9] p-4`, 그림자 없음.
+/// 카테고리는 태그가, 언제인지는 날짜와 묶음 머리글이 말한다.
+private struct TaskCard: View {
     var item: ScheduleItem
     var toggling: Bool
     var onToggle: () -> Void
+    var onOpen: () -> Void
+
+    private var checked: Bool { item.status?.isCompleted ?? false }
+    private var dateLabel: String {
+        KstDate(dateString: item.startDate ?? "")?.monthDayWeekText ?? "날짜 미정"
+    }
 
     var body: some View {
-        let checked = item.status?.isCompleted ?? false
-        let status = PlanRules.dateStatus(startDate: item.startDate)
-        let style = statusStyle(status)
-        let dateLabel = item.startDate.flatMap { KstDate(dateString: $0) }?.listDateText ?? "미정"
-        let amount = item.amount ?? 0
+        HStack(alignment: .top, spacing: 12) {
+            // 체크는 진짜 Button 이라 카드의 탭 제스처보다 먼저 먹는다.
+            // 카드를 Button 으로 감싸면 둘 다 눌려 상세가 같이 열린다.
+            CheckCircle(checked: checked, enabled: !toggling, action: onToggle)
+                .padding(.top, 2)
 
-        HStack(spacing: 0) {
-            // 카테고리 색 타일 + 체크박스
-            Button(action: onToggle) {
-                ZStack {
-                    Circle()
-                        .fill(checked ? WPColor.primary : Color.white.opacity(0.8))
-                        .overlay(Circle().stroke(WPColor.primary, lineWidth: 2))
-                        .frame(width: 24, height: 24)
-                    if checked {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .frame(width: 56, height: 56)
-                .background(
-                    Color(hex: PlanRules.categoryColorHex(item.categoryName)),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(toggling)
-
-            Spacer().frame(width: 16)
-
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
-                    .font(WPFont.tmoney(18, .bold))
-                    .foregroundStyle(checked ? WPColor.gray400 : WPColor.textPrimary)
+                    .font(WPFont.tmoney(16, .bold))
+                    .tracking(-0.01 * 16)
+                    .foregroundStyle(checked ? WPColor.fgSubtle : WPColor.fgNeutral)
                     .strikethrough(checked)
                     .lineLimit(1)
-                    .truncationMode(.tail)
 
-                Spacer().frame(height: 2)
-
-                Text(item.categoryName)
-                    .font(WPFont.tmoney(12, .semibold))
-                    .foregroundStyle(WPColor.gray400)
-                    .lineLimit(1)
-
-                Text(dateLabel)
-                    .font(WPFont.tmoney(12, .semibold))
-                    .foregroundStyle(WPColor.gray400)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(amount > 0 ? "\(wpThousands(amount))만 원" : "미정")
-                    .font(WPFont.hak(18, .heavy))
-                    .foregroundStyle(WPColor.textPrimary)
-                    .lineLimit(1)
-
-                Text(status.label)
-                    .font(WPFont.hak(10, .black))
-                    .foregroundStyle(style.foreground)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .background(style.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                HStack(spacing: 8) {
+                    if !item.categoryName.isEmpty {
+                        CategoryTag(name: item.categoryName, done: checked)
+                    }
+                    Text(dateLabel)
+                        .font(WPFont.hak(13))
+                        .foregroundStyle(WPColor.fgMuted)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    AmountText(amount: Double(item.amount ?? 0))
+                }
             }
         }
         .padding(16)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(WPColor.cardBorder, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .opacity(checked ? 0.7 : 1)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
     }
+}
 
-    private func statusStyle(_ status: PlanRules.DateStatus) -> PlanStatusStyle {
-        switch status {
-        case .past: return .past
-        case .today: return .today
-        case .soon: return .soon
-        case .upcoming: return .upcoming
+/// 웹 `flex items-center border-b border-[#0000000c] px-1 py-3.5`
+private struct LaterRow: View {
+    var item: ScheduleItem
+    var onOpen: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(WPFont.hak(14))
+                        .foregroundStyle(WPColor.fgNeutral)
+                        .lineLimit(1)
+                    Text(item.categoryName)
+                        .font(WPFont.hak(12))
+                        .foregroundStyle(WPColor.fgSubtle)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(KstDate(dateString: item.startDate ?? "")?.monthDayText ?? "날짜 미정")
+                    .font(WPFont.hak(13))
+                    .foregroundStyle(WPColor.fgSubtle)
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onOpen)
+
+            Hairline()
         }
+        .padding(.horizontal, 16)
+    }
+}
+
+/// 실제 카드와 **같은 짜임**의 뼈대 — 받는 순간 카드 모양·높이가 바뀌지 않게.
+private struct SkeletonCard: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            SkeletonBox(width: 22, height: 22, corner: 11)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 10) {
+                SkeletonBox(width: 180, height: 18)
+                HStack {
+                    SkeletonBox(width: 120, height: 18)
+                    Spacer(minLength: 8)
+                    SkeletonBox(width: 56, height: 18)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 }
 
@@ -569,10 +414,12 @@ private struct LoginButton: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 64)
-                .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(
+                    WPColor.primary,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
                 .shadow(color: WPColor.primary.opacity(0.27), radius: 12, y: 6)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("main.login")
     }
 }

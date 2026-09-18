@@ -18,8 +18,15 @@ final class MainViewModel: ObservableObject {
     }
 
     @Published var loading = true
+    /// 목록을 **한 번이라도** 받았는지.
+    ///
+    /// 뼈대를 낼지 빈 상태를 낼지 가르는 값이다. `loading` 만 보면 다시 받을 때마다
+    /// 화면이 통째로 뼈대로 돌아가고, 안 보면 **받기 전에 "없다" 고 말하게 된다.**
+    @Published var listLoaded = false
     @Published var name = ""
     @Published var weddingDate: KstDate?
+    /// 예식장 이름. 머리 면에서 날짜 옆에 붙는다. 게스트는 저장할 곳이 없어 늘 빈 값이다.
+    @Published var weddingVenue = ""
     @Published var members: [Member] = []
     /// 이 방에서 내가 읽기 전용인지. 캘린더의 플랜 추가 버튼을 감출지 판단에 쓴다.
     @Published var readOnly = false
@@ -28,7 +35,10 @@ final class MainViewModel: ObservableObject {
     @Published var remainingBudget = 0
     @Published var tab: Tab = .planned
     /// 정렬. 바꾸면 서버에서 다시 받아온다 (정렬은 백엔드가 한다).
-    @Published var sort: SortOption = .default
+    /// **다가오는 순**이 기본이다(웹 main C안에서 `date_desc` → `date_asc`).
+    /// 최신순이면 지난 일정이 목록 맨 아래에 묻힌다. 폰 홈에는 정렬 버튼이 없어
+    /// 사실상 이 값이 고정이다 — `SortOption.default`(최신순)와 다른 이유다.
+    @Published var sort: SortOption = .dateAsc
     @Published var planned: [ScheduleItem] = []
     @Published var completed: [ScheduleItem] = []
     @Published var plannedTotal = 0
@@ -40,6 +50,7 @@ final class MainViewModel: ObservableObject {
     @Published var isGuest = false
 
     private var roomId: String?
+    private var planUserId: String?
 
     /// 플랜 추가 화면에 그대로 넘겨야 같은 방에 저장된다.
     /// 빼면 개인 스코프로 저장돼 200 인데 목록에 영영 안 나온다.
@@ -56,6 +67,69 @@ final class MainViewModel: ObservableObject {
 
     var dDayLabel: String {
         PlanRules.dDayLabel(weddingDate: weddingDate)
+    }
+
+    /// 머리 면의 두 줄 문장.
+    var dDaySentence: (String, String) {
+        PlanRules.dDaySentence(weddingDate: weddingDate)
+    }
+
+    /// 방을 보고 있는지. `roomId` 가 붙어 있으면 그 방 기준으로 읽는다.
+    var isRoomView: Bool { roomId?.isEmpty == false }
+
+    /// 내 권한. 방을 보고 있지 않으면 알 수 없다(`nil`).
+    var myPermission: PlanPermission? {
+        guard isRoomView, let planUserId else { return nil }
+        return members.first { $0.planUserId == planUserId }?.permission
+    }
+
+    /// 쓰기가 가능한지. `READ` 면 추가 버튼을 감춘다 —
+    /// **눌러야만 실패를 아는 버튼은 두지 않는다.**
+    var canWrite: Bool { !readOnly }
+
+    /// 머리글에 낼 이름 — 웹 `coupleDisplayName`.
+    ///
+    /// **커플 플랜이면 두 사람을 함께 적는다**(`방장 · 배우자`). 귀속된 뒤에는 이
+    /// 플랜이 둘의 것이라, 방장 이름만 띄우면 들어온 사람은 계속 남의 플랜에
+    /// 얹혀 있는 것처럼 읽힌다.
+    var displayName: String {
+        guard isRoomView else { return name }
+        let owner = members.first { $0.permission == .owner }?.name
+            .trimmingCharacters(in: .whitespaces) ?? ""
+        let spouse = members.first { $0.permission.rawValue == "SPOUSE" }?.name
+            .trimmingCharacters(in: .whitespaces) ?? ""
+        guard !owner.isEmpty, !spouse.isEmpty else { return name }
+        return "\(owner) · \(spouse)"
+    }
+
+    /// 머리 면의 작은 아바타. 최대 두 개.
+    ///
+    /// 이름을 `·` 로 쪼갠다("지수 · 현우" → 지, 현). 왕관·하트 배지는 달지 않는다 —
+    /// 26pt 위에서 안 읽히고, 누가 방장인지는 멤버 목록이 말한다.
+    var headerInitials: [String] {
+        displayName
+            .split(whereSeparator: { "·・,".contains($0) })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .prefix(2)
+            .map { String($0.prefix(1)) }
+    }
+
+    /// 홈의 두 묶음 — `이번 달에 할 일` / `그 다음`.
+    ///
+    /// 카테고리 칩을 걷고 **계획 중 목록을 시간으로만** 가른다. 완료한 것을 되짚거나
+    /// 카테고리로 좁혀 보는 일은 "전체"(캘린더)가 맡는다.
+    func timeBuckets(today: KstDate) -> (thisMonth: [ScheduleItem], later: [ScheduleItem]) {
+        var now: [ScheduleItem] = []
+        var later: [ScheduleItem] = []
+        for item in planned {
+            if PlanRules.isThisMonthOrPast(startDate: item.startDate, today: today) {
+                now.append(item)
+            } else {
+                later.append(item)
+            }
+        }
+        return (now, later)
     }
 
     var usagePercent: Int {
@@ -83,6 +157,7 @@ final class MainViewModel: ObservableObject {
             completed = []
             plannedTotal = 0
             completedTotal = 0
+            listLoaded = true
             return
         }
 
@@ -94,10 +169,11 @@ final class MainViewModel: ObservableObject {
             let user = try await env.api.send(Endpoint.user(), decoding: PlanUser.self)
             roomId = user.roomId.map(String.init)
             name = user.name ?? ""
+            weddingVenue = user.weddingVenue ?? ""
             weddingDate = user.weddingDate.flatMap { KstDate(dateString: $0) }
             members = user.members ?? []
             let token = await env.tokenStore.currentToken()
-            let planUserId = token.flatMap { JWTDecoder.planUserId(from: $0) }
+            planUserId = token.flatMap { JWTDecoder.planUserId(from: $0) }
             readOnly = PlanRules.isReadOnly(members: members, planUserId: planUserId)
         } catch let error as APIError {
             if error.requiresReauthentication {
@@ -154,7 +230,13 @@ final class MainViewModel: ObservableObject {
             completed = ScheduleSort.sorted(completedPage.list, by: sort.column, descending: sort.descending)
             completedTotal = completedPage.total
         }
+
+        // 한 번이라도 받았으면 다시 받을 때 화면을 뼈대로 되돌리지 않는다.
+        if plannedPage != nil || completedPage != nil { listLoaded = true }
     }
+
+    /// 받기 전에 "없다" 고 말하지 않기 위한 값. 뼈대를 낼 조건이다.
+    var planLoading: Bool { loading && !listLoaded }
 
     /// 정렬을 바꾸고 목록을 다시 받아온다.
     func setSort(_ option: SortOption, env: AppEnvironment, guest: GuestStore) async {

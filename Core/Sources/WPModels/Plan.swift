@@ -21,11 +21,25 @@ public struct PlanPermission: RawRepresentable, Codable, Hashable, Sendable {
         try container.encode(rawValue)
     }
 
+    /// 방장.
     public static let owner = PlanPermission(rawValue: "OWNER")
+    /// 신랑·신부. **초대를 수락하면 그 방이 내 플랜이 된다**(귀속).
+    /// 부부는 결혼식을 두 번 하지 않으므로, 배우자는 방장의 플랜을 곁들여 보는 게
+    /// 아니라 그 플랜을 자기 플랜으로 쓴다.
+    public static let spouse = PlanPermission(rawValue: "SPOUSE")
+    /// 정책 이전의 기본값. 새로 생기지 않지만 **일괄 강등하지 않았다** —
+    /// 운영 데이터의 권한을 조용히 뺏지 않는다.
     public static let write = PlanPermission(rawValue: "WRITE")
+    /// 조언자. 남의 플랜을 같이 보며 거드는 자리라 편집만 못 한다.
+    /// **대화는 한다** — 채팅 전송에 권한 검사를 넣지 말 것.
     public static let read = PlanPermission(rawValue: "READ")
 
-    public var canEdit: Bool { self == .owner || self == .write }
+    /// 플랜(일정·예산)을 고칠 수 있는지.
+    ///
+    /// **"`READ` 면 거절" 형태로 쓴다.** 긍정으로 열거(`owner || write`)하면 권한이
+    /// 늘어날 때마다 여기를 같이 고쳐야 하고, 실제로 `SPOUSE` 가 생겼을 때 이 줄이
+    /// 빠져서 **배우자가 자기 플랜을 못 고쳤다.** 백엔드 게이트도 전부 이 형태다.
+    public var canEdit: Bool { self != .read }
 }
 
 /// 플랜/채팅방 멤버.

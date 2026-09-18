@@ -8,6 +8,12 @@ public struct PlanUser: Codable, Hashable, Sendable {
     public var id: String?
     public var name: String?
     public var weddingDate: String?
+    /// 예식장 이름. `/user` 프로필 화면에서만 입력하고 온보딩은 묻지 않는다.
+    ///
+    /// 홈 머리 면에서 결혼식 날짜 옆에 `· 예식장` 으로 붙는다.
+    /// - Important: 백엔드는 **보낸 경우에만** 반영한다. 안 그러면 온보딩을 다시
+    ///   저장할 때마다 값이 지워진다.
+    public var weddingVenue: String?
     /// 백엔드가 문자열 숫자를 보내는 경우가 있어 관대하게 디코딩한다.
     @LooseInt public var budget: Int?
     public var roomId: Int?
@@ -23,6 +29,7 @@ public struct PlanUser: Codable, Hashable, Sendable {
         id: String? = nil,
         name: String? = nil,
         weddingDate: String? = nil,
+        weddingVenue: String? = nil,
         budget: Int? = nil,
         roomId: Int? = nil,
         members: [Member]? = nil,
@@ -36,6 +43,7 @@ public struct PlanUser: Codable, Hashable, Sendable {
         self.id = id
         self.name = name
         self.weddingDate = weddingDate
+        self.weddingVenue = weddingVenue
         self._budget = LooseInt(wrappedValue: budget)
         self.roomId = roomId
         self.members = members
