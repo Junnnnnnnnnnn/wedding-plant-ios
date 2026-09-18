@@ -24,6 +24,41 @@ import WPUtils
 /// **아직 안 옮긴 것** — 각각 iOS 에 없는 부품에 묶여 있다.
 /// 가이드 오버레이(머리 면의 `?`), 초대 띠(`SoloPlanBanner`), 자랑하기 토글.
 /// 눌러도 아무 일이 없는 버튼을 미리 두지 않는다.
+/// 웹 `MOBILE_GUIDE_STEPS` 와 **문구·순서가 같아야 한다.**
+///
+/// **앵커를 지우거나 이름을 바꾸지 말 것.** 대상을 못 찾으면 스팟라이트가 0×0 으로
+/// 붕괴해 화면만 까맣게 덮인다(웹에서 실제로 그랬다).
+let mainGuideSteps: [GuideStep] = [
+    GuideStep(
+        id: "main-header-info",
+        title: "기본 정보",
+        description: "신랑신부님의 이름과 D-day, 그리고 함께 관리하는 멤버를 확인할 수 있어요."
+    ),
+    GuideStep(
+        id: "main-budget-card",
+        title: "예산 현황",
+        description: "전체 예산 대비 현재까지의 지출 현황을 한눈에 파악하세요."
+    ),
+    GuideStep(
+        id: "main-this-month",
+        title: "이번 달에 할 일",
+        description: "이번 달 안에 해야 할 일만 모아 둡니다. 지난 일정도 여기 맨 위에 남아요.",
+        tooltipAbove: true
+    ),
+    GuideStep(
+        id: "main-plan-list",
+        title: "그 다음",
+        description: "앞으로 할 일과 날짜를 안 정한 일이 이어집니다. 동그라미를 누르면 완료로 바뀌어요.",
+        tooltipAbove: true
+    ),
+    GuideStep(
+        id: "main-bottom-nav",
+        title: "네비게이션",
+        description: "다른 메뉴로 빠르게 이동할 수 있는 하단 메뉴바입니다.",
+        tooltipCenter: true
+    ),
+]
+
 struct MainView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
@@ -33,6 +68,7 @@ struct MainView: View {
     /// `/plan/brag/my` 를 홈이 다시 그릴 때마다 또 부르지 않도록 하나로 들고 있는다.
     @StateObject private var bragToggle = BragToggleViewModel()
     @State private var showInvite = false
+    @EnvironmentObject private var guide: GuideController
 
     /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
     @State private var today = KstDate.today()
@@ -66,8 +102,10 @@ struct MainView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 8)
+                    .guideAnchor("main-this-month")
 
                     listSection(buckets)
+                        .guideAnchor("main-plan-list")
 
                     // 웹: 비로그인일 때만 목록 아래에 노출
                     if model.isGuest {
@@ -233,6 +271,7 @@ struct MainView: View {
                     }
                 }
                 .accessibilityIdentifier("main.budget")
+                .guideAnchor("main-budget-card")
             }
         }
     }
