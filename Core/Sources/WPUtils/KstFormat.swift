@@ -153,3 +153,37 @@ public enum KstInstant {
         return String(format: "%@ %d:%02d", meridiem, display, minute)
     }
 }
+
+// MARK: - 일정의 시각 (startTime)
+
+/// 웹 `lib/utils.ts` 의 `formatKoreanTime()` — `"11:00"` → `"오전 11:00"`.
+///
+/// 일정은 날짜(`startDate`)와 시각(`startTime`)을 **따로** 갖고, 시각은 선택이다.
+/// 값이 없거나 형식이 아니면 **빈 문자열**을 돌려주므로 호출부는
+/// `let t = formatKoreanTime(x); if !t.isEmpty { ... }` 로 걸러 쓴다.
+///
+/// - Note: 표시는 이 함수 하나로 통일한다. 화면마다 따로 조립하면
+///   "오전 11:00" 과 "11:00" 이 섞인다.
+public func formatKoreanTime(_ time: String?) -> String {
+    guard let trimmed = time?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else {
+        return ""
+    }
+    let parts = trimmed.split(separator: ":", omittingEmptySubsequences: false)
+    guard parts.count == 2 else { return "" }
+
+    let hourText = String(parts[0])
+    let minuteText = String(parts[1])
+
+    // 웹 정규식 `^(\d{1,2}):(\d{2})$` 와 같은 조건.
+    func isASCIIDigits(_ text: String) -> Bool {
+        !text.isEmpty && text.allSatisfy { $0.isASCII && $0.isNumber }
+    }
+    guard (1...2).contains(hourText.count), isASCIIDigits(hourText),
+          minuteText.count == 2, isASCIIDigits(minuteText),
+          let hour = Int(hourText), (0...23).contains(hour)
+    else { return "" }
+
+    let meridiem = hour < 12 ? "오전" : "오후"
+    let hour12 = hour % 12 == 0 ? 12 : hour % 12
+    return "\(meridiem) \(hour12):\(minuteText)"
+}

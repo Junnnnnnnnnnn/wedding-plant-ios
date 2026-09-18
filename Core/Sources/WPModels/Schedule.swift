@@ -64,6 +64,22 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
     public var memo: String?
     public var payType: PayType?
     public var addCategoryNameList: [String]?
+    /// 돈이 나갔는지의 원값. **직접 읽지 말 것** — 판단은 `isPaid`(SchedulePayable).
+    public var isPaidRaw: Bool?
+    /// 시각. `"HH:mm"`. **선택 값이라 비어 있는 게 기본**이다.
+    ///
+    /// `startDate` 는 `date` 컬럼이라 시각이 들어가지 않아 별도 컬럼으로 뒀다.
+    /// 표시는 `formatKoreanTime()` 하나로 통일한다.
+    public var startTime: String?
+
+    /// 저장 프로퍼티 이름이 `isPaidRaw` 라 합성 키로는 `isPaid` 를 못 읽는다.
+    /// 여기를 고칠 때 **키 문자열을 반드시 백엔드 필드명과 맞출 것.**
+    enum CodingKeys: String, CodingKey {
+        case id, categoryName, title, amount, startDate, createDate, status
+        case location, locationLat, locationLng, memo, payType, addCategoryNameList
+        case isPaidRaw = "isPaid"
+        case startTime
+    }
 
     /// 게스트(비로그인) 로컬 항목 여부.
     ///
@@ -84,7 +100,9 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         locationLng: Double? = nil,
         memo: String? = nil,
         payType: PayType? = nil,
-        addCategoryNameList: [String]? = nil
+        addCategoryNameList: [String]? = nil,
+        isPaid: Bool? = nil,
+        startTime: String? = nil
     ) {
         self.id = id
         self.categoryName = categoryName
@@ -99,6 +117,8 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         self.memo = memo
         self.payType = payType
         self.addCategoryNameList = addCategoryNameList
+        self.isPaidRaw = isPaid
+        self.startTime = startTime
     }
 
     public init(from decoder: any Decoder) throws {
@@ -117,7 +137,13 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         self.memo = try container.decodeIfPresent(String.self, forKey: .memo)
         self.payType = try container.decodeIfPresent(PayType.self, forKey: .payType)
         self.addCategoryNameList = try container.decodeIfPresent([String].self, forKey: .addCategoryNameList)
+        self.isPaidRaw = try container.decodeIfPresent(Bool.self, forKey: .isPaidRaw)
+        self.startTime = try container.decodeIfPresent(String.self, forKey: .startTime)
     }
+}
+
+extension ScheduleItem: SchedulePayable {
+    public var statusRawValue: String? { status?.rawValue }
 }
 
 /// `GET /plan/schedule/list` 응답 페이로드.
@@ -163,6 +189,12 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
     /// 값은 `GET /plan/user` 응답의 `roomId` 를 쓴다. 수정(PATCH)에는 붙이지 않는다.
     public var roomId: Int?
     public var addCategoryNameList: [String]?
+    /// 돈이 나갔는지. 등록 폼의 **금액 바로 아래** 체크(`이미 결제했어요`)다.
+    /// 완료 토글과는 다른 축이라 거기 섞지 않는다.
+    public var isPaid: Bool?
+    /// 시각 `"HH:mm"`. **지우려면 빈 문자열을 보낸다** —
+    /// 키를 빼면 PATCH 시맨틱상 "변경 없음" 이라 기존 시각이 남는다.
+    public var startTime: String?
 
     public init(
         categoryName: String,
@@ -175,7 +207,9 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
         locationLng: Double = 0,
         memo: String = "",
         roomId: Int? = nil,
-        addCategoryNameList: [String]? = nil
+        addCategoryNameList: [String]? = nil,
+        isPaid: Bool? = nil,
+        startTime: String? = nil
     ) {
         self.categoryName = categoryName
         self.title = title
@@ -188,6 +222,8 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
         self.memo = memo
         self.roomId = roomId
         self.addCategoryNameList = addCategoryNameList
+        self.isPaid = isPaid
+        self.startTime = startTime
     }
 
     /// 합성 인코딩은 `Optional` 이 nil 이면 **키를 통째로 생략**한다.
@@ -215,6 +251,11 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
 
         try container.encodeIfPresent(roomId, forKey: .roomId)
         try container.encodeIfPresent(addCategoryNameList, forKey: .addCategoryNameList)
+
+        // 둘 다 "보낸 필드만 바꾼다" 규칙을 탄다. nil 이면 키가 빠져 변경 없음이고,
+        // 시각을 지우려면 호출부가 빈 문자열을 넣어 준다.
+        try container.encodeIfPresent(isPaid, forKey: .isPaid)
+        try container.encodeIfPresent(startTime, forKey: .startTime)
     }
 
     /// 로컬 게스트 일정을 백엔드 등록 바디로 변환한다.
@@ -235,7 +276,9 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
             locationLng: item.locationLng ?? 0,
             memo: item.memo ?? "",
             roomId: roomId,
-            addCategoryNameList: categories.isEmpty ? nil : categories
+            addCategoryNameList: categories.isEmpty ? nil : categories,
+            isPaid: item.isPaidRaw,
+            startTime: item.startTime
         )
     }
 }

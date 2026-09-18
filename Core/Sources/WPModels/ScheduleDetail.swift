@@ -16,6 +16,18 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
     public var addCategoryNameList: [String]
     /// `"NORMAL"` = 예정, `"COMPLETED"` = 완료
     public var status: String?
+    /// 돈이 나갔는지의 원값. **직접 읽지 말 것** — 판단은 `isPaid`(SchedulePayable).
+    public var isPaidRaw: Bool?
+    /// 시각 `"HH:mm"`. 없으면 표시 자체를 내지 않는다.
+    public var startTime: String?
+
+    /// 저장 프로퍼티가 `isPaidRaw` 라 합성 키로는 `isPaid` 를 못 읽는다.
+    enum CodingKeys: String, CodingKey {
+        case id, title, categoryName, payType, amount, startDate
+        case location, locationLat, locationLng, memo, addCategoryNameList, status
+        case isPaidRaw = "isPaid"
+        case startTime
+    }
 
     public var isCompleted: Bool { status == "COMPLETED" }
 
@@ -58,7 +70,9 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         locationLng: Double? = nil,
         memo: String? = nil,
         addCategoryNameList: [String] = [],
-        status: String? = nil
+        status: String? = nil,
+        isPaid: Bool? = nil,
+        startTime: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -72,6 +86,8 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         self.memo = memo
         self.addCategoryNameList = addCategoryNameList
         self.status = status
+        self.isPaidRaw = isPaid
+        self.startTime = startTime
     }
 
     public init(from decoder: any Decoder) throws {
@@ -88,5 +104,11 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         self.memo = try container.decodeIfPresent(String.self, forKey: .memo)
         self.addCategoryNameList = try container.decodeIfPresent([String].self, forKey: .addCategoryNameList) ?? []
         self.status = try container.decodeIfPresent(String.self, forKey: .status)
+        self.isPaidRaw = try container.decodeIfPresent(Bool.self, forKey: .isPaidRaw)
+        self.startTime = try container.decodeIfPresent(String.self, forKey: .startTime)
     }
+}
+
+extension ScheduleDetail: SchedulePayable {
+    public var statusRawValue: String? { status }
 }
