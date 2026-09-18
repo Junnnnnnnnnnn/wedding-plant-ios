@@ -115,6 +115,29 @@ final class MainViewModel: ObservableObject {
             .map { String($0.prefix(1)) }
     }
 
+    /// 방에 배우자가 있는지.
+    var hasSpouse: Bool {
+        members.contains { $0.permission == .spouse }
+    }
+
+    /// 초대 띠를 낼지 — 웹 `showSoloBanner`.
+    ///
+    /// - Important: **`myPermission` 만으로 판단하면 안 된다.** 내 플랜은 `roomId`
+    ///   가 아직 없을 수 있고(`isRoomView` false), 그러면 권한이 비어 "OWNER 가
+    ///   아님" 으로 떨어져 띠가 **영영 안 뜬다.**
+    ///   "방을 보고 있지 않으면 내 플랜" 이 맞다.
+    ///
+    /// 남의 플랜을 보는 중이면 방장이 아니므로 내지 않는다 — 남의 플랜에
+    /// "부르기" 가 뜨면 안 된다.
+    ///
+    /// **자랑하기(`canBrag`)와 규칙이 갈리는 지점이다** — 배우자를 지정하는 일은
+    /// 방장만 하지만, 자기 결혼을 자랑하는 건 둘 다 한다.
+    var showSoloBanner: Bool {
+        guard !isGuest, listLoaded, !hasSpouse else { return false }
+        guard isRoomView else { return true }
+        return myPermission == .owner
+    }
+
     /// 자랑하기 토글을 낼지 — 웹 `canBrag`.
     ///
     /// 남의 방·공유 뷰면 자랑할 대상이 아니다. **배우자도 자랑할 수 있다** —

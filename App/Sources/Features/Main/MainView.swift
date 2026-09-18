@@ -32,6 +32,7 @@ struct MainView: View {
     @State private var showAddPlan = false
     /// `/plan/brag/my` 를 홈이 다시 그릴 때마다 또 부르지 않도록 하나로 들고 있는다.
     @StateObject private var bragToggle = BragToggleViewModel()
+    @State private var showInvite = false
 
     /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
     @State private var today = KstDate.today()
@@ -119,6 +120,10 @@ struct MainView: View {
         .navigationDestination(for: BragRoute.self) { _ in
             BragView()
         }
+        .sheet(isPresented: $showInvite) {
+            SpouseInviteSheet()
+                .environmentObject(env)
+        }
         .fullScreenCover(isPresented: $showAddPlan) {
             AddPlanView(roomId: model.roomIdValue) {
                 Task { await model.load(env: env, guest: guest) }
@@ -167,6 +172,12 @@ struct MainView: View {
                     .font(WPFont.hak(14))
                     .foregroundStyle(.white.opacity(0.8))
                     .lineLimit(1)
+            }
+
+            // 온보딩에서 초대를 건너뛴 자리 — 배우자가 들어오면 사라진다.
+            if model.showSoloBanner && !model.planLoading {
+                Spacer().frame(height: 16)
+                SoloPlanBanner { showInvite = true }
             }
 
             Spacer().frame(height: 16)

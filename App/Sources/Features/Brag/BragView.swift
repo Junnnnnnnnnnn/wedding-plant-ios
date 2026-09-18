@@ -189,6 +189,9 @@ struct BragCard: View {
         )
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
+        // `children: .contain` 이 없으면 XCUITest 가 `otherElements` 로 못 찾는다 —
+        // 식별자만 붙여 두면 하네스가 카드를 잡지 못해 상세가 안 찍힌다.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("brag.card")
     }
 

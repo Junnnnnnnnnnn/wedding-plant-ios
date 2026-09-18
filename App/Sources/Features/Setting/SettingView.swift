@@ -527,13 +527,6 @@ private struct InviteStep: View {
     }
 }
 
-/// 시스템 공유 시트. 초대 링크를 카카오톡·메시지로 보낸다.
-private struct ActivityShareSheet: UIViewControllerRepresentable {
-    var items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}
+// 공유 시트는 `SpouseInviteSheet.swift` 의 `ActivityShareSheet` 를 함께 쓴다.
+// 여기 private 사본을 두면 **모듈 범위에서 재선언으로 잡혀 빌드가 깨진다** —
+// 파일 private 이어도 내부의 internal 선언과 이름이 겹치면 안 된다.
