@@ -82,6 +82,55 @@ enum WPColor {
         (Color(hex: 0x0EA5E9), Color(hex: 0x7DD3FC)),
     ]
 
+    // MARK: - 모바일 C안 (웹 main `docs/concepts/c-tokens.css`)
+    //
+    // 당근 SEED 의 중립 램프·레이어를 그대로 가져온 값이다. 폰 화면은
+    // **"분홍 머리 면 + 흰 시트 + 회색 채움 카드 + 헤어라인"** 으로만 짠다.
+    //
+    // C안 규칙 넷:
+    //  1. 분홍 면은 **화면 맨 위 한 덩이**뿐. 본문에 분홍 면을 또 두지 않는다.
+    //  2. 면에는 그 화면에서 **변하지 않는 사실**만 — 누구의 플랜인지, 언제인지, 지금 얼마인지.
+    //  3. 본문의 분홍은 **누를 것**에만 — 주 버튼, 활성 탭, 선택된 칩.
+    //  4. 나머지는 SEED 중립 — 회색 채움 카드와 헤어라인.
+    //
+    // 안드로이드 `WpColors` 와 같은 값이다. 한쪽만 고치면 두 앱이 갈린다.
+
+    /// SEED `bg-layer-fill` — 회색 채움 카드·입력 칸. 웹 `#f7f8f9`
+    static let fill = Color(hex: 0xF7F8F9)
+    /// SEED `bg-neutral-weak-pressed`. 웹 `#eeeff1`
+    static let fillPressed = Color(hex: 0xEEEFF1)
+    /// SEED `bg-layer-basement` / `bg-neutral-weak`. 웹 `#f3f4f5`
+    static let basement = Color(hex: 0xF3F4F5)
+    /// SEED `fg-neutral`. 웹 `#1a1c20`
+    static let fgNeutral = Color(hex: 0x1A1C20)
+    /// SEED `fg-neutral-muted`. 웹 `#555d6d`
+    static let fgMuted = Color(hex: 0x555D6D)
+    /// SEED `fg-neutral-subtle`. 웹 `#868b94` — 탭바 비활성도 이 값
+    static let fgSubtle = Color(hex: 0x868B94)
+    /// SEED `fg-neutral-disabled`. 웹 `#d1d3d8`
+    static let fgDisabled = Color(hex: 0xD1D3D8)
+    /// SEED `stroke-neutral-weak`. 웹 `#dcdee3`
+    static let strokeWeak = Color(hex: 0xDCDEE3)
+    /// SEED `stroke-neutral-muted`. 웹 `#00000010` — 탭바 위 경계선
+    static let strokeMuted = Color(hex: 0x10000000)
+    /// SEED `stroke-neutral-subtle`. 웹 `#0000000c` — 구분선 목록
+    static let strokeSubtle = Color(hex: 0x0C000000)
+    /// 브랜드 램프. 웹 `#fff1f7` — 카테고리 태그 바탕
+    static let brand100 = Color(hex: 0xFFF1F7)
+    static let brand200 = Color(hex: 0xFFE3EF)
+    /// 웹 `#ffc9e0` — 미완료 체크 테두리
+    static let brand300 = Color(hex: 0xFFC9E0)
+    /// 웹 `#cc1873` — 태그 글자·pressed
+    static let brand700 = Color(hex: 0xCC1873)
+    /// SEED `fg-positive`. 웹 `#079171` — 완료 체크
+    static let positive = Color(hex: 0x079171)
+    static let positiveWeak = Color(hex: 0xEDFAF6)
+    /// SEED `fg-critical`. 웹 `#fa342c` — 일요일·삭제
+    static let critical = Color(hex: 0xFA342C)
+    static let criticalWeak = Color(hex: 0xFDF0F0)
+    /// SEED `fg-informative`. 웹 `#217cf9` — 토요일
+    static let informative = Color(hex: 0x217CF9)
+
     /// 일정 상태 뱃지 배경
     static func statusBackground(_ status: PlanStatusStyle) -> Color { status.background }
     static func statusForeground(_ status: PlanStatusStyle) -> Color { status.foreground }
