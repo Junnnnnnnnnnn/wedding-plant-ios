@@ -60,14 +60,21 @@ iOS: \(system)
     }
 
     /// `iPhone15,2` 같은 하드웨어 식별자. 시뮬레이터에서는 호스트 맥의 값이 온다.
+    ///
+    /// `machine` 은 고정 길이 C 배열이라 스위프트에서는 튜플로 온다. 바이트를
+    /// 직접 읽어 첫 NUL 앞까지 자른다 — 뒤는 전부 0 패딩이라 그대로 문자열로
+    /// 만들면 눈에 안 보이는 NUL 이 메일 본문에 따라 들어간다.
+    ///
+    /// **클로저 안에서 `info.machine` 을 다시 읽지 말 것.** `withUnsafePointer(to:)`
+    /// 가 이미 배타적으로 잡고 있어서 크기를 구하려고 한 번 더 건드리면
+    /// "overlapping accesses" 로 빌드가 깨진다(실제로 깨졌다). 버퍼가 자기 길이를
+    /// 알고 있으므로 따로 셀 필요가 없다.
     private static var hardwareIdentifier: String {
         var info = utsname()
         uname(&info)
-        let machine = withUnsafePointer(to: &info.machine) { pointer in
-            pointer.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: info.machine)) {
-                String(validatingUTF8: $0)
-            }
+        let machine = withUnsafeBytes(of: &info.machine) { raw in
+            String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
         }
-        return machine ?? "알 수 없음"
+        return machine.isEmpty ? "알 수 없음" : machine
     }
 }

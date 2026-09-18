@@ -33,6 +33,7 @@
 | **자랑하기** | 목록 + 상세 모달 + 홈 토글 |
 | 프로필 `/user` | 라벨을 상자 밖 위로, 저장 버튼 `저장` |
 | 참여 플랜 | 이름·D-day → 남은 예산 → 대화 순서, 홈과 같은 막대 |
+| **문의하기** | 프로필 맨 아래 메뉴 줄(시안 B안) — 밑줄 두 개에서 옮겨 왔다 |
 
 ### 곁들여 붙은 것
 
@@ -77,6 +78,17 @@
 
 ---
 
+## 문의 주소는 세 곳이 같아야 한다
+
+`support@weddingplant.app` — 웹 `lib/legal.ts` 의 `LEGAL_INFO.contactEmail`,
+안드로이드 `AppConfig.supportEmail`, iOS `AppConfig.supportEmail`.
+**갈라지면 한쪽으로 온 문의를 아무도 안 본다** (iOS 만 개인 지메일이었다).
+메일 제목 `[웨딩 플랜트] 문의` 도 셋이 같다 — 받는 쪽 메일함 규칙으로 거르는
+값이라 다르면 한쪽이 규칙에 안 걸린다.
+
+App Store Connect 의 **지원 URL**(지침 1.5)과 지원 연락처에도 같은 값을 넣는다.
+주소 자체는 Cloudflare Email Routing 이 개인 메일함으로 전달한다.
+
 ## 검사 도구
 
 - **`swiftc -frontend -parse <파일>`** — 구문만 본다. Windows 에서 App 타깃은
@@ -90,7 +102,7 @@
 `concurrency: cancel-in-progress` 라 **CI 가 도는 중에 또 밀면 이전 실행이 취소**된다.
 결과를 볼 거면 끝난 뒤에 밀 것.
 
-### 푸시 전에 돌리는 감사 둘
+### 푸시 전에 돌리는 감사 둘 — `python scripts/audit.py`
 
 교차 파일 문제는 파일 단위 구문 검사로 안 잡혀 **CI 왕복을 두 번 썼다.**
 그 뒤로는 푸시 전에 이 둘을 돌린다.
@@ -99,7 +111,13 @@
    잡힌다. `SectionHeader`(UserView) 와 `ActivityShareSheet`(SettingView) 가 그랬다.
 2. **모듈 심볼 사용처 ↔ import 대조** — `BrandSheet` 의 `WPUtils`,
    `FeedDetailView` 의 `WPNetworking`, `AppEnvironment` 의 `WPUtils` 가 그랬다.
-   **패턴에 심볼을 빠뜨리면 감사가 통과해도 CI 가 깨진다**(`JWTDecoder` 로 겪었다).
+   **심볼 목록을 손으로 적지 않는다** — 빠뜨리면 감사가 통과해도 CI 가 깨진다
+   (`JWTDecoder` 로 겪었다). `Core/Sources/<모듈>` 의 `public` 선언에서 뽑는다.
+
+**거짓 경고를 남기지 말 것.** 최상위 선언만, 주석은 빼고 센다 — 안 그러면
+중첩된 `Tab` 두 개와 주석 속 `GuestMigration` 이 잡히고, 그런 게 쌓이면 아무도
+감사를 안 본다. `WPFont` 는 Core 가 아니라 `DesignSystem` 에 있다.
+일부러 깨뜨려 둘 다 잡히는 것을 확인했다.
 
 ### UI 테스트가 멈추는 함정
 
