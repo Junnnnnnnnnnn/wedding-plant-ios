@@ -109,24 +109,15 @@ struct UserView: View {
                 Task { await model.save(env: env, guest: guest) }
             }
 
-            Spacer().frame(height: 32)
+            Spacer().frame(height: 18)
 
-            // 개인정보처리방침은 **로그인 여부와 상관없이 항상** 보여야 한다. 앱 안에
-            // 접근 경로가 있는지를 심사에서 본다 (안드로이드도 같은 자리에 둔다).
-            HStack(spacing: 14) {
-                Spacer(minLength: 0)
-                Link("개인정보처리방침", destination: AppLinks.privacyPolicy)
-                    .accessibilityIdentifier("user.privacy")
-                Text("·")
-                // 사용자가 막혔을 때 나갈 길. 심사자도 지원 경로를 여기서 본다.
-                Link("문의하기", destination: AppLinks.support)
-                    .accessibilityIdentifier("user.support")
-                Spacer(minLength: 0)
-            }
-            .font(WPFont.hak(12, .regular))
-            .underline()
-            .foregroundStyle(WPColor.gray400)
-            .padding(4)
+            // 문의하기 · 개인정보처리방침.
+            //
+            // 방침은 **로그인 여부와 상관없이 항상** 보여야 한다 — 앱 안에 접근
+            // 경로가 있는지를 심사에서 본다. 문의는 쓰다가 막힌 사람이 닿는
+            // 유일한 자리다. 모양과 문구는 `SupportLinks` 에 있고 웹·안드로이드와
+            // 같은 시안(B안)이다.
+            SupportLinks()
 
             Spacer().frame(height: 16)
 

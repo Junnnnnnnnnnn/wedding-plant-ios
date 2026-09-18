@@ -22,12 +22,19 @@ enum AppConfig {
         return trimmed.isEmpty ? "https://weddingplant.app" : trimmed
     }()
 
-    /// 문의 메일 주소.
+    /// 문의 받을 주소.
+    ///
+    /// 웹 `lib/legal.ts` 의 `LEGAL_INFO.contactEmail`, 안드로이드 `AppConfig.supportEmail`
+    /// 과 **같아야 한다** — 갈라지면 한쪽으로 온 문의를 아무도 안 본다.
+    ///
+    /// **개인 메일 주소를 쓰지 않는다.** Cloudflare Email Routing 이 이 주소를 개인
+    /// 메일함으로 전달하므로, 사람이 바뀌어도 주소는 그대로다. App Store Connect 의
+    /// 지원 연락처에도 같은 값을 넣는다.
     ///
     /// 애플이 **필수로 요구하는 것은 App Store Connect 의 지원 URL**(지침 1.5)이고
     /// 앱 안의 문의 버튼 자체가 지침 항목은 아니다. 다만 계정이 있는 앱은 심사자가
     /// 지원 경로를 확인하는 경우가 있고, 사용자가 막혔을 때 나갈 길이 생긴다.
-    static let supportEmail = "seoulmomenttw@gmail.com"
+    static let supportEmail = "support@weddingplant.app"
 
     /// 개인정보처리방침. 웹의 공개 페이지를 그대로 쓴다.
     ///

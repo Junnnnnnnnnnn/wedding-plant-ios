@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// 앱에서 여는 웹 주소.
 ///
@@ -17,29 +18,56 @@ enum AppLinks {
     /// **앱 안에 접근 경로가 있는지를 심사에서 본다.**
     static var privacyPolicy: URL { webBase.appendingPathComponent("privacy") }
 
-    /// 문의하기.
+    /// 문의하기 메일.
     ///
-    /// 애플이 **필수로 요구하는 것은 App Store Connect 의 지원 URL**(지침 1.5)이고
-    /// 앱 안의 문의 버튼 자체가 지침 항목은 아니다. 다만 계정이 있는 앱은 심사자가
-    /// 지원 경로를 확인하는 경우가 있고, 무엇보다 **사용자가 막혔을 때 나갈 길**이
-    /// 생긴다.
+    /// 제목은 웹 `SettingsPage.tsx`·안드로이드 `sendSupportMail` 과 **같은
+    /// `[웨딩 플랜트] 문의`** 다. 받는 쪽에서 메일함 규칙으로 거르는 값이라
+    /// 플랫폼마다 다르면 한쪽이 규칙에 안 걸린다.
     ///
-    /// 제목·본문에 앱 버전을 미리 채운다 — 문의가 오면 어느 빌드인지부터 묻지
-    /// 않아도 된다.
-    static var support: URL {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        let system = "iOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
-        let subject = "웨딩플랜트 문의"
-        let body = "\n\n———\n앱 \(version) (\(build))\n\(system)"
+    /// **본문에 버전·기기·iOS 버전을 미리 채운다.** 제보에서 가장 자주 빠지는
+    /// 정보이고, 사용자에게 물으면 답이 오지 않는다. 사용자가 적을 자리는 맨
+    /// 위에 비워 둔다 — 그래서 본문이 빈 줄 둘로 시작한다.
+    ///
+    /// 기기는 `UIDevice.model`("iPhone")이 아니라 **하드웨어 식별자**
+    /// (`iPhone15,2`)를 쓴다. 어느 기종에서 난 문제인지가 답이어야 하는데
+    /// 앞의 값은 전 기종이 똑같다.
+    ///
+    /// **옵셔널이다.** 메일 앱을 지운 기기에서는 이 주소를 열 수 없어
+    /// `SupportLinks` 가 주소 복사로 떨어진다.
+    static var support: URL? {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        let system = UIDevice.current.systemVersion
+
+        let body = """
+
+
+---
+앱 버전: \(version) (\(build))
+기기: \(hardwareIdentifier)
+iOS: \(system)
+"""
 
         var components = URLComponents()
         components.scheme = "mailto"
         components.path = AppConfig.supportEmail
         components.queryItems = [
-            URLQueryItem(name: "subject", value: subject),
+            URLQueryItem(name: "subject", value: "[웨딩 플랜트] 문의"),
             URLQueryItem(name: "body", value: body),
         ]
-        return components.url ?? URL(string: "mailto:\(AppConfig.supportEmail)")!
+        return components.url
+    }
+
+    /// `iPhone15,2` 같은 하드웨어 식별자. 시뮬레이터에서는 호스트 맥의 값이 온다.
+    private static var hardwareIdentifier: String {
+        var info = utsname()
+        uname(&info)
+        let machine = withUnsafePointer(to: &info.machine) { pointer in
+            pointer.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: info.machine)) {
+                String(validatingUTF8: $0)
+            }
+        }
+        return machine ?? "알 수 없음"
     }
 }

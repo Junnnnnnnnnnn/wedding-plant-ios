@@ -130,6 +130,20 @@ final class ScreenshotTests: XCTestCase {
             app.buttons["tab.settings"].tap()
             settle(2.5)
             capture(app, "06-user")
+
+            // 문의하기 · 개인정보처리방침은 화면 **맨 아래**에 있어 위 캡처에
+            // 안 잡힌다. 앱 안에서 연락할 방법이 이 줄 하나뿐이라, 보이는지를
+            // 눈으로 확인할 수 있어야 한다 (안드로이드도 이 줄만 따로 찍는다).
+            //
+            // `scrollToVisible()` 은 쓰지 않는다 — iOS 에서는 동작이 보장되지
+            // 않는다. 스크롤 뷰를 직접 밀어 올린다.
+            let scroll = app.scrollViews.firstMatch
+            if scroll.exists {
+                scroll.swipeUp()
+                scroll.swipeUp()
+                settle(1.0)
+                capture(app, "06b-user-support")
+            }
         }
 
         // 피드는 이제 실제 화면이다 — 목록·상세는 `test_04c_피드` 가 따로 찍는다.
