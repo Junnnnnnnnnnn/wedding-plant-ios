@@ -20,13 +20,24 @@ enum WPTab: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 안드로이드가 쓰는 Material 아이콘에 대응하는 SF Symbol.
+    /// 웹 `tabs.ts` 의 `TAB_ITEMS` · 안드로이드 `BottomTabBar` 와 **같은 그림**의 SF Symbol.
+    ///
+    /// 웹이 아이콘을 고른 이유를 코드에 적어 두었고 안드로이드가 그대로 따랐는데,
+    /// 여기만 달랐다.
+    ///
+    /// - **피드는 돋보기가 아니라 글 목록이다.** 이 화면은 검색하는 곳이 아니라
+    ///   남이 올린 후기를 훑는 곳이라, 돋보기는 **없는 기능을 약속한다.**
+    /// - **참여 플랜은 격자가 아니라 사람이다.** 격자는 무엇이 모여 있는지를
+    ///   말하지 않는다.
+    ///
+    /// 채움(`.fill`)이 아니라 선 그림인 것도 웹(lucide)·안드로이드(Outlined)와
+    /// 맞춘 것이다. iOS 관습은 채움이지만 세 앱이 같아야 한다는 쪽이 앞선다.
     var symbol: String {
         switch self {
-        case .home: return "house.fill"
-        case .feed: return "magnifyingglass"
-        case .rooms: return "square.grid.2x2.fill"
-        case .settings: return "gearshape.fill"
+        case .home: return "house"
+        case .feed: return "note.text"
+        case .rooms: return "person.2"
+        case .settings: return "gearshape"
         }
     }
 }
