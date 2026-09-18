@@ -115,6 +115,22 @@ final class MainViewModel: ObservableObject {
             .map { String($0.prefix(1)) }
     }
 
+    /// 자랑하기 토글을 낼지 — 웹 `canBrag`.
+    ///
+    /// 남의 방·공유 뷰면 자랑할 대상이 아니다. **배우자도 자랑할 수 있다** —
+    /// 귀속된 뒤에는 둘의 플랜이다. 방장만 허용하면 들어온 사람 화면에서 그 칸이
+    /// 통째로 사라진다.
+    ///
+    /// - Important: **`roomId` 유무로 판단하지 말 것.** 로그인하면 내 플랜에도 방이
+    ///   생겨 `isRoomView` 가 참이 되므로, 그 조건으로는 토글이 영영 안 뜬다.
+    ///   초대 띠(`showSoloBanner`)와 같은 규칙이다.
+    var canBrag: Bool {
+        guard !isGuest, listLoaded else { return false }
+        guard isRoomView else { return true }
+        guard let permission = myPermission else { return true }
+        return permission == .owner || permission == .spouse
+    }
+
     /// 홈의 두 묶음 — `이번 달에 할 일` / `그 다음`.
     ///
     /// 카테고리 칩을 걷고 **계획 중 목록을 시간으로만** 가른다. 완료한 것을 되짚거나

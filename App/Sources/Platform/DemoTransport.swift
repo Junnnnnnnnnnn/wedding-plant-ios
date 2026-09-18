@@ -64,6 +64,12 @@ struct DemoTransport: HTTPTransport {
             json = DemoData.feed(categoryName: request.url.queryValue("categoryName"))
         } else if path.hasSuffix("/plan/feed/my/status") {
             json = DemoData.feedMyStatus
+        } else if path.hasSuffix("/plan/brag/my") {
+            json = DemoData.bragMy
+        } else if path.hasSuffix("/plan/brag/list") {
+            json = DemoData.bragList
+        } else if path.contains("/plan/brag/") && !path.contains("/like/") {
+            json = DemoData.bragDetail
         } else if path.hasSuffix("/plan/feed/stats") {
             json = DemoData.feedStats(categoryName: request.url.queryValue("categoryName"))
         } else {
@@ -412,4 +418,64 @@ enum DemoData {
             return "{\"result\":true}"
         }
     }
+
+    // MARK: - 자랑하기
+
+    static let bragMy = """
+    {"result":true,"data":{"published":true,"bragId":1,"publishedAt":"2026-09-10T02:00:00Z","likeCount":7}}
+    """
+
+    static let bragList = """
+    {"result":true,"data":{"total":2,"list":[
+      {"bragId":1,"nickname":"지수 · 현우","weddingDate":"2026-12-19","dday":92,
+       "totalBudget":5000,"usedAmount":2150,"plannedAmount":850,
+       "planCount":12,"doneCount":5,
+       "categories":["예식장","스튜디오","드레스","메이크업","청첩장"],
+       "likeCount":7,"liked":false,"isMine":true},
+      {"bragId":2,"nickname":"민지","weddingDate":"2027-03-06","dday":169,
+       "totalBudget":3200,"usedAmount":900,"plannedAmount":1400,
+       "planCount":8,"doneCount":2,
+       "categories":["예식장","신혼여행"],
+       "likeCount":21,"liked":true,"isMine":false}
+    ]}}
+    """
+
+    /// **카테고리를 일부러 5개** 둔다 — `i % 4` 로 돌리면 다섯 번째가 첫 번째와
+    /// 같은 분홍이 되는 분기를 매번 본다.
+    ///
+    /// 장소 없음 · 좌표 0,0(해외) 항목도 함께 둔다.
+    static let bragDetail = """
+    {"result":true,"data":{
+      "bragId":1,"nickname":"지수 · 현우","weddingDate":"2026-12-19","dday":92,
+      "totalBudget":5000,"usedAmount":2150,"plannedAmount":850,
+      "planCount":6,"doneCount":3,
+      "categories":["예식장","스튜디오","드레스","메이크업","청첩장"],
+      "likeCount":7,"liked":false,"isMine":true,
+      "categoryChart":[
+        {"categoryName":"예식장","usedAmount":1200},
+        {"categoryName":"스튜디오","usedAmount":450},
+        {"categoryName":"드레스","usedAmount":300},
+        {"categoryName":"메이크업","usedAmount":180},
+        {"categoryName":"청첩장","usedAmount":40}
+      ],
+      "items":[
+        {"id":1,"categoryName":"예식장","title":"본식","amount":1000,
+         "startDate":"2026-12-19","status":"COMPLETED","isPaid":true,
+         "location":"더채플앳청담","lat":37.5237,"lng":127.0468},
+        {"id":2,"categoryName":"예식장","title":"식전 미팅","amount":200,
+         "startDate":"2026-10-04","status":"COMPLETED","isPaid":true,
+         "location":"더채플앳청담","lat":37.5237,"lng":127.0468},
+        {"id":3,"categoryName":"스튜디오","title":"본식 촬영","amount":450,
+         "startDate":"2026-09-16","status":"COMPLETED","isPaid":true,
+         "location":"라뮈에스튜디오","lat":37.5172,"lng":127.0286},
+        {"id":4,"categoryName":"드레스","title":"드레스 1차 피팅","amount":300,
+         "startDate":"2026-09-16","status":"PLANNED","isPaid":false,
+         "location":"청담 드레스룸"},
+        {"id":5,"categoryName":"메이크업","title":"헤어·메이크업 리허설","amount":180,
+         "startDate":"2026-09-18","status":"PLANNED","isPaid":false},
+        {"id":6,"categoryName":"청첩장","title":"모바일 청첩장","amount":40,
+         "startDate":null,"status":"PLANNED","isPaid":false,
+         "location":"푸꾸옥 호텔","lat":0,"lng":0}
+      ]}}
+    """
 }

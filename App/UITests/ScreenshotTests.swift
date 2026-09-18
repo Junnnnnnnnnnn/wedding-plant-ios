@@ -277,6 +277,39 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
+    /// 자랑하기 — 홈의 토글 → 안내 모달 → 목록 → 상세 모달.
+    ///
+    /// **피드와 규칙이 정반대다** — 여기는 닉네임을 낸다.
+    /// 상세에서는 **왼쪽 범례 색과 오른쪽 묶음 머리 색이 같아야** 한다.
+    func test_04d_자랑하기() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        // 토글은 목록 아래 흰 면이라 끝까지 스크롤해야 나온다.
+        app.swipeUp()
+        settle(0.8)
+        app.swipeUp()
+        settle(1.2)
+        capture(app, "30-brag-toggle")
+
+        // 올라가 있으면 `보러 가기` 가 폰에서 자랑하기로 들어가는 유일한 문이다.
+        let open = app.buttons["brag.open"]
+        if open.waitForExistence(timeout: 5) {
+            open.tap()
+            settle(2.5)
+            capture(app, "31-brag-list")
+
+            let card = app.otherElements["brag.card"].firstMatch
+            if card.waitForExistence(timeout: 5) {
+                card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+                settle(2.5)
+                capture(app, "32-brag-detail")
+            }
+        }
+    }
+
     /// 홈의 `추가` → 등록 시트.
     ///
     /// **단계형이라 결제 유형을 고르기 전에는 금액·장소 칸이 없다.** 그래서 두 번

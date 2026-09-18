@@ -30,6 +30,8 @@ struct MainView: View {
     @StateObject private var model = MainViewModel()
     @State private var path = NavigationPath()
     @State private var showAddPlan = false
+    /// `/plan/brag/my` 를 홈이 다시 그릴 때마다 또 부르지 않도록 하나로 들고 있는다.
+    @StateObject private var bragToggle = BragToggleViewModel()
 
     /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
     @State private var today = KstDate.today()
@@ -72,6 +74,14 @@ struct MainView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
                     }
+
+                    // 목록 아래 흰 면. 분홍 머리 면에 넣으면 얇은 예산 줄과 겹쳐
+                    // 무엇을 누르는지 알기 어렵다.
+                    if model.canBrag {
+                        BragToggle(model: bragToggle) { path.append(BragRoute()) }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                    }
                 }
                 .id(model.planLoading)
                 .padding(.bottom, 24)
@@ -105,6 +115,9 @@ struct MainView: View {
         }
         .navigationDestination(for: CalendarRoute.self) { route in
             CalendarView(roomId: route.roomId, readOnly: route.readOnly)
+        }
+        .navigationDestination(for: BragRoute.self) { _ in
+            BragView()
         }
         .fullScreenCover(isPresented: $showAddPlan) {
             AddPlanView(roomId: model.roomIdValue) {
@@ -274,6 +287,11 @@ struct CalendarRoute: Hashable {
     var roomId: Int?
     var readOnly: Bool
 }
+
+/// 자랑하기 목록. **레일에만 있고 하단 탭바에는 없다** — 탭 6개는 폰에서 좁고,
+/// 자랑하기는 홈에서 들어가는 곳이다. 폰에는 레일이 없으므로 홈의 토글 아래
+/// `보러 가기` 줄이 유일한 문이다.
+struct BragRoute: Hashable {}
 
 // MARK: - 머리 면 조각
 
