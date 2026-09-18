@@ -19,6 +19,7 @@ struct FeedView: View {
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var model = FeedViewModel()
     @State private var path = NavigationPath()
+    @State private var showPostSheet = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -78,6 +79,13 @@ struct FeedView: View {
         }
         .navigationDestination(for: FeedPost.self) { post in
             FeedDetailView(post: post)
+        }
+        // 후기 작성은 별도 라우트가 아니라 **완료한 일정에서 여는 모달**이다.
+        .sheet(isPresented: $showPostSheet) {
+            FeedPostSheet {
+                Task { await model.load(env: env, replace: true) }
+            }
+            .environmentObject(env)
         }
     }
 
@@ -162,20 +170,27 @@ struct FeedView: View {
     @ViewBuilder
     private var supplyStrip: some View {
         if let status = model.myStatus, status.postableScheduleCount > 0 {
-            HStack(spacing: 8) {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(WPColor.primary)
-                Text("아직 안 올린 완료 일정 \(status.postableScheduleCount)건")
-                    .font(WPFont.hak(13, .bold))
-                    .foregroundStyle(WPColor.primary)
-                Spacer(minLength: 0)
+            Button { showPostSheet = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("아직 안 올린 완료 일정 \(status.postableScheduleCount)건")
+                        .font(WPFont.hak(13, .bold))
+                    Spacer(minLength: 0)
+                    Text("후기 쓰기")
+                        .font(WPFont.hak(13, .bold))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(WPColor.primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(hex: 0xFFF2F6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color(hex: 0xFFF2F6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .buttonStyle(.plain)
             .padding(.horizontal, 16)
             .padding(.bottom, 4)
+            .accessibilityIdentifier("feed.write")
         }
     }
 

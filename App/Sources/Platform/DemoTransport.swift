@@ -62,6 +62,8 @@ struct DemoTransport: HTTPTransport {
             json = DemoData.roomList
         } else if path.hasSuffix("/plan/feed/list") {
             json = DemoData.feed(categoryName: request.url.queryValue("categoryName"))
+        } else if path.hasSuffix("/plan/feed/postable") {
+            json = DemoData.feedPostable
         } else if path.hasSuffix("/plan/feed/my/status") {
             json = DemoData.feedMyStatus
         } else if path.hasSuffix("/plan/brag/my") {
@@ -477,5 +479,16 @@ enum DemoData {
          "startDate":null,"status":"PLANNED","isPaid":false,
          "location":"푸꾸옥 호텔","lat":0,"lng":0}
       ]}}
+    """
+
+    /// 후기로 올릴 수 있는 완료 일정. 장소가 있는 것과 없는 것을 함께 둔다 —
+    /// **장소는 필수가 아니다.**
+    static let feedPostable = """
+    {"result":true,"data":{"list":[
+      {"scheduleId":11,"categoryName":"드레스","title":"드레스 1차 피팅","amount":500,
+       "location":"청담 드레스룸","startDate":"2026-09-16"},
+      {"scheduleId":12,"categoryName":"예물","title":"반지 상담","amount":180,
+       "startDate":"2026-08-28"}
+    ]}}
     """
 }

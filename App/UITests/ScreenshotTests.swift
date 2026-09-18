@@ -264,6 +264,18 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "07b-feed-filtered")
         }
 
+        // 후기 쓰기 — 별도 라우트가 아니라 **완료한 일정에서 여는 모달**이다.
+        let write = app.buttons["feed.write"]
+        if write.exists {
+            write.tap()
+            settle(2.0)
+            capture(app, "07c-feed-write")
+            if app.buttons["닫기"].firstMatch.isHittable {
+                app.buttons["닫기"].firstMatch.tap()
+                settle(1.2)
+            }
+        }
+
         // 카드를 누르면 상세. **요청이 한 건도 안 나간다** — 목록이 항목을 넘긴다.
         //
         // **가운데를 누르면 안 된다.** 거기에 `카카오맵` 링크가 있어서 사파리가
