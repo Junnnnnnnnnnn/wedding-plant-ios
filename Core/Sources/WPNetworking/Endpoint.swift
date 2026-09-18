@@ -195,6 +195,14 @@ public enum Endpoint {
     }
 
     /// 공유 링크로 방 참여.
+    /// `GET /plan/room/share-code` — 내 방 공유 코드.
+    ///
+    /// 방과 코드는 **카카오 로그인 때 이미 만들어진다**(백엔드 `uuidV4()`).
+    /// 그래서 온보딩 중에도 유효하다 — 비어 있는 건 방이 아니라 **내용**이다.
+    public static func shareCode() -> HTTPRequest {
+        HTTPRequest(path: "/plan/room/share-code")
+    }
+
     public static func joinRoom(shareCode: String) -> HTTPRequest {
         HTTPRequest(method: .post, path: "/plan/room/\(escape(shareCode))")
     }

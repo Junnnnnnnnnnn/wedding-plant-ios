@@ -247,6 +247,62 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: - 예산 상세
 
+    /// 홈의 `추가` → 등록 시트.
+    ///
+    /// **단계형이라 결제 유형을 고르기 전에는 금액·장소 칸이 없다.** 그래서 두 번
+    /// 찍는다 — 고르기 전(제목·카테고리만)과 고른 뒤(금액·결제 체크·일자·시각).
+    func test_04b_등록_시트() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        let add = app.buttons["추가"].firstMatch
+        guard add.waitForExistence(timeout: 10) else { return }
+        add.tap()
+        settle(2.0)
+        capture(app, "10-add-plan-empty")
+
+        let title = app.textFields["addplan.title"]
+        if title.waitForExistence(timeout: 5) {
+            title.tap()
+            title.typeText("본식 스냅")
+            settle(1.0)
+            capture(app, "11-add-plan-title")
+        }
+
+        // 카테고리를 고르면 결제 유형 줄이 열린다.
+        let category = app.buttons["addplan.category"]
+        if category.isHittable {
+            category.tap()
+            settle(1.2)
+            capture(app, "12-add-plan-category-modal")
+            let first = app.buttons.containing(
+                NSPredicate(format: "label CONTAINS %@", "스튜디오")
+            ).firstMatch
+            if first.isHittable { first.tap() }
+            settle(1.2)
+        }
+
+        // 결제 유형을 고르면 금액·일자·시각·위치·메모가 함께 나온다.
+        let cash = app.buttons.containing(
+            NSPredicate(format: "label CONTAINS %@", "현금")
+        ).firstMatch
+        if cash.isHittable {
+            cash.tap()
+            settle(1.2)
+            capture(app, "13-add-plan-rest")
+        }
+
+        // 금액 아래의 "이미 결제했어요" — 완료와 다른 축이다.
+        let paid = app.buttons["addplan.paid"]
+        if paid.isHittable {
+            paid.tap()
+            settle(1.0)
+            capture(app, "14-add-plan-paid")
+        }
+    }
+
     /// 메인의 예산 카드 → 예산 상세. 툴팁·탭·카테고리 필터·AI 안내까지 한 번에 돈다.
     func test_05_예산_상세() {
         let app = makeApp()
@@ -259,15 +315,8 @@ final class ScreenshotTests: XCTestCase {
         settle(3.0)
         capture(app, "16-budget-detail")
 
-        // 잔액 배지 옆 물음표 — 위 카드의 "남은 금액" 과 다른 수치라는 안내가 뜬다.
-        let tip = app.buttons["budget.savings.help"]
-        if tip.isHittable {
-            tip.tap()
-            settle(1.0)
-            capture(app, "17-budget-savings-tooltip")
-            tip.tap()
-            settle(0.8)
-        }
+        // 잔액 툴팁 단계는 없앴다 — `남은 금액` 과 `사용 후 잔액` 이 같은 도넛의
+        // 구간이 되면서 물음표로 해명할 일이 없어졌다.
 
         // 카테고리 막대를 누르면 아래 목록이 그 카테고리로 좁혀진다.
         let bar = app.buttons.containing(

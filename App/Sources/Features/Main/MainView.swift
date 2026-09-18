@@ -45,6 +45,10 @@ struct MainView: View {
 
         return VStack(spacing: 0) {
             ScrollView {
+                // **`id` 를 loading 에 묶는다.** 없으면 데이터가 온 뒤에도 이미
+                // 그려진 앞자리가 뼈대인 채로 남는다 — LazyVStack 이 realized 된
+                // 행을 위치로 재사용해서, 새로 온 카드는 뒷자리에만 들어갔다.
+                // (실제로 "이번 달에 할 일 3" 인데 앞 두 장이 뼈대로 남았다.)
                 LazyVStack(alignment: .leading, spacing: 0) {
                     head
 
@@ -69,6 +73,7 @@ struct MainView: View {
                             .padding(.top, 16)
                     }
                 }
+                .id(model.planLoading)
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)

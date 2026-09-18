@@ -20,6 +20,20 @@ final class SettingViewModel: ObservableObject {
         case name
         case welcome
         case terms
+        /// **맨 끝, 약관 동의 다음.**
+        ///
+        /// 이 앱의 메리트가 "신랑·신부가 같이" 인데 예전에는 초대 진입점이 홈의
+        /// 작은 점선 `＋` 원 하나였고, 그마저 멤버가 나 혼자일 때만 떠서 조언자
+        /// 한 명만 들어와도 사라졌다. 온보딩은 이미 한 번에 하나씩 묻는 연출이라,
+        /// 여기에 한 칸을 더하면 초대가 부탁이 아니라 **절차**로 읽힌다.
+        case invite
+    }
+
+    /// 초대 단계에서 고른 것. 고르기 전에는 기본 버튼이 잠긴다.
+    enum InviteChoice {
+        case none
+        case invite
+        case solo
     }
 
     @Published var step: Step = .celebration
@@ -35,6 +49,10 @@ final class SettingViewModel: ObservableObject {
     @Published var submitting = false
     @Published var errorMessage: String?
     /// 서버에 이미 완성된 플랜이 있어 곧바로 main 으로 보내야 하는 경우
+    @Published var inviteChoice: InviteChoice = .none
+    /// 초대 링크. 초대 단계에 들어올 때 받아 둔다.
+    @Published var inviteURL: String?
+    @Published var inviteLoading = false
     @Published var skipToMain = false
     @Published var ready = false
 
@@ -135,7 +153,9 @@ final class SettingViewModel: ObservableObject {
         case .welcome: step = .name
         case .name: step = .budget
         case .budget: step = .date
-        case .date, .celebration: break
+        // **초대 단계에는 뒤로가기를 달지 않는다** — 저장이 이미 끝난 뒤라
+        // 되돌아갈 곳이 없다.
+        case .date, .celebration, .invite: break
         }
     }
 
@@ -176,9 +196,38 @@ final class SettingViewModel: ObservableObject {
         do {
             try await env.api.sendIgnoringData(Endpoint.createSetting(request))
         } catch {
-            // 웹과 동일하게 POST 가 실패해도 main 으로 이동하되, 실패 사실은 알린다.
+            // 웹과 동일하게 POST 가 실패해도 진행하되, 실패 사실은 알린다.
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            onDone()
+            return
         }
-        onDone()
+
+        // **저장이 성공한 뒤에야 초대 단계를 연다.**
+        //
+        // 초대를 약관 앞으로 옮기지 말 것. 방과 공유 코드는 카카오 로그인 때 이미
+        // 만들어져 링크 자체는 그때도 유효하지만, 비어 있는 건 방이 아니라
+        // **내용**이다 — 날짜·예산·이름은 바로 위 `POST /plan/setting` 에서만
+        // 저장된다. 앞에 두면 (1) 초대받은 사람이 빈 플랜에 들어오고,
+        // (2) 필수·제3자 제공 동의를 받기 전에 접근 권한을 주는 링크가 나가고,
+        // (3) 초대만 보내고 약관에서 이탈하면 상대가 영영 빈 플랜에 남는다.
+        step = .invite
+        await loadInviteURL(env: env)
+    }
+
+    // MARK: - 초대
+
+    /// 공유 코드를 받아 링크를 만들어 둔다. 실패해도 단계는 진행한다 —
+    /// **어떤 경우에도 앱으로 들어갈 수 있어야 한다.**
+    func loadInviteURL(env: AppEnvironment) async {
+        inviteLoading = true
+        defer { inviteLoading = false }
+        guard let code = try? await env.api.send(Endpoint.shareCode(), decoding: ShareCode.self)
+        else { return }
+        inviteURL = ShareLink.inviteURL(
+            webBaseURL: AppConfig.webBaseURL,
+            code: code.shareCode,
+            // **`?as=spouse` 가 빠지면 배우자로 부르고도 상대가 READ 로 들어온다.**
+            asSpouse: true
+        )
     }
 }

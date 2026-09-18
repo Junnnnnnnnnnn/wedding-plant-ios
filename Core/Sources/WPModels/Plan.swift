@@ -149,3 +149,19 @@ public struct RoomList: Codable, Hashable, Sendable {
         self.total = try container.decodeIfPresent(Int.self, forKey: .total) ?? self.list.count
     }
 }
+
+/// `GET /plan/room/share-code` 응답 — 내 방 공유 코드.
+///
+/// 웹 `SharePlanModal` 이 모달을 열 때 미리 받아 `{siteUrl}/share/{code}` 링크를 만든다.
+public struct ShareCode: Codable, Hashable, Sendable {
+    public var shareCode: String
+
+    public init(shareCode: String = "") {
+        self.shareCode = shareCode
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.shareCode = try container.decodeIfPresent(String.self, forKey: .shareCode) ?? ""
+    }
+}

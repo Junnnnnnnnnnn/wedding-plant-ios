@@ -28,6 +28,7 @@ struct SettingView: View {
                     case .name: NameStep(model: model)
                     case .welcome: WelcomeStep(model: model)
                     case .terms: TermsStep(model: model, onSubmit: submit)
+                    case .invite: InviteStep(model: model, onDone: onComplete)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,7 +36,9 @@ struct SettingView: View {
                 .animation(.easeInOut(duration: 0.5), value: model.step)
 
                 // 웹: 예산·이름·환영·약관 단계에만 뒤로가기. 축하·날짜에는 없음.
-                if model.step != .celebration && model.step != .date {
+                // **초대 단계에도 달지 않는다** — 저장이 이미 끝난 뒤라 되돌아갈
+                // 곳이 없다.
+                if model.step != .celebration && model.step != .date && model.step != .invite {
                     Button {
                         model.back()
                     } label: {
@@ -277,7 +280,9 @@ private struct TermsStep: View {
                 Spacer().frame(height: 32)
 
                 WPNextButton(
-                    text: model.submitting ? "저장 중..." : "계획 짜러 가기",
+                    // **`다음` 이다** — 뒤에 `함께할 사람` 단계가 남아 있다.
+                    // 마지막 `계획 짜러 가기` 는 초대 단계에 있다.
+                    text: model.submitting ? "저장 중..." : "다음",
                     enabled: model.allRequiredAgreed && !model.submitting,
                     identifier: "setting.submit",
                     action: onSubmit
@@ -392,4 +397,143 @@ private struct WPTextField: View {
             .font(WPFont.tmoney(18))
             .foregroundColor(WPColor.stone400)
     }
+}
+
+// MARK: - 함께할 사람 (마지막 단계)
+
+/// 웹 온보딩의 다섯 번째 단계 — `결혼 날짜 · 예산 · 이름 · 약관 동의 · 함께할 사람`.
+///
+/// 이 앱의 메리트가 "신랑·신부가 같이" 인데, 예전에는 초대 진입점이 홈의 작은
+/// 점선 `＋` 원 하나였고 그마저 **멤버가 나 혼자일 때만** 떠서 조언자 한 명만
+/// 들어와도 사라졌다. 온보딩은 이미 한 번에 하나씩 묻는 연출이라, 여기에 한 칸을
+/// 더하면 초대가 부탁이 아니라 **절차**로 읽힌다.
+///
+/// **한 번 나가면 다시 볼 수 없다.** 약관에서 저장이 끝나 이름·날짜·예산이 모두
+/// 찼으므로 `/setting` 으로 다시 들어와도 홈으로 보내진다(질문을 되풀이하지 않는
+/// 게 맞다). 그래서 홈의 초대 띠가 유일한 재진입점이다 — 그 띠를 없애면 여기서
+/// 건너뛴 사람은 초대할 방법이 사라진다.
+private struct InviteStep: View {
+    @ObservedObject var model: SettingViewModel
+    var onDone: () -> Void
+
+    @State private var showShareSheet = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 80)
+
+            LandingHero(
+                title: "누구와 함께 준비하세요?",
+                subtitle: "신랑·신부는 일정과 예산을 같이 고칠 수 있어요",
+                titleSize: 28,
+                subtitleSize: 14,
+                useUserFont: false
+            )
+
+            Spacer(minLength: 24)
+
+            choiceCard(
+                choice: .invite,
+                title: "신랑 · 신부를 부를게요",
+                body: "지금 초대장을 보냅니다",
+                filled: true
+            )
+            Spacer().frame(height: 10)
+            choiceCard(
+                choice: .solo,
+                title: "혼자 먼저 둘러볼게요",
+                body: "나중에 홈에서 언제든 부를 수 있어요",
+                filled: false
+            )
+
+            Spacer().frame(height: 24)
+
+            WPNextButton(
+                text: buttonText,
+                // 고르기 전에는 잠긴다. 무엇을 고르는 화면인지 분명해진다.
+                enabled: model.inviteChoice != .none && !model.inviteLoading,
+                identifier: "setting.inviteNext",
+                action: primaryAction
+            )
+
+            Spacer().frame(height: 12)
+
+            // **반드시 빠져나갈 길을 함께 둔다.** 막으면 온보딩에서 이탈한다.
+            Button(action: onDone) {
+                Text("나중에 할게요")
+                    .font(WPFont.hak(13))
+                    .foregroundStyle(WPColor.gray400)
+                    .underline()
+                    .padding(8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("setting.inviteLater")
+
+            Spacer().frame(height: 28)
+        }
+        .padding(.horizontal, 24)
+        .sheet(isPresented: $showShareSheet, onDismiss: onDone) {
+            if let url = model.inviteURL {
+                // 공유 시트를 취소해도 갇히지 않는다 — `onDismiss` 가 그대로 앱으로 보낸다.
+                ActivityShareSheet(items: [url])
+            }
+        }
+    }
+
+    private var buttonText: String {
+        if model.inviteLoading { return "준비 중..." }
+        return model.inviteChoice == .invite ? "초대장 보내기" : "계획 짜러 가기"
+    }
+
+    private func primaryAction() {
+        if model.inviteChoice == .invite, model.inviteURL != nil {
+            showShareSheet = true
+        } else {
+            onDone()
+        }
+    }
+
+    private func choiceCard(
+        choice: SettingViewModel.InviteChoice,
+        title: String,
+        body: String,
+        filled: Bool
+    ) -> some View {
+        let selected = model.inviteChoice == choice
+        return Button { model.inviteChoice = choice } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(WPFont.hak(16, .bold))
+                    .foregroundStyle(selected ? WPColor.primary : WPColor.textPrimary)
+                Text(body)
+                    .font(WPFont.hak(13))
+                    .foregroundStyle(WPColor.fgSubtle)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(
+                selected ? WPColor.primary.opacity(0.06) : (filled ? WPColor.fill : Color.white),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(
+                        selected ? WPColor.primary.opacity(0.4) : WPColor.strokeWeak,
+                        lineWidth: selected ? 2 : 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// 시스템 공유 시트. 초대 링크를 카카오톡·메시지로 보낸다.
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    var items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

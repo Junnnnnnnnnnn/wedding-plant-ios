@@ -43,6 +43,25 @@ public enum ShareLink {
     /// 문자열로 받은 링크. 코드만 그대로 넘어와도(`"ABC123"`) 받아준다.
     ///
     /// 로그인 후 이어서 참여할 때 저장해 둔 값이 코드 자체이기 때문이다.
+    /// 코드로 **웹 주소**를 만든다. 남에게 보내는 링크라 커스텀 스킴이 아니다 —
+    /// 앱이 없는 사람도 열 수 있어야 초대가 끊기지 않는다.
+    ///
+    /// - Parameter asSpouse: 신랑·신부로 부르는지. **빠지면 배우자로 부르고도
+    ///   상대가 `READ` 로 들어온다** — 초대 링크가 역할을 지닌다.
+    public static func inviteURL(
+        webBaseURL: String,
+        code: String,
+        asSpouse: Bool
+    ) -> String? {
+        let trimmedCode = code.trimmingCharacters(in: .whitespaces)
+        guard !trimmedCode.isEmpty else { return nil }
+        let base = webBaseURL.trimmingCharacters(in: .whitespaces)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !base.isEmpty else { return nil }
+        let url = "\(base)/\(pathPrefix)/\(trimmedCode)"
+        return asSpouse ? url + "?as=spouse" : url
+    }
+
     public static func shareCode(from raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
