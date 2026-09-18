@@ -1,20 +1,37 @@
 import SwiftUI
 
-/// 웹 `app/page.tsx` 이식.
+/// 앱의 첫 문 — 웹 `app/components/LoginView.tsx` 의 **폰 레이아웃**(`md:` 앞의 값).
 ///
 /// ```
-/// px-8 py-20 · grid-bg · 장식 블러 2개
-/// [로고 96 흰 카드] mb-6
-/// "웨딩 플랜트"                        text-5xl font-black text-[#1b0d14] tracking-tight
-/// "우리만의 특별한 웨딩 플랜,"  gray-400
-/// "지금 바로 시작하세요."        #ee2b8c   — 둘 다 text-lg font-bold
-/// mt-24
-/// [카카오로 시작하기]                   rounded-full h-11
-/// "로그인 없이 둘러보기"                text-xs stone-600 underline
+/// bg-gradient-to-br from-[#ee2b8c] to-[#ff5c95]  · 화면 전체
+/// min-h-[100dvh] flex-col justify-between · px-8 pt-20 pb-10
+/// [흰 카드 rounded-[24px] p-3 → 로고 h-14 rounded-[14px]]  mb-8
+/// "결혼 준비 / 같이 시작해요"   text-[32px] font-black leading-tight tracking-[-0.045em] white
+/// "카카오로 시작하면 / …"       text-base font-bold leading-snug white/80   mt-3
+/// ⋯
+/// [카카오로 시작하기]            h-12 w-full rounded-xl text-[16px] font-bold
 /// ```
+///
+/// - **분홍을 머리에만 두지 않고 화면 전체로 편다.** 로그인은 들어오는 문이라
+///   앱에서 이 화면과 초대 수락 둘만 그렇다.
+/// - **글은 왼쪽 정렬.** 가운데로 맞추면 두 줄 제목의 둘째 줄 시작점이 흔들린다.
+///
+/// ## 들어오는 길은 카카오 하나다
+///
+/// 예전에는 아래에 "로그인 없이 둘러보기" 가 붙어 온보딩으로 보냈다. 웹이 그
+/// 입구를 없앴고 안드로이드도 따라갔다 — **다시 만들지 말 것.** 로그인 전에는
+/// 온보딩에서 받은 답을 **저장할 곳이 없고**, 게스트로 만든 일정은 이 기기 밖으로
+/// 나가지 못해 "앱을 지우면 사라지는 플랜" 이 된다.
+///
+/// ## 문구
+///
+/// 웹은 처음 온 사람을 마케팅 랜딩(`/`)이 받고 이 화면은 `/login` 이지만,
+/// **앱은 이 한 화면이 둘을 겸한다**(랜딩은 앱에 옮기지 않는다). 그래서 웹의
+/// 기본 문구를 쓴다 — 웹도 "다시 오셨네요" 가 처음 보는 사람에게 어긋나서
+/// 지금의 문구로 고쳤다. 만료로 돌아온 사람에게 다른 말을 하는 `?expired=1`
+/// 분기는 앱에 아직 없다.
 struct LandingView: View {
     @EnvironmentObject private var env: AppEnvironment
-    @State private var showSetting = false
     @State private var isLoading = false
     @State private var errorMessage: String?
     #if DEBUG
@@ -23,107 +40,110 @@ struct LandingView: View {
 
     var body: some View {
         ZStack {
-            WPScreenBackground(showsDecor: true)
+            // 웹 `bg-gradient-to-br` — 왼쪽 위에서 오른쪽 아래로.
+            LinearGradient(
+                colors: [WPColor.budgetGradientStart, WPColor.budgetGradientEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-
-                // 로고 — 흰 카드 안에 앱 아이콘 (웹과 동일한 이미지 파일)
-                AppLogo(size: 64)
-                    .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .fill(Color.white)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .stroke(WPColor.cardBorder, lineWidth: 1)
-                    )
-                    .shadow(color: WPColor.primary.opacity(0.18), radius: 20, y: 8)
-
-                Spacer().frame(height: 40) // mb-6(24) + space-y-4(16)
-
-                Text("웨딩 플랜트")
-                    .font(WPFont.hak(48, .black))
-                    .tracking(WPFont.trackingTight(48))
-                    .foregroundStyle(WPColor.textPrimary)
-                    .multilineTextAlignment(.center)
-
-                Spacer().frame(height: 16)
-
-                (
-                    Text("우리만의 특별한 웨딩 플랜,\n").foregroundStyle(WPColor.gray400)
-                    + Text("지금 바로 시작하세요.").foregroundStyle(WPColor.primary)
-                )
-                .font(WPFont.hak(18, .bold))
-                .lineSpacing(6) // leading-snug (18 → 24)
-                .multilineTextAlignment(.center)
-
-                Spacer().frame(height: 96) // mt-24
-
-                if let errorMessage {
-                    InfoBanner(
-                        message: errorMessage,
-                        actionLabel: "닫기",
-                        onAction: { self.errorMessage = nil }
-                    )
-                    Spacer().frame(height: 16)
-                }
-
-                KakaoStartButton(
-                    label: isLoading ? "확인 중..." : "카카오로 시작하기",
-                    enabled: !isLoading
-                ) {
-                    Task { await signIn() }
-                }
-
-                Spacer().frame(height: 20) // gap-4 + mt-1
-
-                Button {
-                    showSetting = true
-                } label: {
-                    Text("로그인 없이 둘러보기")
-                        .font(WPFont.hak(12, .medium))
-                        .foregroundStyle(WPColor.stone600)
-                        .underline()
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("landing.guest")
-
-                #if DEBUG
-                // 카카오 SDK 연동 전, 실기기에서 백엔드 붙은 화면을 보기 위한 통로.
-                // 릴리스 빌드에는 포함되지 않는다.
-                Spacer().frame(height: 8)
-                Button { showDevLogin = true } label: {
-                    Text("개발용 토큰으로 로그인")
-                        .font(WPFont.hak(11, .medium))
-                        .foregroundStyle(WPColor.stone400)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("landing.devLogin")
-                #endif
-
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                Spacer(minLength: 24)
+                footer
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 80)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 32)   // px-8
+            .padding(.top, 80)          // pt-20
+            .padding(.bottom, 40)       // pb-10
         }
+        // 분홍 면 위라 상태바 글자가 흰색이어야 한다.
+        .preferredColorScheme(.dark)
         #if DEBUG
         .sheet(isPresented: $showDevLogin) {
             DevTokenLoginSheet().environmentObject(env)
         }
         #endif
-        .fullScreenCover(isPresented: $showSetting) {
-            SettingView {
-                showSetting = false
-                env.isAuthenticated = true
-            }
-            .environmentObject(env)
+    }
+
+    // MARK: - 위
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // rounded-[24px] bg-white p-3 shadow-lg shadow-black/10
+            AppLogo(size: 56, corner: 14)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color.white)
+                )
+                .shadow(color: .black.opacity(0.1), radius: 12, y: 6)
+
+            Spacer().frame(height: 32) // mb-8
+
+            Text("결혼 준비\n같이 시작해요")
+                .font(WPFont.hak(32, .black))
+                .tracking(-0.045 * 32)   // tracking-[-0.045em]
+                .lineSpacing(40 - 32)    // leading-tight (1.25)
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer().frame(height: 12) // mt-3
+
+            Text("카카오로 시작하면\n일정과 예산이 한곳에 모여요.")
+                .font(WPFont.hak(16, .bold))
+                .lineSpacing(22 - 16)    // leading-snug (1.375)
+                .foregroundStyle(.white.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - 아래
+
+    private var footer: some View {
+        VStack(spacing: 8) {
+            if let errorMessage {
+                Button {
+                    self.errorMessage = nil
+                } label: {
+                    Text(errorMessage)
+                        .font(WPFont.hak(13))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            Color.black.opacity(0.15),
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            KakaoStartButton(
+                label: isLoading ? "확인 중..." : "카카오로 시작하기",
+                enabled: !isLoading
+            ) {
+                Task { await signIn() }
+            }
+
+            #if DEBUG
+            // 카카오 SDK 연동 전, 실기기에서 백엔드 붙은 화면을 보기 위한 통로.
+            // 릴리스 빌드에는 포함되지 않는다.
+            Button { showDevLogin = true } label: {
+                Text("개발용 토큰으로 로그인")
+                    .font(WPFont.hak(11, .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("landing.devLogin")
+            #endif
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func signIn() async {
@@ -131,6 +151,7 @@ struct LandingView: View {
         // 실제 구현은 Kakao SDK 로그인 → POST /plan/auth/kakao/login → JWT 저장 순서.
         if env.isDemo {
             env.isAuthenticated = true
+            env.planComplete = true
             return
         }
         isLoading = true

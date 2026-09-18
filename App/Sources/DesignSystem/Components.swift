@@ -2,6 +2,12 @@ import SwiftUI
 
 /// 웹 `AuthButtons` 의 카카오 버튼.
 /// `rounded-full h-11 text-sm font-semibold bg-[#FEE500] text-[#191919] shadow-sm`
+/// 웹 `AuthButtons` 의 **`onBrand`** 변형 —
+/// `w-full h-12 rounded-xl text-[16px] font-bold bg-[#FEE500] text-[#191919]`.
+///
+/// 분홍 면 위에 놓이는 화면(로그인 문 · 초대 수락)이 쓰는 모양이다.
+/// 웹의 `default` 변형(흰 배경 위의 `h-11 rounded-full`)은 마케팅 랜딩 자리인데
+/// **그 랜딩은 앱에 옮기지 않으므로** 여기에는 없다.
 struct KakaoStartButton: View {
     var label: String = "카카오로 시작하기"
     var enabled: Bool = true
@@ -10,17 +16,19 @@ struct KakaoStartButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(WPFont.hak(14, .semibold))
+                .font(WPFont.hak(16, .bold))
                 .foregroundStyle(WPColor.kakaoText)
-                .frame(maxWidth: 320)
-                .frame(height: 44)
                 .frame(maxWidth: .infinity)
-                .background(WPColor.kakao.opacity(enabled ? 1 : 0.7), in: Capsule())
-                .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+                .frame(height: 48)
+                .background(
+                    WPColor.kakao,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .frame(maxWidth: 320)
+        .opacity(enabled ? 1 : 0.7)
+        .accessibilityIdentifier("auth.kakao")
     }
 }
 
@@ -203,6 +211,8 @@ struct LoadingOverlay: View {
 /// 웹 로고 이미지. 에셋 카탈로그 없이 번들의 loose PNG 를 읽는다.
 struct AppLogo: View {
     var size: CGFloat = 64
+    /// 웹 로고 이미지의 `rounded-[…]`. 로그인 문은 14, 나머지는 16.
+    var corner: CGFloat = 16
 
     var body: some View {
         Group {
@@ -217,6 +227,6 @@ struct AppLogo: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
     }
 }

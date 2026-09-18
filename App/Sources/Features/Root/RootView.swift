@@ -2,7 +2,19 @@ import SwiftUI
 
 /// 최상위 화면 전환.
 ///
-/// 로그인/게스트 진입 전에는 랜딩, 이후에는 탭 셸을 보여준다.
+/// 웹의 `GuestGate` + `AuthRedirectToMain` 이 하던 일을 여기 한 곳에서 한다.
+/// 웹은 주소를 직접 칠 수 있어 화면마다 게이트가 새는 구멍이 있었지만
+/// (`/main` 에만 걸었다가 `/calendar` 로 샜다), 앱은 진입이 여기 하나뿐이다.
+///
+/// | 상태 | 보여 주는 것 |
+/// | --- | --- |
+/// | 토큰 없음 | ``LandingView`` (들어오는 문) |
+/// | 토큰 있고 플랜 미완성 | ``SettingView`` (온보딩 — 남은 질문) |
+/// | 토큰 있고 플랜 완성 | ``MainTabShell`` |
+/// | 아직 물어보는 중 | 브랜드 화면 |
+///
+/// **`planComplete == nil` 을 `false` 와 같게 다루지 말 것.** 못 물어본 것을
+/// "안 채웠다" 로 읽으면 기존 사용자가 앱을 켤 때마다 온보딩을 본다.
 struct RootView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
@@ -11,10 +23,15 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if env.isAuthenticated {
+            if !env.isAuthenticated {
+                LandingView()
+            } else if env.planComplete == false {
+                // 온보딩은 셸(탭바)을 달지 않는다 — 중간에 홈으로 새면 안 된다.
+                SettingView { env.markPlanComplete() }
+            } else if env.planComplete == true {
                 MainTabShell(tab: $tab)
             } else {
-                LandingView()
+                AuthSplash()
             }
         }
         .tint(WPColor.primary)
@@ -60,6 +77,22 @@ struct RootView: View {
             get: { env.pendingShareCode.map(PendingShare.init(code:)) },
             set: { if $0 == nil { env.pendingShareCode = nil } }
         )
+    }
+}
+
+/// 토큰은 있는데 플랜을 아직 못 물어본 짧은 사이.
+///
+/// 여기서 홈을 먼저 그리면 온보딩이 필요한 사람에게 빈 화면이 한 번 스쳤다가
+/// 바뀐다. 반대로 "일정이 없어요" 같은 빈 상태를 말하지도 않는다 —
+/// 아직 아무것도 모르는 상태다.
+private struct AuthSplash: View {
+    var body: some View {
+        ZStack {
+            WPColor.background.ignoresSafeArea()
+            AppLogo(size: 56)
+                .opacity(0.5)
+        }
+        .accessibilityIdentifier("root.splash")
     }
 }
 

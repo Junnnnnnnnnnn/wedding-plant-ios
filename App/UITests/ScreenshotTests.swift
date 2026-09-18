@@ -46,17 +46,23 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - 랜딩 → 설정
 
     /// 웹과 동일한 6단계 플로우: 축하 → 날짜 → 예산 → 이름 → 환영 → 약관
+    ///
+    /// 두 앱을 따로 띄운다. 예전에는 한 번 띄워 랜딩의 "로그인 없이 둘러보기" 를
+    /// 눌러 온보딩으로 넘어갔는데, **그 입구를 없앴다**(웹·안드로이드와 같음).
+    /// 지금은 토큰 유무가 두 화면을 가른다.
     func test_01_랜딩과_설정_플로우() {
+        // 로그인 문 — 토큰이 없을 때만 보인다.
+        let door = makeApp(loggedOut: true)
+        door.launch()
+        _ = door.wait(for: .runningForeground, timeout: 30)
+        settle()
+        capture(door, "01-landing")
+        door.terminate()
+
+        // 온보딩 — 로그인은 됐지만 이름·날짜·예산이 덜 찬 사람.
         let app = makeApp(forceOnboarding: true)
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 30)
-        settle()
-
-        capture(app, "01-landing")
-
-        let guestButton = app.buttons["landing.guest"]
-        guard guestButton.waitForExistence(timeout: 10) else { return }
-        guestButton.tap()
 
         // 축하 단계는 3초 뒤 자동으로 날짜 단계로 넘어간다.
         settle(1.0)
