@@ -26,6 +26,38 @@ public enum PlanRules {
         return "D+\(abs(days))"
     }
 
+    /// 웹 main 의 `ddaySentenceLines` — 홈 머리 면의 **두 줄** 문장.
+    ///
+    /// 시안처럼 두 줄로 끊는다("결혼식까지 / 74일 남았어요"). 한 줄이면 32pt 에서
+    /// 폰 폭을 넘겨 어중간한 데서 꺾인다.
+    public static func dDaySentence(
+        weddingDate: KstDate?,
+        now: Date = Date()
+    ) -> (String, String) {
+        guard let days = dDay(weddingDate: weddingDate, now: now) else {
+            return ("결혼식 날짜를", "정해 주세요")
+        }
+        if days > 0 { return ("결혼식까지", "\(days)일 남았어요") }
+        if days == 0 { return ("오늘이", "결혼식이에요") }
+        return ("결혼식이", "\(abs(days))일 지났어요")
+    }
+
+    // MARK: - 홈의 두 묶음
+
+    /// 웹 main 의 `getTimeBucket` 을 홈의 두 묶음으로 접은 것.
+    ///
+    /// **이번 달에 할 일** = 이번 달 안의 일 **+ 지난 일**. 지난 일을 따로 빼지
+    /// 않는 이유는, 아직 안 끝났으므로 여전히 "해야 할 일" 이고 가장 급하기
+    /// 때문이다. 다가오는 순 정렬이라 자연히 맨 위에 온다.
+    ///
+    /// 나머지(다음 달 이후 · **날짜 미정**)는 `그 다음` 이다 —
+    /// 날짜가 없으면 이번 달이라고 말할 근거가 없다.
+    public static func isThisMonthOrPast(startDate: String?, today: KstDate) -> Bool {
+        guard let date = KstDate(dateString: startDate ?? "") else { return false }
+        if date < today { return true }
+        return date.year == today.year && date.month == today.month
+    }
+
     // MARK: - 일정 상태
 
     public enum DateStatus: String, Sendable, CaseIterable {

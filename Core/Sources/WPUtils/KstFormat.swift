@@ -187,3 +187,44 @@ public func formatKoreanTime(_ time: String?) -> String {
     let hour12 = hour % 12 == 0 ? 12 : hour % 12
     return "\(meridiem) \(hour12):\(minuteText)"
 }
+
+// MARK: - 연도 없는 짧은 날짜 (홈 목록)
+
+extension KstDate {
+    /// "9월 12일 (토)" — 홈 폰 목록 카드·캘린더 그날 목록.
+    ///
+    /// 묶음 머리글이 이미 "이번 달" 을 말하므로 연도는 뺀다.
+    public var monthDayWeekText: String {
+        "\(month)월 \(day)일 (\(weekdayShort))"
+    }
+
+    /// "9월 12일" — 구분선 목록(`그 다음`)의 오른쪽 날짜.
+    public var monthDayText: String {
+        "\(month)월 \(day)일"
+    }
+}
+
+// MARK: - 금액
+
+/// 웹의 `toLocaleString("ko-KR")` 대응 — `1234` → `"1,234"`.
+///
+/// 앱의 금액은 **만원 단위**라 화면에서는 뒤에 "만 원" 을 붙여 쓴다.
+/// `DateFormatter` 를 피한 것과 같은 이유로 `NumberFormatter` 도 쓰지 않는다 —
+/// 기기 로케일에 따라 구분자가 바뀌면 세 앱의 숫자가 달라 보인다.
+public func withThousands(_ value: Int) -> String {
+    let negative = value < 0
+    var digits = String(abs(value))
+    var out = ""
+    while digits.count > 3 {
+        let cut = digits.index(digits.endIndex, offsetBy: -3)
+        out = "," + digits[cut...] + out
+        digits = String(digits[..<cut])
+    }
+    out = digits + out
+    return negative ? "-" + out : out
+}
+
+/// 소수로 내려온 금액을 반올림해 천 단위로 끊는다.
+public func withThousands(_ value: Double) -> String {
+    withThousands(Int(value.rounded()))
+}
