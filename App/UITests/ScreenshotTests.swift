@@ -310,6 +310,31 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
+    /// 가이드 오버레이 — 머리 면의 `?` 로 연다.
+    ///
+    /// **앵커를 못 찾으면 스팟라이트가 0×0 으로 붕괴해 화면만 까맣게 덮인다.**
+    /// 스텝을 실제로 넘겨 말풍선이 매번 보이는지 확인한다.
+    func test_04e_가이드() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(3.0)
+
+        let help = app.buttons["main.guide"]
+        guard help.waitForExistence(timeout: 10) else { return }
+        help.tap()
+        settle(1.5)
+        capture(app, "33-guide-1")
+
+        // 오버레이에 "다음" 버튼은 없다 — **아무 데나 누르면 넘어간다.**
+        let overlay = app.otherElements["guide.overlay"]
+        for step in 2...5 where overlay.exists {
+            overlay.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            settle(1.0)
+            capture(app, "33-guide-\(step)")
+        }
+    }
+
     /// 홈의 `추가` → 등록 시트.
     ///
     /// **단계형이라 결제 유형을 고르기 전에는 금액·장소 칸이 없다.** 그래서 두 번

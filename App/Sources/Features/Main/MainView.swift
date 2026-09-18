@@ -167,7 +167,13 @@ struct MainView: View {
                     HeadAvatars(initials: model.headerInitials)
                 }
                 Spacer(minLength: 0)
+
+                HeadIconButton(systemName: "questionmark.circle", label: "가이드 보기") {
+                    guide.show(mainGuideSteps)
+                }
+                .accessibilityIdentifier("main.guide")
             }
+            .guideAnchor("main-header-info")
 
             if model.planLoading {
                 Spacer().frame(height: 16)

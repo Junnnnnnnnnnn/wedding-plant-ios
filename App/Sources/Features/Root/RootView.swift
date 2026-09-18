@@ -21,6 +21,10 @@ struct RootView: View {
     @EnvironmentObject private var guest: GuestStore
     @EnvironmentObject private var push: PushService
     @State private var tab: WPTab = .home
+    /// 가이드는 **하단 탭바까지 덮어야** 하는데 탭바가 화면 바깥이라,
+    /// 오버레이는 여기서 그리고 화면들은 띄우라는 신호만 올려보낸다.
+    @StateObject private var guide = GuideController()
+    @StateObject private var guideAnchors = GuideAnchors()
 
     var body: some View {
         Group {
@@ -33,6 +37,13 @@ struct RootView: View {
                 MainTabShell(tab: $tab)
             } else {
                 AuthSplash()
+            }
+        }
+        .environmentObject(guide)
+        .environment(\.guideAnchors, guideAnchors)
+        .overlay {
+            if guide.visible {
+                GuideOverlay(steps: guide.steps, anchors: guideAnchors) { guide.close() }
             }
         }
         .tint(WPColor.primary)

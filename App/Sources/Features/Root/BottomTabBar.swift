@@ -69,6 +69,8 @@ struct BottomTabBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color.white)
+        // 가이드의 마지막 스텝이 이 앵커를 짚는다. **이름을 바꾸지 말 것.**
+        .guideAnchor("main-bottom-nav")
     }
 }
 
