@@ -31,18 +31,18 @@ struct BudgetDetailView: View {
     }
 
     var body: some View {
+        // C안: 분홍 머리 면 + **흰 시트**. 점 그리드 배경은 이 화면에서 걷었다.
         ZStack {
-            WPScreenBackground()
+            Color.white
 
             ScrollView {
                 VStack(spacing: 0) {
-                    header
+                    head
 
                     if model.loading {
-                        ProgressView()
-                            .tint(WPColor.primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 320)
+                        // 전역 스피너 대신 뼈대를 낸다 — 받기 전에 "없다" 고
+                        // 말하지 않고, 받는 순간 높이도 튀지 않는다.
+                        loadingSkeleton
                     } else if let message = model.errorMessage {
                         errorState(message)
                     } else if model.detail == nil {
@@ -61,7 +61,7 @@ struct BudgetDetailView: View {
                         ZStack {
                             VStack(spacing: 0) {
                                 Spacer().frame(height: 32)
-                                AnalysisSection(model: model)
+                                CategoryTable(model: model)
 
                                 Spacer().frame(height: 32)
                                 TabsRow(model: model)
@@ -98,39 +98,89 @@ struct BudgetDetailView: View {
             }
             .accessibilityIdentifier("budget.scroll")
         }
+        // 분홍 머리 면이 상태바 뒤까지 깔리도록 위로 넓힌다. 면은 스크롤 영역
+        // **안**에 있어 내용과 함께 올라간다(웹 `data-mobile-head`).
+        .ignoresSafeArea(edges: .top)
+        .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden()
         .task { await model.load(env: env, guest: guest) }
     }
 
-    private var header: some View {
-        HStack {
-            Button { dismiss() } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.left")
-                        .font(.system(size: 17, weight: .semibold))
-                    Text("뒤로가기")
-                        .font(WPFont.hak(16, .bold))
+    /// 도넛과 표가 들어올 자리. 실제 화면과 같은 크기라 받는 순간 아래가 안 튄다.
+    private var loadingSkeleton: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 20)
+            SkeletonBox(width: 190, height: 190, corner: 95)
+            Spacer().frame(height: 20)
+            SkeletonBox(width: 220, height: 16)
+            Spacer().frame(height: 24)
+            ForEach(0..<4, id: \.self) { _ in
+                VStack(spacing: 0) {
+                    Hairline()
+                    SkeletonBox(height: 18)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                 }
-                .foregroundStyle(WPColor.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.white.opacity(0.3), in: Capsule())
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("budget.back")
-
-            Spacer()
-
-            // 가이드는 아직 이식 전이다. 자리와 모양만 웹과 맞춰 둔다.
-            Image(systemName: "questionmark.circle")
-                .font(.system(size: 24))
-                .foregroundStyle(WPColor.stone400)
-                .frame(width: 40, height: 40)
-                .background(Color.white.opacity(0.3), in: Circle())
-                .accessibilityLabel("가이드 보기")
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 웹 면 `rounded-b-[24px] px-6 pb-6 pt-4` — 가운데 "예산", 아래 초기 자본.
+    ///
+    /// **머리 면은 스크롤 영역 안에 있다**(웹 `data-mobile-head`). 내용과 함께
+    /// 올라가야 작은 폰에서 표가 그만큼 더 보인다.
+    ///
+    /// 초기 자본을 여기서 말하므로 **아래 요약에서 다시 세지 않는다** —
+    /// 도넛 밑 두 줄은 `사용률`·`사용 후 잔액`뿐이다.
+    private var head: some View {
+        BrandHead(corner: 24, horizontal: 24, top: 16, bottom: 24) {
+            ZStack {
+                Text("예산")
+                    .font(WPFont.hak(17, .bold))
+                    .tracking(-0.02 * 17)
+                    .foregroundStyle(.white)
+
+                HStack {
+                    HeadIconButton(
+                        systemName: "arrow.left",
+                        label: "뒤로가기",
+                        iconSize: 20
+                    ) { dismiss() }
+                    .offset(x: -8)
+                    .accessibilityIdentifier("budget.back")
+
+                    Spacer()
+
+                    // 가이드는 아직 이식 전이라 자리를 비워 둔다.
+                    // 눌러도 아무 일이 없는 버튼을 미리 두지 않는다.
+                    Color.clear.frame(width: 36, height: 36)
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+            Spacer().frame(height: 12)
+            Text("초기 자본")
+                .font(WPFont.hak(13))
+                .foregroundStyle(.white.opacity(0.8))
+
+            Spacer().frame(height: 4)
+            if model.loading {
+                SkeletonBox(width: 176, height: 40, onBrand: true, corner: 8)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text(withThousands(model.initialCapital))
+                        .font(WPFont.hak(40, .bold))
+                        .tracking(-0.04 * 40)
+                    Text(" 만 원")
+                        .font(WPFont.hak(18, .bold))
+                        .tracking(-0.02 * 18)
+                }
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            }
+        }
     }
 
     private func errorState(_ message: String) -> some View {
@@ -164,181 +214,147 @@ struct BudgetDetailView: View {
 /// 웹 `StatCard.tsx` 의 세 가지 variant.
 private enum StatVariant { case white, pinkLight, pinkSolid }
 
+// MARK: - 카테고리별 표
 
-
-// MARK: - AI 버튼
-
-
-// MARK: - 지출 분석
-
-private struct AnalysisSection: View {
+/// 카테고리별 예산 표 — 웹 `SpendingAnalysis.tsx`.
+///
+/// 비율은 위의 도넛이 맡고 여기는 **정확한 값**을 맡는다. 예산·사용·남음을
+/// 열로 세워야 서로 빼서 비교가 된다 — 예전에는 `사용 / 예산` 한 덩어리라
+/// "얼마 남았나" 를 사람이 암산해야 했다.
+///
+/// **폰에서도 세 열을 세운다**(시안 C안 05). 58pt 짜리 숫자 열 셋은 375pt
+/// 에서도 들어간다(이름 칸에 131pt 이 남는다). 예전에는 좁으면 한 덩어리로
+/// 접혔는데, 그러면 폰에서만 다시 암산을 해야 했다.
+///
+/// **막대는 넓을 때만**이라 폰에는 없다 — 세 숫자가 이미 그 말을 한다.
+private struct CategoryTable: View {
     @ObservedObject var model: BudgetDetailViewModel
-
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
 
+    /// 웹 `grid-cols-[minmax(0,1fr)_58px_58px_58px] gap-x-3`
+    private let numberWidth: CGFloat = 58
+    private let columnGap: CGFloat = 12
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("지출 분석")
-                    .font(WPFont.hak(20, .bold))
+            HStack(spacing: 12) {
+                Text("카테고리별")
+                    .font(WPFont.hak(18, .bold))
+                    .tracking(-0.02 * 18)
                     .foregroundStyle(WPColor.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-
+                // 고른 카테고리 풀기. **제목 줄에 함께 둬야** 무엇이 걸렸는지 보인다.
                 if model.selectedCategory != nil {
                     Button {
                         Task { await model.clearCategory(env: env, guest: guest) }
                     } label: {
                         Text("필터 해제")
-                            .font(WPFont.hak(10, .black))
-                            // 웹 `tracking-widest` (= 0.1em)
-                            .tracking(1)
+                            .font(WPFont.hak(12, .bold))
                             .foregroundStyle(WPColor.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 4)
-                            .background(WPColor.primary.opacity(Double(0x11) / 255), in: Capsule())
+                            .background(Color(hex: 0xFFF2F6), in: Capsule())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("budget.clearFilter")
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
 
-            Spacer().frame(height: 16)
-
-            card
-        }
-        .padding(.horizontal, 16)
-    }
-
-    private var card: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("전체 사용률")
-                        .font(WPFont.hak(10, .black))
-                        .tracking(1)
-                        .foregroundStyle(WPColor.primary.opacity(Double(0x88) / 255))
-
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        // verbatim 필수 — 숫자 자동 포맷(천 단위 구분) 방지
-                        Text(verbatim: "\(model.usedPercent)%")
-                            .font(WPFont.hak(36, .black))
-                            // 웹 `tracking-tighter` (= -0.05em)
-                            .tracking(-0.05 * 36)
-                            .foregroundStyle(WPColor.textPrimary)
-                        Text("사용")
-                            .font(WPFont.hak(14, .bold))
-                            .foregroundStyle(WPColor.gray400)
-                    }
-                }
-
-                Spacer(minLength: 8)
-            }
-
-            Spacer().frame(height: 32)
+            headerRow
 
             if model.sortedCategories.isEmpty {
                 Text("카테고리 데이터가 없습니다.")
-                    .font(WPFont.hak(14, .medium))
-                    .italic()
+                    .font(WPFont.hak(13))
                     .foregroundStyle(WPColor.gray400)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 24)
             } else {
-                VStack(spacing: 24) {
-                    ForEach(model.sortedCategories) { item in
-                        CategoryBar(
-                            item: item,
-                            active: model.selectedCategory == item.categoryName,
-                            dimmed: model.selectedCategory != nil
-                                && model.selectedCategory != item.categoryName
-                        ) {
-                            Task { await model.toggleCategory(item.categoryName, env: env, guest: guest) }
-                        }
-                    }
+                ForEach(model.sortedCategories) { item in
+                    row(item)
                 }
             }
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(WPColor.cardBorder, lineWidth: 1)
+    }
+
+    private var headerRow: some View {
+        tableRow(
+            name: Text("카테고리")
+                .font(WPFont.hak(12, .bold))
+                .foregroundStyle(WPColor.fgSubtle),
+            cells: ["예산", "사용", "남음"].map { label in
+                AnyView(
+                    Text(label)
+                        .font(WPFont.hak(12, .bold))
+                        .foregroundStyle(WPColor.fgSubtle)
+                )
+            }
         )
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1)
     }
-}
 
+    private func row(_ item: CategoryChartItem) -> some View {
+        let budget = item.total
+        let used = item.used
+        let left = budget - used
+        let empty = budget == 0 && used == 0
+        let selected = model.selectedCategory == item.categoryName
+        let numberColor = empty ? WPColor.gray300 : WPColor.textPrimary
 
-
-private struct CategoryBar: View {
-    var item: CategoryChartItem
-    var active: Bool
-    var dimmed: Bool
-    var onTap: () -> Void
-
-    /// 웹 `opacity-30 grayscale` 을 **계산해서 얻은 최종 색**.
-    ///
-    /// SwiftUI 의 `.grayscale()` + `.opacity()` 를 버튼에 걸어 봤지만 막대만 그대로 진하게
-    /// 남는다(글자에는 먹는다). 필터에 기대지 말고 색을 직접 지정한다.
-    /// `#ee2b8c` → 회색조 `#5b5b5b` → 흰 배경 위 30% ≈ `#cfcfcf`.
-    private static let dimmedGray = Color(hex: 0xCFCFCF)
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    // 카테고리 이름은 사용자 입력값이므로 Tmoney
-                    Text(item.categoryName)
-                        .font(WPFont.tmoney(11, .black))
-                        .tracking(WPFont.trackingTight(11))
-                        .foregroundStyle(nameColor)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-
-                    Spacer(minLength: 8)
-
-                    HStack(spacing: 2) {
-                        Text(verbatim: "\(wpThousands(item.used)) / \(wpThousands(item.total))")
-                            .font(WPFont.hak(11, .bold))
-                            .foregroundStyle(dimmed ? Self.dimmedGray : WPColor.primary)
-                        // 웹: 단위만 더 작고 회색
-                        Text("만원")
-                            .font(WPFont.hak(10, .semibold))
-                            .foregroundStyle(dimmed ? Self.dimmedGray : WPColor.gray500)
-                    }
-                }
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        // 웹 `bg-[#ee2b8c0a]`
-                        Capsule().fill(WPColor.primary.opacity(Double(0x0A) / 255))
-                        Capsule()
-                            .fill(dimmed ? Self.dimmedGray : WPColor.primary)
-                            .frame(width: geo.size.width * item.ratio)
-                    }
-                }
-                .frame(height: 12)
-            }
-            .contentShape(Rectangle())
+        return VStack(spacing: 0) {
+            Hairline()
+            tableRow(
+                name: Text(item.categoryName)
+                    .font(WPFont.hak(14))
+                    .foregroundStyle(
+                        selected ? WPColor.primary : (empty ? WPColor.gray400 : WPColor.textPrimary)
+                    )
+                    .lineLimit(1),
+                cells: [
+                    AnyView(numberCell(budget, color: numberColor)),
+                    AnyView(numberCell(used, color: numberColor)),
+                    // 남음만 굵게 — 이 화면에서 찾는 값이다.
+                    AnyView(
+                        numberCell(
+                            left,
+                            color: empty
+                                ? WPColor.gray300
+                                : (left < 0 ? BudgetDonutView.overColor : WPColor.textPrimary),
+                            bold: true
+                        )
+                    ),
+                ]
+            )
         }
-        .buttonStyle(.plain)
-        // 웹 `scale-[0.98]` / 선택된 항목은 `translate-x-1`
-        .scaleEffect(dimmed ? 0.98 : 1)
-        .offset(x: active ? 4 : 0)
-        .animation(.easeOut(duration: 0.3), value: dimmed)
-        .animation(.easeOut(duration: 0.3), value: active)
+        .background(selected ? Color(hex: 0xFFF7FA) : Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Task { await model.toggleCategory(item.categoryName, env: env, guest: guest) }
+        }
     }
 
-    private var nameColor: Color {
-        if dimmed { return Self.dimmedGray }
-        return active ? WPColor.primary : WPColor.textPrimary.opacity(0.7)
+    private func numberCell(_ value: Int, color: Color, bold: Bool = false) -> some View {
+        Text(withThousands(value))
+            .font(WPFont.tmoney(13, bold ? .bold : .regular))
+            .tracking(-0.02 * 13)
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+
+    private func tableRow(name: some View, cells: [AnyView]) -> some View {
+        HStack(spacing: columnGap) {
+            name.frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                cell.frame(width: numberWidth, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
-// MARK: - 탭 + 목록
 
 private struct TabsRow: View {
     @ObservedObject var model: BudgetDetailViewModel
