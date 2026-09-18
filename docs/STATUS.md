@@ -46,6 +46,8 @@
 | 항목 | 웹·Android | iOS |
 | --- | --- | --- |
 | 인앱 알림(SSE) | 있음 | 없음 |
+| 카카오 로그인 | 됨 | **코드는 붙었고 앱 키만 있으면 됨** |
+| Sign in with Apple | 웹·Android 에 없음 | **iOS 에만 있다**(심사 지침 4.8) |
 | 캘린더 보드(월별 컬럼) | 넓은 화면 전용 | 해당 없음(폰 전용 앱) |
 | 지도(카카오 SDK) | 있음 | 카카오맵 링크로 대체 |
 
@@ -108,23 +110,39 @@
 
 ## 다음에 할 일 (우선순위)
 
-### 1. 카카오 로그인 실연동
+### 1. 카카오 네이티브 앱 키 넣기 — **지금 막혀 있는 것**
 
-- SwiftPM 에 `kakao-ios-sdk` 추가, 카카오 콘솔에 iOS 플랫폼 + Bundle ID 등록
-- 본문 키는 **`kakaoToken`** (`accessToken` 이면 400)
-- **네이티브 앱 키**를 쓴다. `Config/Local.xcconfig` 로 주입하고 커밋하지 않는다
-- 로그인 후 분기는 이미 Core 에 있다 → `PostLoginRouter`
+코드는 다 붙었다. 카카오 개발자 콘솔에서 **iOS 플랫폼 + Bundle ID**
+(`com.zipshowkorea.weddingplant`)를 등록하고 **네이티브 앱 키**를
+`Config/Local.xcconfig` 의 `KAKAO_NATIVE_APP_KEY` 에 넣으면 로그인이 된다.
 
-### 2. Sign in with Apple (심사 필수)
+**REST API 키·JS 키가 아니다.** 키가 없으면 버튼이 설정 문제라고 말해 주는데,
+게스트 모드를 없앤 뒤로는 **키가 없으면 아무도 앱에 못 들어온다.**
 
-카카오만 있는 앱은 **지침 4.8 로 반려**된다. iOS 클라이언트 +
-백엔드 `POST /plan/auth/apple/login` + 기존 카카오 계정과의 연결 정책이 필요하다.
+### 2. Apple Developer Program 가입 후 엔타이틀먼트 켜기
 
-### 3. 피드 · 자랑하기
+`App/Resources/WeddingPlant.entitlements` 에 `applesignin` 과 `aps-environment`
+가 들어 있다. **유료 계정이 있어야 서명된다** — 기본은 꺼 두어 무료 계정
+실기기 설치와 CI 시뮬레이터 빌드가 그대로 돈다.
 
-남은 화면 가운데 가장 크다. 안드로이드 `ui/feed/`·`ui/brag/` 가 레퍼런스다.
+켜는 법: `Config/Local.xcconfig` 에
+`WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements`
 
-### 4. 배우자 귀속 · 가이드 오버레이 · 초대 띠
+### 3. 백엔드 `APPLE_BUNDLE_IDS` 설정 + 배포
+
+Apple 로그인은 백엔드에 커밋만 되어 있고 **밀지 않았다**(푸시가 곧 배포다).
+운영에 올릴 때 환경변수 `APPLE_BUNDLE_IDS=com.zipshowkorea.weddingplant` 를
+함께 넣어야 한다 — **비어 있으면 애플 로그인이 막힌다**(`aud` 를 검사할 수
+없는 상태로 열어 두지 않는다).
+
+`plan_user` 에 `appleId`·`appleEmail` 컬럼이 늘어난다(`synchronize: true`).
+
+### 4. App Store Connect 메타데이터
+
+- **지원 URL**(지침 1.5) — 앱 안의 문의하기와 별개로 **이게 필수 항목**이다.
+- 개인정보처리방침 URL — `https://weddingplant.app/privacy`
+- 앱 개인정보 보호 설문(수집 항목 신고)
+- 스크린샷 6.9인치(1320x2868) 필수
 
 ### 5. 인앱 알림(SSE)
 
@@ -136,33 +154,3 @@
 지금은 커스텀 스킴(`weddingplant://share/{code}`)으로만 열린다.
 `com.apple.developer.associated-domains` + 웹 서버의 `apple-app-site-association`
 가 필요하다.
-
-## 화면을 눈으로 확인하는 법
-
-**프론트엔드 변경은 스크린샷을 본 뒤에 완료로 본다.** CI 통과는 컴파일됐다는 뜻일 뿐이다.
-
-```powershell
-.\scripts\preview.ps1           # 최근 성공한 CI 에서 받아 폴더 열기
-.\scripts\preview.ps1 -Watch    # 지금 도는 CI 를 기다렸다 받기
-```
-
-Mac 이면 `WeddingPlant (Demo)` 스킴으로 Cmd+R 이 훨씬 빠르다.
-
-**새 화면을 만들면 `App/UITests/ScreenshotTests.swift` 에 캡처 경로를 같이 넣을 것.**
-안 넣으면 화면을 만들어도 아티팩트에 영영 안 나온다 (실제로 겪었다).
-
----
-
-## Mac 에서 이어서 할 때
-
-```bash
-git pull
-./scripts/mac-setup.sh     # xcodegen generate 포함
-```
-
-1. `.claude/skills/` 가 없으면 `PERSONAL/wedding-plant/.claude/skills/` 에서 복사
-   (`hallmark`, `impeccable`. 저장소가 공개라 커밋하지 않는다)
-2. `Config/Local.xcconfig` 가 없으면 `cp Config/Local.example.xcconfig Config/Local.xcconfig`
-   후 실제 API 주소 입력. **xcconfig 에서 `//` 는 주석이라 `https:/$()/...` 로 써야 한다**
-
-Core 는 Windows 에서 그대로 빌드·테스트된다(`.\scripts\test.ps1`). 로직 작업은 어느 쪽에서 해도 된다.
