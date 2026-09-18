@@ -53,6 +53,10 @@ jobs:
           # 백엔드 주소는 저장소가 공개라 커밋하지 않는다. 시크릿으로 주입한다.
           # 비어 있으면 앱이 Config/Base.xcconfig 의 기본값(localhost)으로 떨어진다.
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          # **카카오 네이티브 앱 키.** 없으면 로그인 버튼이 설정 오류를 내고,
+          # 게스트 모드가 없어서 **아무도 앱에 들어오지 못한다** — 화면 구경도 못 한다.
+          # 값 자체는 앱 번들에 실리는 공개 정보지만, 저장소가 공개라 소스에 두지 않는다.
+          KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
         run: |
           set -euo pipefail
           xcodebuild build \
@@ -62,6 +66,7 @@ jobs:
             -sdk iphoneos \
             -derivedDataPath build/DerivedData \
             API_BASE_URL="${API_BASE_URL:-}" \
+            KAKAO_NATIVE_APP_KEY="${KAKAO_NATIVE_APP_KEY:-}" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
@@ -130,6 +135,7 @@ jobs:
         if: inputs.mode == 'testflight'
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          KAKAO_NATIVE_APP_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
         run: |
           set -euo pipefail
           if [ -z "${API_BASE_URL:-}" ]; then
@@ -142,6 +148,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath build/WeddingPlant.xcarchive \
             API_BASE_URL="${API_BASE_URL:-}" \
+            KAKAO_NATIVE_APP_KEY="${KAKAO_NATIVE_APP_KEY:-}" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGNING_REQUIRED=YES \

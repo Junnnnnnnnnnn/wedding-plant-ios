@@ -46,7 +46,7 @@
 | 항목 | 웹·Android | iOS |
 | --- | --- | --- |
 | 인앱 알림(SSE) | 있음 | 없음 |
-| 카카오 로그인 | 됨 | **코드는 붙었고 앱 키만 있으면 됨** |
+| 카카오 로그인 | 됨 | 코드·키 준비됨. **콘솔에 iOS 플랫폼 등록만 남음** |
 | Sign in with Apple | 웹·Android 에 없음 | **iOS 에만 있다**(심사 지침 4.8) |
 | 캘린더 보드(월별 컬럼) | 넓은 화면 전용 | 해당 없음(폰 전용 앱) |
 | 지도(카카오 SDK) | 있음 | 카카오맵 링크로 대체 |
@@ -110,14 +110,51 @@
 
 ## 다음에 할 일 (우선순위)
 
-### 1. 카카오 네이티브 앱 키 넣기 — **지금 막혀 있는 것**
+### 1. 카카오 콘솔에 iOS 플랫폼 등록 — **지금 막혀 있는 것**
 
-코드는 다 붙었다. 카카오 개발자 콘솔에서 **iOS 플랫폼 + Bundle ID**
-(`com.zipshowkorea.weddingplant`)를 등록하고 **네이티브 앱 키**를
-`Config/Local.xcconfig` 의 `KAKAO_NATIVE_APP_KEY` 에 넣으면 로그인이 된다.
+코드는 다 붙었고 CI 빌드도 통과했다. 남은 것은 **콘솔 등록 하나**다.
 
-**REST API 키·JS 키가 아니다.** 키가 없으면 버튼이 설정 문제라고 말해 주는데,
-게스트 모드를 없앤 뒤로는 **키가 없으면 아무도 앱에 못 들어온다.**
+- <https://developers.kakao.com> → 웨딩플랜 앱 → **앱 설정 > 플랫폼 > iOS 등록**
+- 번들 ID: `com.zipshowkorea.weddingplant` (안드로이드 패키지명과 같다)
+- **iOS 는 키 해시가 필요 없다** — 번들 ID 하나면 된다
+
+**키는 이미 있다.** 안드로이드와 같은 앱이라 네이티브 앱 키가 같고,
+`wedding-plant-android/local.properties` 의 값을 `Config/Local.xcconfig` 에 옮겨 뒀다
+(gitignore 됨). 실기기용 빌드를 CI 로 받으려면 저장소 시크릿도 필요하다:
+
+```powershell
+gh secret set KAKAO_NATIVE_APP_KEY --body "<네이티브 앱 키>"
+```
+
+**등록만으로는 안 되고 플랫폼을 따로 받는다** — 안드로이드가 되는 것과 무관하다.
+등록되지 않은 번들 ID 로 로그인하면 카카오가 거절한다.
+
+#### 확인된 것 (2026-09-18)
+
+- **운영 백엔드의 카카오 로그인은 살아 있다.** `POST /plan/auth/kakao/login` 에
+  가짜 토큰을 넣으니 `kapi.kakao.com` 까지 갔다가 401 이 돌아왔다 — 경로 전체가
+  뚫려 있다는 뜻이다.
+- **서버에는 카카오 키가 필요 없다.** 백엔드는 사용자 access_token 만 들고 카카오에
+  물어본다. 운영 `web.env` 의 카카오 키가 비어 있는 것은 **웹 OAuth 용**이라
+  앱 로그인과 무관하다.
+- `Config/Local.xcconfig` 의 `API_BASE_URL` 은 안드로이드와 같은
+  `https://api.weddingplant.app` 을 본다.
+
+#### 키 없이 배포되는 것을 빌드가 막는다
+
+게스트 모드가 없어 **키가 비면 아무도 앱에 못 들어온다** — 화면 구경도 못 하고,
+설치한 사람은 앱이 고장 난 줄 안다. 그래서 `project.yml` 의
+`카카오 앱 키 확인 (Release)` 이 Release 빌드를 실패시킨다.
+Debug 는 막지 않는다(CI 는 데모 모드, 실기기는 `개발용 토큰으로 로그인`).
+
+#### 실제로 로그인을 눌러 보려면
+
+**윈도우에서는 빌드할 수 없다.** 화면은 CI 캡처로 보지만 로그인은 대화형이라
+CI 로 확인할 수 없다. 길은 둘이다.
+
+1. `아이폰 설치용 빌드` 워크플로 → `unsigned-ipa` → Sideloadly 로 아이폰에 설치
+   (`docs/INSTALL_ON_IPHONE.md`). 무료 Apple ID 로 된다.
+2. 맥에서 `xcodegen generate` 후 Xcode 실행 (`docs/RUN_ON_MAC.md`).
 
 ### 2. Apple Developer Program 가입 후 엔타이틀먼트 켜기
 

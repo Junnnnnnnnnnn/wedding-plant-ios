@@ -80,6 +80,23 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
         ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOL_EXTENSIONS: NO
+    preBuildScripts:
+      # 카카오 키 없이 Release 를 만들면 **아무도 못 들어오는 앱**이 나온다.
+      # 게스트 모드를 없앤 뒤로 로그인 말고는 들어올 문이 없어서, 화면 구경도 못 하고
+      # 설치한 사람은 앱이 고장 난 줄 안다. 스토어에 올라간 뒤에 알면 늦으므로
+      # 빌드에서 막는다.
+      #
+      # Debug 는 막지 않는다 — CI 시뮬레이터 빌드와 UI 테스트는 데모 모드라 키가 없어도
+      # 돌고, 실기기 디버그는 `개발용 토큰으로 로그인` 으로 들어갈 수 있다.
+      - name: 카카오 앱 키 확인 (Release)
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "${CONFIGURATION}" = "Release" ] && [ -z "${KAKAO_NATIVE_APP_KEY}" ]; then
+            echo "error: KAKAO_NATIVE_APP_KEY 가 비어 있습니다. 이대로 배포하면 카카오 로그인이 동작하지 않아 아무도 앱에 들어올 수 없습니다."
+            echo "error:   로컬 빌드 → Config/Local.xcconfig 에 KAKAO_NATIVE_APP_KEY 를 넣으세요 (Local.example.xcconfig 참고)."
+            echo "error:   GitHub Actions → 저장소 시크릿 KAKAO_NATIVE_APP_KEY 를 등록하세요."
+            exit 1
+          fi
     dependencies:
       - package: WeddingPlantCore
         product: WPModels
