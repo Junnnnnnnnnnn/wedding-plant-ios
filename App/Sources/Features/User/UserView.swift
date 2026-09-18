@@ -49,7 +49,7 @@ struct UserView: View {
 
             Spacer().frame(height: 28)
 
-            SectionHeader(symbol: "person.fill", label: "기본 정보")
+            SettingsSectionHeader(symbol: "person.fill", label: "기본 정보")
             Spacer().frame(height: 16)
 
             IconField(symbol: "person.fill") {
@@ -102,7 +102,7 @@ struct UserView: View {
 
             Spacer().frame(height: 28)
 
-            SectionHeader(symbol: "wallet.pass.fill", label: "예산 설정")
+            SettingsSectionHeader(symbol: "wallet.pass.fill", label: "예산 설정")
             Spacer().frame(height: 16)
 
             IconField(symbol: "wallet.pass.fill") {
@@ -253,7 +253,11 @@ private struct ProfileHeader: View {
 // MARK: - 조각들
 
 /// 웹: `text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]` + 12px 아이콘
-private struct SectionHeader: View {
+/// `/user` 안의 아이콘 + 라벨 줄.
+///
+/// DesignSystem 의 공용 ``SectionHeader``(C안 묶음 머리글)와는 **다른 것**이라
+/// 이름을 나눈다. 파일 private 이어도 Swift 는 모듈 범위에서 재선언으로 잡는다.
+private struct SettingsSectionHeader: View {
     var symbol: String
     var label: String
 

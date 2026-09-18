@@ -21,6 +21,12 @@ final class AddPlanViewModel: ObservableObject {
     @Published var amount = ""
     @Published var date: KstDate = KstDate.today()
     @Published var dateUndecided = false
+    /// 시각 `"HH:mm"`. **선택이다** — 날짜만 잡아 두는 일정이 훨씬 많아
+    /// 비어 있는 게 기본이고, `날짜 미정` 이면 입력 자체를 감춘다.
+    @Published var startTime: String?
+    /// 돈이 나갔는지. **완료와 다른 축이다** — 계약금을 미리 낸 일정은
+    /// 예정이어도 이미 쓴 돈이다. 입력은 금액 바로 아래 체크다.
+    @Published var isPaid = false
     @Published var location = ""
     @Published var locationLat: Double = 0
     @Published var locationLng: Double = 0
@@ -132,6 +138,8 @@ final class AddPlanViewModel: ObservableObject {
                 payType: item.payType?.rawValue,
                 amount: item.amount,
                 startDate: item.startDate,
+                startTime: item.startTime,
+                isPaid: item.isPaid,
                 location: item.location,
                 lat: item.locationLat,
                 lng: item.locationLng,
@@ -154,6 +162,8 @@ final class AddPlanViewModel: ObservableObject {
                 payType: detail.payType,
                 amount: detail.amount,
                 startDate: detail.startDate,
+                startTime: detail.startTime,
+                isPaid: detail.isPaid,
                 location: detail.location,
                 lat: detail.locationLat,
                 lng: detail.locationLng,
@@ -171,6 +181,8 @@ final class AddPlanViewModel: ObservableObject {
         payType: String?,
         amount: Int?,
         startDate: String?,
+        startTime: String?,
+        isPaid: Bool,
         location: String?,
         lat: Double?,
         lng: Double?,
@@ -182,6 +194,8 @@ final class AddPlanViewModel: ObservableObject {
         self.amount = amount.map(String.init) ?? ""
         self.date = startDate.flatMap { KstDate(dateString: $0) } ?? KstDate.today()
         self.dateUndecided = (startDate ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+        self.startTime = (startTime ?? "").isEmpty ? nil : startTime
+        self.isPaid = isPaid
         self.location = location ?? ""
         self.locationLat = lat ?? 0
         self.locationLng = lng ?? 0
@@ -333,7 +347,11 @@ final class AddPlanViewModel: ObservableObject {
             // 생성에는 roomId 필수. 빼면 200 인데 목록에 영영 안 나온다.
             // 수정에는 붙이지 않는다.
             roomId: isEditMode ? nil : roomId,
-            addCategoryNameList: addedCategories.isEmpty ? nil : addedCategories
+            addCategoryNameList: addedCategories.isEmpty ? nil : addedCategories,
+            isPaid: isPaid,
+            // 날짜가 미정이면 시각도 뜻이 없다. 수정에서 지우려면 **빈 문자열**을
+            // 보내야 한다 — 키를 빼면 PATCH 시맨틱상 "변경 없음" 이라 남는다.
+            startTime: dateUndecided ? "" : (startTime ?? "")
         )
 
         do {
@@ -371,7 +389,9 @@ final class AddPlanViewModel: ObservableObject {
             locationLng: locationLng,
             memo: memo.trimmingCharacters(in: .whitespaces),
             payType: PayType(rawValue: payType.rawValue),
-            addCategoryNameList: addedCategories
+            addCategoryNameList: addedCategories,
+            isPaid: isPaid,
+            startTime: dateUndecided ? nil : startTime
         )
         guest.addSchedule(item)
         saved = true
