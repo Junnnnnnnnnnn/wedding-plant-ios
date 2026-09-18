@@ -265,9 +265,13 @@ final class ScreenshotTests: XCTestCase {
         }
 
         // 카드를 누르면 상세. **요청이 한 건도 안 나간다** — 목록이 항목을 넘긴다.
+        //
+        // **가운데를 누르면 안 된다.** 거기에 `카카오맵` 링크가 있어서 사파리가
+        // 열린다(안쪽 버튼이 카드 탭보다 먼저 먹는 게 맞는 동작이다).
+        // 금액이 있는 위쪽을 겨냥한다.
         let card = app.otherElements["feed.card"].firstMatch
         if card.waitForExistence(timeout: 5) {
-            card.tap()
+            card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
             settle(2.0)
             capture(app, "08-feed-detail")
         }
