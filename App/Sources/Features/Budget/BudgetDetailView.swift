@@ -2,27 +2,29 @@ import SwiftUI
 import WPModels
 import WPUtils
 
-/// 웹 `SpendingAnalysis.tsx:SAVINGS_TOOLTIP` 원문.
-///
-/// - Note: 안드로이드는 이 문구를 자체적으로 다시 쓴 버전("위 카드의 '남은 금액'은 …")을 쓴다.
-///   iOS 는 **웹 문구를 기준**으로 맞춘다. 세 앱을 통일하려면 웹/안드로이드 쪽을 먼저 정해야 한다.
-private let savingsTooltip =
-    "초기 자본에서 사용한 금액을 뺀 나머지예요. 플러스면 아직 쓸 수 있는 여유 예산, "
-    + "마이너스면 사용액이 초기 자본을 초과한 상태예요."
-
 /// 웹 `app/budget-detail/page.tsx` 이식.
 ///
-/// 구성(웹 순서 그대로):
-/// 뒤로가기·가이드 헤더 → 통계 카드 3장 → AI 버튼 → 지출 분석(사용률·잔액 배지·카테고리 막대)
-/// → 예정/사용 탭 → 항목 리스트
+/// 구성: 뒤로가기·가이드 헤더 → **예산 도넛** → 지출 분석(카테고리)
+/// → 예정/사용 탭 → 항목 목록
+///
+/// ## 도넛이 대신한 것
+///
+/// 예전에는 통계 카드 3장(자본·예정·사용) 위에 `남은 금액`(자본-예정-사용)과
+/// `사용 후 잔액`(자본-사용)이 따로 놀아서, 두 값이 왜 다른지를 **물음표 툴팁**으로
+/// 해명했다. 지금은 둘 다 같은 도넛의 구간이라 설명이 필요 없다 —
+/// **다시 두 번째 "잔액" 숫자나 툴팁을 만들지 말 것.**
+///
+/// ## AI 조언 버튼은 없앴다
+///
+/// 눌러도 "준비중" 모달만 뜨는 미완성 기능이라 **앱 심사(애플 2.1)에 걸리고**,
+/// 기대를 만들고 배신하는 자리였다. 시세 데이터가 쌓인 뒤 준비 패스의 유료
+/// 기능으로 제대로 낸다 — **다시 "준비중" 상태로 되살리지 말 것.**
 struct BudgetDetailView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var model: BudgetDetailViewModel
-    @State private var showAiModal = false
-    @State private var showSavingsTip = false
 
     init(roomId: String? = nil) {
         _model = StateObject(wrappedValue: BudgetDetailViewModel(roomId: roomId))
@@ -51,19 +53,15 @@ struct BudgetDetailView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 32)
                     } else {
-                        StatGrid(model: model)
-
-                        Spacer().frame(height: 8)
-                        AiButton { showAiModal = true }
+                        // 도넛 하나가 예전의 통계 카드 3장 + `남은 금액`/`사용 후 잔액`
+                        // 해명 툴팁을 대신한다. 두 값이 같은 그림의 다른 구간이라
+                        // 물음표로 설명할 필요가 없어졌다.
+                        BudgetDonutView(segments: model.donutSegments)
 
                         ZStack {
                             VStack(spacing: 0) {
                                 Spacer().frame(height: 32)
-                                AnalysisSection(
-                                    model: model,
-                                    showTip: showSavingsTip,
-                                    onToggleTip: { showSavingsTip.toggle() }
-                                )
+                                AnalysisSection(model: model)
 
                                 Spacer().frame(height: 32)
                                 TabsRow(model: model)
@@ -102,11 +100,6 @@ struct BudgetDetailView: View {
         }
         .navigationBarBackButtonHidden()
         .task { await model.load(env: env, guest: guest) }
-        // 오버레이로 띄우면 딤이 하단 탭바를 덮지 못한다. 웹은 `fixed inset-0` 로 전부 덮는다.
-        .fullScreenCover(isPresented: $showAiModal) {
-            AiPreparingModal { showAiModal = false }
-                .presentationBackground(.clear)
-        }
     }
 
     private var header: some View {
@@ -171,162 +164,15 @@ struct BudgetDetailView: View {
 /// 웹 `StatCard.tsx` 의 세 가지 variant.
 private enum StatVariant { case white, pinkLight, pinkSolid }
 
-private struct StatGrid: View {
-    @ObservedObject var model: BudgetDetailViewModel
 
-    var body: some View {
-        VStack(spacing: 12) {
-            StatCard(
-                label: "초기 자본",
-                value: model.initialCapital,
-                variant: .white,
-                large: true,
-                // 초기 자본 카드에만 있는 우측 하단 문구
-                remainingAmount: model.remaining
-            )
-
-            HStack(spacing: 12) {
-                StatCard(label: "예정", value: model.plannedTotal, variant: .pinkLight)
-                StatCard(label: "사용", value: model.usedTotal, variant: .pinkSolid)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
-    }
-}
-
-private struct StatCard: View {
-    var label: String
-    var value: Int
-    var variant: StatVariant
-    var large: Bool = false
-    var remainingAmount: Int?
-
-    var body: some View {
-        let labelSize: CGFloat = large ? 12 : 10
-        let valueSize: CGFloat = large ? 30 : 24
-
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                // 웹 `tracking-[0.15em]`
-                .font(WPFont.hak(labelSize, .black))
-                .tracking(labelSize * 0.15)
-                .foregroundStyle(labelColor)
-
-            Text("\(wpThousands(value))만원")
-                .font(WPFont.hak(valueSize, .black))
-                .tracking(WPFont.trackingTight(valueSize))
-                .foregroundStyle(valueColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-
-            if let remainingAmount {
-                Text("남은 금액 \(wpThousands(remainingAmount))만원")
-                    .font(WPFont.hak(14, .semibold))
-                    .foregroundStyle(labelColor)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.top, 2)
-            }
-        }
-        .padding(large ? 24 : 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(background, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            if let border {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(border, lineWidth: 1)
-            }
-        }
-        .shadow(color: shadow, radius: variant == .pinkSolid ? 10 : 3, y: variant == .pinkSolid ? 4 : 1)
-    }
-
-    private var background: Color {
-        switch variant {
-        case .white: return .white
-        // 웹 `bg-[#fff0f7]`
-        case .pinkLight: return Color(hex: 0xFFF0F7)
-        case .pinkSolid: return WPColor.primary
-        }
-    }
-
-    private var border: Color? {
-        switch variant {
-        // 웹 `border-[#ee2b8c1a]`
-        case .white: return WPColor.primary.opacity(Double(0x1A) / 255)
-        // 웹 `border-[#ee2b8c11]`
-        case .pinkLight: return WPColor.primary.opacity(Double(0x11) / 255)
-        case .pinkSolid: return nil
-        }
-    }
-
-    /// 웹 `shadow-[#ee2b8c33]` (= 알파 0x33)
-    private var shadow: Color {
-        switch variant {
-        case .pinkSolid: return WPColor.primary.opacity(Double(0x33) / 255)
-        case .white: return Color.black.opacity(0.04)
-        case .pinkLight: return .clear
-        }
-    }
-
-    private var valueColor: Color {
-        switch variant {
-        case .white: return WPColor.textPrimary
-        case .pinkLight: return WPColor.primary
-        case .pinkSolid: return .white
-        }
-    }
-
-    /// 웹 `labelStyles` — `#ee2b8c88` / `#ee2b8cbb` / `white/80`
-    private var labelColor: Color {
-        switch variant {
-        case .white: return WPColor.primary.opacity(Double(0x88) / 255)
-        case .pinkLight: return WPColor.primary.opacity(Double(0xBB) / 255)
-        case .pinkSolid: return Color.white.opacity(0.8)
-        }
-    }
-}
 
 // MARK: - AI 버튼
 
-private struct AiButton: View {
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 20))
-                Text("AI에게 예산 조언 받기")
-                    .font(WPFont.hak(16, .bold))
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                // 웹 `from-purple-500 to-[#ee2b8c]`
-                LinearGradient(
-                    colors: [Color(hex: 0xA855F7), WPColor.primary],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            // 웹 `shadow-[#ee2b8c22]`
-            .shadow(color: WPColor.primary.opacity(Double(0x22) / 255), radius: 10, y: 4)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 16)
-        .accessibilityIdentifier("budget.ai")
-    }
-}
 
 // MARK: - 지출 분석
 
 private struct AnalysisSection: View {
     @ObservedObject var model: BudgetDetailViewModel
-    var showTip: Bool
-    var onToggleTip: () -> Void
 
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
@@ -388,16 +234,6 @@ private struct AnalysisSection: View {
                 }
 
                 Spacer(minLength: 8)
-
-                SavingsBadge(savings: model.savings, onTapHelp: onToggleTip)
-            }
-
-            // 웹은 이 말풍선을 배지 아래에 떠 있게(absolute) 두지만, 오버레이로 띄우면
-            // 높이를 배지 기준으로 제안받아 글자가 잘린다. 흐름 안에 두어 전문이 보이게 한다.
-            if showTip {
-                SavingsTooltip()
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.top, 8)
             }
 
             Spacer().frame(height: 32)
@@ -435,53 +271,7 @@ private struct AnalysisSection: View {
     }
 }
 
-/// 웹의 초록/빨강 잔액 배지. 숫자만 보여주고, 물음표를 눌러야 설명이 뜬다.
-private struct SavingsBadge: View {
-    var savings: Int
-    var onTapHelp: () -> Void
 
-    var body: some View {
-        let positive = savings >= 0
-        // 웹 green-50 / green-600, red-50 / red-600
-        let background = positive ? Color(hex: 0xF0FDF4) : Color(hex: 0xFEF2F2)
-        let foreground = positive ? Color(hex: 0x16A34A) : Color(hex: 0xDC2626)
-
-        HStack(spacing: 4) {
-            Text(verbatim: (positive ? "+" : "-") + wpThousands(abs(savings)))
-                .font(WPFont.hak(12, .black))
-                .tracking(WPFont.trackingTight(12))
-                .foregroundStyle(foreground)
-
-            Button(action: onTapHelp) {
-                Image(systemName: "questionmark.circle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(foreground)
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("이 숫자의 의미 보기")
-            .accessibilityIdentifier("budget.savings.help")
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-}
-
-private struct SavingsTooltip: View {
-    var body: some View {
-        Text(savingsTooltip)
-            .font(WPFont.hak(12))
-            .lineSpacing(6)
-            .foregroundStyle(.white)
-            .frame(width: 256, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(12)
-            .background(WPColor.textPrimary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(color: Color.black.opacity(0.2), radius: 12, y: 6)
-    }
-}
 
 private struct CategoryBar: View {
     var item: CategoryChartItem
@@ -701,51 +491,3 @@ private struct StatusBadge: View {
 
 // MARK: - AI 준비중 안내
 
-/// 웹 `budget-detail` 의 `AIInsightsModal`.
-///
-/// 문구는 웹 상수(`AI_PREP_TITLE` / `AI_PREP_SUBTITLE`)를 **글자 그대로** 옮긴 것이다.
-/// 이모지도 웹 원문 그대로.
-private struct AiPreparingModal: View {
-    var onClose: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.5)
-                .ignoresSafeArea()
-                .onTapGesture(perform: onClose)
-
-            VStack(spacing: 0) {
-                Text("AI 서비스 준비중이예요!")
-                    .font(WPFont.hak(18, .semibold))
-                    .foregroundStyle(WPColor.stone900)
-                    .multilineTextAlignment(.center)
-
-                Spacer().frame(height: 12)
-
-                Text("조금만 기다려 주세요 \u{1F647}\u{200D}\u{2642}\u{FE0F}")
-                    .font(WPFont.hak(15))
-                    .lineSpacing(6)
-                    .foregroundStyle(WPColor.stone700)
-                    .multilineTextAlignment(.center)
-
-                Spacer().frame(height: 24)
-
-                Button(action: onClose) {
-                    Text("닫기")
-                        .font(WPFont.hak(14, .semibold))
-                        .foregroundStyle(WPColor.stone700)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color.white, in: Capsule())
-                        .overlay(Capsule().stroke(WPColor.stone300, lineWidth: 2))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("budget.ai.close")
-            }
-            .padding(24)
-            .frame(maxWidth: 384)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(.horizontal, 16)
-        }
-    }
-}

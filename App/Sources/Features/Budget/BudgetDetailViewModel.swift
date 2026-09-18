@@ -49,6 +49,11 @@ final class BudgetDetailViewModel: ObservableObject {
     var savings: Int { detail?.savings ?? 0 }
     var usedPercent: Int { detail?.usedPercent ?? 0 }
 
+    /// 도넛이 그릴 구간. 계산은 Core 가 한다.
+    var donutSegments: BudgetDonutSegments {
+        detail.map(BudgetDonutSegments.init) ?? BudgetDonutSegments(capital: 0, used: 0, planned: 0)
+    }
+
     /// usedAmount 큰 순 내림차순 (웹과 동일).
     ///
     /// 같은 금액끼리는 이름순으로 고정한다 — 게스트 쪽은 Dictionary 로 묶어서

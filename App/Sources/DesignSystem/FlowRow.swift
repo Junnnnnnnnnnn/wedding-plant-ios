@@ -7,6 +7,9 @@ import SwiftUI
 struct FlowRow: Layout {
     var spacing: CGFloat = 8
     var lineSpacing: CGFloat = 8
+    /// 줄 안에서의 가로 정렬. 예산 도넛의 범례처럼 가운데로 모아야 하는 곳이 있다
+    /// (웹 `justify-center`). 기본은 예전과 같은 왼쪽이다.
+    var alignment: HorizontalAlignment = .leading
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
@@ -31,6 +34,11 @@ struct FlowRow: Layout {
 
         for row in rows {
             var x = bounds.minX
+            if alignment == .center {
+                x += max(0, bounds.width - row.width) / 2
+            } else if alignment == .trailing {
+                x += max(0, bounds.width - row.width)
+            }
             for index in row.indices {
                 let size = subviews[index].sizeThatFits(.unspecified)
                 subviews[index].place(
