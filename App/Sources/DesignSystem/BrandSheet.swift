@@ -253,12 +253,23 @@ struct SkeletonBox: View {
             .frame(width: width, height: height)
             .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
             .animation(
-                .easeInOut(duration: 0.75).repeatForever(autoreverses: true),
+                Self.animated
+                    ? .easeInOut(duration: 0.75).repeatForever(autoreverses: true)
+                    : nil,
                 value: bright
             )
-            .onAppear { bright = true }
+            .onAppear { if Self.animated { bright = true } }
             .accessibilityHidden(true)
     }
+
+    /// **UI 테스트에서는 빛을 흘리지 않는다.**
+    ///
+    /// XCUITest 는 앱이 idle 이 될 때까지 기다리는데 `repeatForever` 는 영원히
+    /// 끝나지 않아, 관계없는 테스트가 "Failed to get matching snapshot: Timed out"
+    /// 으로 죽는다(실제로 채팅 테스트가 353초 만에 그렇게 실패했다).
+    ///
+    /// 뼈대는 스쳐 지나가는 상태라 캡처에서 정지 상태여도 확인에 지장이 없다.
+    private static let animated = !ProcessInfo.processInfo.arguments.contains("-WPDemoMode")
 
     private var base: Color {
         onBrand ? Color.white.opacity(0.2) : WPColor.basement
