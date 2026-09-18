@@ -52,45 +52,26 @@ struct UserView: View {
             SettingsSectionHeader(symbol: "person.fill", label: "기본 정보")
             Spacer().frame(height: 16)
 
-            IconField(symbol: "person.fill") {
+            LabeledField(label: "이름") {
                 BareInput(
                     text: Binding(get: { model.name }, set: { model.setName($0) }),
-                    placeholder: "이름"
+                    placeholder: "이름을 적어 주세요"
                 )
                 .accessibilityIdentifier("user.name")
             }
 
             Spacer().frame(height: 16)
 
-            // 웹: 입력창 + 오른쪽에 보라색 캘린더 버튼
-            HStack(spacing: 8) {
-                IconField(symbol: "calendar") {
-                    Text(model.date.weddingDateText)
-                        .font(WPFont.hak(18, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture { showDatePicker.toggle() }
-                }
-
-                Button {
-                    showDatePicker.toggle()
-                } label: {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Color(hex: 0x9333EA))
-                        .frame(width: 56, height: 56)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: 0xFAF5FF), Color(hex: 0xF3E8FF)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("날짜 선택")
+            // 칸 자체가 눌린다 — 옆에 있던 보라색 캘린더 버튼은 하는 일이 같았고
+            // **이 앱에 없는 색**이었다.
+            LabeledField(label: "결혼식 날짜") {
+                Text(model.date.weddingDateText)
+                    .font(WPFont.hak(16, .medium))
+                    .foregroundStyle(WPColor.fgNeutral)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { showDatePicker.toggle() }
+                    .accessibilityIdentifier("user.date")
             }
 
             if showDatePicker {
@@ -105,18 +86,14 @@ struct UserView: View {
             SettingsSectionHeader(symbol: "wallet.pass.fill", label: "예산 설정")
             Spacer().frame(height: 16)
 
-            IconField(symbol: "wallet.pass.fill") {
+            LabeledField(label: "예산", unit: "만 원") {
                 BareInput(
                     text: Binding(get: { model.budget }, set: { model.setBudget($0) }),
-                    placeholder: "보유 예산 (만 원)",
+                    // **값이 0 이라는 사실은 칸을 비우고 placeholder 가 말한다.**
+                    placeholder: "0",
                     numeric: true
                 )
                 .accessibilityIdentifier("user.budget")
-            } trailing: {
-                // 웹: 입력창 안쪽 오른쪽에 붙는 "만원"
-                Text("만원")
-                    .font(WPFont.hak(12, .black))
-                    .foregroundStyle(WPColor.gray400)
             }
 
             Spacer().frame(height: 24)
@@ -278,43 +255,42 @@ private struct SettingsSectionHeader: View {
 /// 웹 입력창: `h-16 pl-14 pr-6 bg-white border border-[#ee2b8c0a] rounded-3xl shadow-sm`.
 ///
 /// 아이콘은 라벨이 아니라 **입력창 안쪽 왼쪽 20pt** 에 놓인다.
-private struct IconField<Content: View, Trailing: View>: View {
-    var symbol: String
+/// 라벨을 **항상 띄우는** 입력 상자.
+///
+/// 예전에는 placeholder 뿐이라 값을 넣는 순간 무슨 칸인지 사라졌다 — 화면에
+/// `4200`, `2026-11-14` 만 남고 그게 예산인지 날짜인지 알 길이 없었다.
+/// **placeholder 만 있는 칸을 다시 만들지 말 것.**
+///
+/// 폰(시안 C안 09)은 라벨을 상자 **밖 위**로 올리고 상자에는 값만 둔다.
+/// **아이콘도 넣지 않는다** — 라벨이 이미 밖에 있어 같은 말을 두 번 하는 셈이다.
+/// (넓은 화면은 라벨을 상자 안에 넣고 아이콘을 내지만, 그 레이아웃은 앱에 옮기지
+/// 않는다.)
+private struct LabeledField<Content: View>: View {
+    var label: String
+    /// 값 옆에 붙는 단위 ("만 원"). 상자 안 오른쪽 끝이다.
+    var unit: String?
     @ViewBuilder var content: Content
-    @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(spacing: 0) {
-            Image(systemName: symbol)
-                .font(.system(size: 18))
-                .foregroundStyle(WPColor.gray300)
-                .frame(width: 20)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(WPFont.hak(13, .bold))
+                .foregroundStyle(WPColor.fgMuted)
 
-            Spacer().frame(width: 16)
-
-            content
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            trailing
-                .padding(.leading, 8)
+            HStack(spacing: 8) {
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let unit {
+                    Text(unit)
+                        .font(WPFont.hak(14))
+                        .foregroundStyle(WPColor.fgMuted)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            // SEED 채움 필드 — 테두리 대신 회색 바탕으로 입력 칸임을 알린다.
+            .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 24)
-        .frame(height: 64)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(WPColor.cardBorder, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
-    }
-}
-
-extension IconField where Trailing == EmptyView {
-    init(symbol: String, @ViewBuilder content: () -> Content) {
-        self.symbol = symbol
-        self.content = content()
-        self.trailing = EmptyView()
     }
 }
 
@@ -326,8 +302,8 @@ private struct BareInput: View {
 
     var body: some View {
         TextField("", text: $text, prompt: promptText)
-            .font(WPFont.hak(18, .bold))
-            .foregroundStyle(WPColor.textPrimary)
+            .font(WPFont.hak(16, .medium))
+            .foregroundStyle(WPColor.fgNeutral)
             .keyboardType(numeric ? .numberPad : .default)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -336,8 +312,8 @@ private struct BareInput: View {
 
     private var promptText: Text {
         Text(placeholder)
-            .font(WPFont.hak(18, .bold))
-            .foregroundColor(WPColor.gray300)
+            .font(WPFont.hak(16))
+            .foregroundColor(Color(hex: 0xB0B4BB))
     }
 }
 
@@ -371,13 +347,17 @@ private struct SaveButton: View {
     private var label: String {
         if saved { return "저장되었어요" }
         if saving { return "저장 중..." }
-        return "프로필 수정"
+        // **`저장` 이다.** 예전에는 검정 배경에 `프로필 수정` 이라, 이미 프로필
+        // 수정 화면인데 무엇이 일어날지 애매했다.
+        return "저장"
     }
 
     private var background: Color {
         if saved { return Color(hex: 0x22C55E) }
-        if saving { return WPColor.textPrimary.opacity(0.7) }
-        return WPColor.textPrimary
+        // **앱 primary 다.** 예전에는 검정 배경이었는데 이 앱의 주 버튼 색이
+        // 아니었다 — 무엇이 주 동작인지 화면에서 읽히지 않았다.
+        if saving { return WPColor.primary.opacity(0.7) }
+        return WPColor.primary
     }
 }
 

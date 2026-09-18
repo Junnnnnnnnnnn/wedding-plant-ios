@@ -91,6 +91,12 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
     public var weddingDate: String
     public var budget: Int
     public var remainingBudget: Int
+    /// 아직 안 쓴 예정 몫(만원).
+    ///
+    /// 카드의 막대에서 **회색 구간**이다. `remainingBudget = budget - (예정 + 사용)`
+    /// 이므로 실제 지출은 `budget - remainingBudget - plannedUseAmount` 로 낸다 —
+    /// 분홍을 "남은 비율" 로 쓰면 아무것도 안 썼을 때 막대가 꽉 차 보인다.
+    public var plannedUseAmount: Int
     public var planCount: Int
     public var chatRooms: [ChatRoom]
     public var members: [Member]
@@ -106,6 +112,7 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
         weddingDate: String,
         budget: Int,
         remainingBudget: Int,
+        plannedUseAmount: Int = 0,
         planCount: Int,
         chatRooms: [ChatRoom] = [],
         members: [Member] = []
@@ -115,6 +122,7 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
         self.weddingDate = weddingDate
         self.budget = budget
         self.remainingBudget = remainingBudget
+        self.plannedUseAmount = plannedUseAmount
         self.planCount = planCount
         self.chatRooms = chatRooms
         self.members = members
@@ -127,6 +135,7 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
         self.weddingDate = try container.decodeIfPresent(String.self, forKey: .weddingDate) ?? ""
         self.budget = try container.decodeIfPresent(Int.self, forKey: .budget) ?? 0
         self.remainingBudget = try container.decodeIfPresent(Int.self, forKey: .remainingBudget) ?? 0
+        self.plannedUseAmount = try container.decode(LooseInt.self, forKey: .plannedUseAmount).wrappedValue ?? 0
         self.planCount = try container.decodeIfPresent(Int.self, forKey: .planCount) ?? 0
         self.chatRooms = try container.decodeIfPresent([ChatRoom].self, forKey: .chatRooms) ?? []
         self.members = try container.decodeIfPresent([Member].self, forKey: .members) ?? []

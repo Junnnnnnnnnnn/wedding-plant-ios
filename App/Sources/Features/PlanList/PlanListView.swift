@@ -84,6 +84,17 @@ private struct ChatRoomRef: Identifiable, Hashable {
 
 // MARK: - 카드
 
+/// 참여 플랜 카드.
+///
+/// **읽는 순서가 곧 중요도다** — 이름·D-day → 남은 예산 → 대화.
+///
+/// 예전에는 `MEMBERS`/`CHANNELS` 같은 `10px` 회색 대문자 라벨과 검정 `Room #N`
+/// 알약이 먼저 눈에 들어와 정작 남은 예산이 카드 맨 아래에서 묻혔다. 라벨은
+/// `12.5pt` 회색 **문장**(`대화 3`)으로 바꾸고 알약은 없앴다. 참여 멤버 얼굴은
+/// 제목 오른쪽으로 올라가 한 줄을 벌었다.
+///
+/// **카드에 `transform`(누를 때 줄어드는 효과)을 붙이지 말 것.** 안쪽 채팅방
+/// 줄을 누를 때 카드까지 같이 줄어든다 — 누른 느낌은 배경색으로 낸다.
 private struct RoomCard: View {
     var room: Plan
     var index: Int
@@ -91,157 +102,128 @@ private struct RoomCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            CardHeader(index: index, ownerName: room.ownerName)
+            header
 
-            Spacer().frame(height: 24)
-
-            // 백엔드가 members 를 생략해도 목록이 깨지지 않도록 방어한다 (웹 main 과 동일).
-            SectionLabel("참여 멤버")
-            Spacer().frame(height: 12)
-            if room.members.isEmpty {
-                Text("아직 참여한 멤버가 없어요")
-                    .font(WPFont.hak(12))
-                    .foregroundStyle(WPColor.gray400)
-            } else {
-                HStack(spacing: -8) {
-                    ForEach(Array(room.members.enumerated()), id: \.element.id) { i, member in
-                        ZStack(alignment: .top) {
-                            MemberAvatar(name: member.name, index: i, size: 40)
-                            if member.permission == .owner {
-                                // 방장 표시: 아바타 위에 얹히는 왕관 뱃지
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(Color(hex: 0x78350F))
-                                    .frame(width: 16, height: 16)
-                                    .background(Color(hex: 0xFBBF24), in: Circle())
-                                    .offset(y: -6)
-                            }
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
+            if let dateLine {
+                Spacer().frame(height: 4)
+                Text(dateLine)
+                    .font(WPFont.hak(13))
+                    .foregroundStyle(WPColor.fgSubtle)
             }
 
-            Spacer().frame(height: 24)
+            Spacer().frame(height: 18)
+
+            budgetBlock
 
             if !room.chatRooms.isEmpty {
-                SectionLabel("채팅방")
-                Spacer().frame(height: 12)
+                Spacer().frame(height: 18)
+                Text("대화 \(room.chatRooms.count)")
+                    .font(WPFont.hak(12.5))
+                    .foregroundStyle(WPColor.gray400)
+                Spacer().frame(height: 8)
                 ForEach(room.chatRooms) { chatRoom in
                     Button { onOpenChat(chatRoom.id) } label: {
                         ChatRoomRow(name: chatRoom.name)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("planlist.chat.\(chatRoom.id)")
-                    Spacer().frame(height: 8)
+                    Spacer().frame(height: 6)
                 }
-                Spacer().frame(height: 16)
             }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(WPColor.cardBorder, lineWidth: 1)
+        )
+    }
 
-            HStack(alignment: .bottom, spacing: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    SectionLabel("REMAINING BUDGET")
-                    Spacer().frame(height: 4)
-                    Text("\(wpThousands(room.remainingBudget))만 원")
-                        .font(WPFont.hak(20, .black))
-                        .foregroundStyle(WPColor.textPrimary)
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            // 백엔드 필드 오타 `onwerName` 을 그대로 매핑한 값이다.
+            Text(room.ownerName.isEmpty ? "이름 없음" : room.ownerName)
+                .font(WPFont.tmoney(18, .bold))
+                .tracking(-0.02 * 18)
+                .foregroundStyle(WPColor.textPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            // 얼굴은 제목 오른쪽으로 올라가 한 줄을 번다.
+            if !room.members.isEmpty {
+                HStack(spacing: -8) {
+                    ForEach(Array(room.members.prefix(3).enumerated()), id: \.element.id) { i, member in
+                        MemberAvatar(name: member.name, index: i, size: 26)
+                    }
                 }
-                Spacer(minLength: 8)
-                Text("/ \(wpThousands(room.budget))만 원")
-                    .font(WPFont.hak(12, .bold))
-                    .foregroundStyle(WPColor.gray400)
             }
+        }
+    }
 
-            Spacer().frame(height: 12)
+    /// 홈 상단과 **같은 문장** — `2026년 12월 31일 · D-131`.
+    private var dateLine: String? {
+        guard let date = KstDate(dateString: room.weddingDate) else { return nil }
+        return "\(date.weddingDateText) · \(PlanRules.dDayLabel(weddingDate: date))"
+    }
+
+    /// 홈 예산 패널과 같은 짜임 — 큰 숫자 + "N만원 중 남음" + `h-3` 트랙.
+    ///
+    /// **막대는 분홍=실제 지출, 회색=아직 안 쓴 예정, 남은 트랙=여유**로 홈과 뜻이
+    /// 같다. 예전에는 분홍이 "남은 비율" 이라 아무것도 안 썼을 때 막대가 꽉 차
+    /// 보였다.
+    private var budgetBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 시안은 숫자 26pt · 단위 14pt 로 **크기 대비**를 준다. 같은 크기면
+            // "만 원" 이 숫자만큼 무거워져 금액이 덜 읽힌다.
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(wpThousands(room.remainingBudget))
+                    .font(WPFont.tmoney(26, .bold))
+                    .tracking(-0.04 * 26)
+                Text("만 원")
+                    .font(WPFont.tmoney(14, .bold))
+            }
+            .foregroundStyle(WPColor.fgNeutral)
+
+            Spacer().frame(height: 14)
+
+            Text("\(wpThousands(room.budget))만 원 중 남음")
+                .font(WPFont.hak(13))
+                .foregroundStyle(WPColor.fgMuted)
+
+            Spacer().frame(height: 10)
 
             GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(WPColor.primary.opacity(0.04))
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [WPColor.primary, Color(hex: 0xFF94A1)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geo.size.width * progress)
+                HStack(spacing: 0) {
+                    Rectangle().fill(WPColor.primary)
+                        .frame(width: geo.size.width * usedRatio)
+                    if plannedAmount > 0 {
+                        Rectangle().fill(WPColor.fgDisabled)
+                            // 예산을 넘기면 작은 몫이 사실상 사라진다. 최소 4pt 를 남긴다.
+                            .frame(width: max(4, geo.size.width * plannedRatio))
+                    }
+                    Rectangle().fill(Color(hex: 0xF4EFF2))
                 }
+                .clipShape(Capsule())
             }
-            .frame(height: 8)
+            .frame(height: 12)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(WPColor.cardBorder, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
     }
 
-    /// 예산이 0이면 나눗셈이 무한대가 되어 막대가 꽉 찬 것처럼 보인다. 0~1로 고정한다.
-    private var progress: CGFloat {
+    /// 예정 몫. `remainingBudget = budget - (예정 + 사용)` 이므로
+    /// **지출 = (budget - remaining) - 예정** 이다.
+    private var plannedAmount: Int { max(0, room.plannedUseAmount) }
+    private var usedAmount: Int { max(0, room.budget - room.remainingBudget - plannedAmount) }
+
+    private var usedRatio: CGFloat {
         guard room.budget > 0 else { return 0 }
-        return min(max(CGFloat(room.remainingBudget) / CGFloat(room.budget), 0), 1)
+        return min(1, CGFloat(usedAmount) / CGFloat(room.budget))
     }
-}
 
-/// 웹: `Room #1` 검정 알약 + 하트, 그 아래 "OOO의 웨딩 플랜", 우측 화살표 버튼
-private struct CardHeader: View {
-    var index: Int
-    var ownerName: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
-                    Text(verbatim: "Room #\(index + 1)")
-                        .font(WPFont.hak(10, .black))
-                        .tracking(1.5)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(WPColor.textPrimary, in: Capsule())
-
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(WPColor.primary)
-                }
-
-                Spacer().frame(height: 4)
-
-                // 백엔드 필드 오타 onwerName 을 그대로 매핑한 값이다.
-                Text("\(ownerName.isEmpty ? "이름 없음" : ownerName)의 웨딩 플랜")
-                    .font(WPFont.hak(24, .black))
-                    .foregroundStyle(WPColor.textPrimary)
-            }
-
-            Spacer(minLength: 8)
-
-            Image(systemName: "arrow.right")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(WPColor.primary)
-                .frame(width: 40, height: 40)
-                .background(
-                    WPColor.primary.opacity(0.07),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-        }
-    }
-}
-
-/// 웹: `text-[10px] font-extrabold text-gray-300 uppercase tracking-widest`
-private struct SectionLabel: View {
-    var text: String
-
-    init(_ text: String) { self.text = text }
-
-    var body: some View {
-        Text(text)
-            .font(WPFont.hak(10, .black))
-            .tracking(1.5)
-            .foregroundStyle(WPColor.gray300)
+    private var plannedRatio: CGFloat {
+        guard room.budget > 0 else { return 0 }
+        return min(1 - usedRatio, CGFloat(plannedAmount) / CGFloat(room.budget))
     }
 }
 
