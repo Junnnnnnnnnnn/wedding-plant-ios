@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 /// 앱의 첫 문 — 웹 `app/components/LoginView.tsx` 의 **폰 레이아웃**(`md:` 앞의 값).
@@ -34,6 +35,7 @@ struct LandingView: View {
     @EnvironmentObject private var env: AppEnvironment
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @StateObject private var login = LoginCoordinator()
     #if DEBUG
     @State private var showDevLogin = false
     #endif
@@ -130,6 +132,22 @@ struct LandingView: View {
                 Task { await signIn() }
             }
 
+            // **Sign in with Apple 은 같은 위치·크기여야 한다**(심사 지침 4.8).
+            // 카카오보다 작거나 아래로 밀어 두면 "동등하게 제공" 으로 안 본다.
+            SignInWithAppleButton(.signIn) { request in
+                // 이름은 애플이 **첫 로그인 때 한 번만** 준다. 그때 받아야 한다.
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                Task { await handleApple(result) }
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.7 : 1)
+            .accessibilityIdentifier("auth.apple")
+
             #if DEBUG
             // 카카오 SDK 연동 전, 실기기에서 백엔드 붙은 화면을 보기 위한 통로.
             // 릴리스 빌드에는 포함되지 않는다.
@@ -147,8 +165,7 @@ struct LandingView: View {
     }
 
     private func signIn() async {
-        // 데모 모드에서는 카카오 SDK 없이 바로 통과시킨다.
-        // 실제 구현은 Kakao SDK 로그인 → POST /plan/auth/kakao/login → JWT 저장 순서.
+        // 데모 모드(CI 캡처)에서는 SDK 없이 바로 통과시킨다.
         if env.isDemo {
             env.isAuthenticated = true
             env.planComplete = true
@@ -156,9 +173,45 @@ struct LandingView: View {
         }
         isLoading = true
         defer { isLoading = false }
-        await env.refreshAuthState()
-        if !env.isAuthenticated {
-            errorMessage = "카카오 로그인이 아직 연결되지 않았어요."
+        do {
+            try await login.service.signInWithKakao(env: env)
+        } catch {
+            show(error)
         }
+    }
+
+    private func handleApple(_ result: Result<ASAuthorization, Error>) async {
+        if env.isDemo {
+            env.isAuthenticated = true
+            env.planComplete = true
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+
+        switch result {
+        case .failure(let error):
+            // 사용자가 시트를 닫은 것은 오류가 아니다.
+            if (error as? ASAuthorizationError)?.code == .canceled { return }
+            errorMessage = "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential
+            else {
+                errorMessage = "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+                return
+            }
+            do {
+                try await login.service.signInWithApple(credential: credential, env: env)
+            } catch {
+                show(error)
+            }
+        }
+    }
+
+    /// 사용자가 스스로 취소한 것은 띄우지 않는다.
+    private func show(_ error: Error) {
+        if let social = error as? SocialLoginError, social.isSilent { return }
+        errorMessage = (error as? LocalizedError)?.errorDescription
+            ?? "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
     }
 }

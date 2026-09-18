@@ -23,6 +23,12 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
     from: "11.0.0"
+  # 카카오 로그인. **네이티브 앱 키**를 쓴다(웹의 REST API 키·JS 키가 아니다).
+  # 키는 `Config/Local.xcconfig` 로 주입하고 커밋하지 않는다 — 저장소가 공개다.
+  # 키가 없으면 SDK 를 켜지 않고 버튼 자리에 안내를 낸다(크래시 아님).
+  KakaoOpenSDK:
+    url: https://github.com/kakao/kakao-ios-sdk
+    from: "2.22.0"
 
 settings:
   base:
@@ -85,6 +91,10 @@ targets:
         product: WPDomain
       - package: Firebase
         product: FirebaseMessaging
+      - package: KakaoOpenSDK
+        product: KakaoSDKAuth
+      - package: KakaoOpenSDK
+        product: KakaoSDKUser
     info:
       path: App/Resources/Info.plist
       properties:
@@ -113,6 +123,19 @@ targets:
           - CFBundleURLName: com.zipshowkorea.weddingplant.share
             CFBundleURLSchemes:
               - weddingplant
+          # 카카오 로그인이 카카오톡 앱에서 돌아올 때 쓰는 스킴.
+          # **`kakao` + 네이티브 앱 키** 형태라 키가 주소에 들어간다 —
+          # 공개 정보이고 이것만으로는 아무것도 못 한다.
+          - CFBundleURLName: com.zipshowkorea.weddingplant.kakao
+            CFBundleURLSchemes:
+              - kakao$(KAKAO_NATIVE_APP_KEY)
+        # 카카오톡이 깔려 있는지 물어보려면 미리 적어야 한다. 안 적으면
+        # `isKakaoTalkLoginAvailable()` 이 늘 false 라 웹 로그인으로만 간다.
+        LSApplicationQueriesSchemes:
+          - kakaokompassauth
+          - kakaolink
+        # 카카오 네이티브 앱 키. xcconfig 에서 주입된다.
+        KAKAO_NATIVE_APP_KEY: $(KAKAO_NATIVE_APP_KEY)
         # 데이터 전용 푸시로 앱을 깨우려면 필요하다. Info.plist 키라 무료 계정에서도 넣을 수 있다.
         UIBackgroundModes:
           - remote-notification

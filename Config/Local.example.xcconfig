@@ -41,3 +41,7 @@ API_BASE_URL = http:/$()/localhost:3111
 // 푸시를 켤 때만 (유료 Apple Developer Program 필요).
 // 무료 계정에서 켜면 서명이 실패한다.
 // WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements
+
+// 카카오 네이티브 앱 키. 콘솔의 `앱 키 > 네이티브 앱 키` 다.
+// **REST API 키·JS 키가 아니다.** 이 값이 없으면 로그인 자체가 막힌다.
+// KAKAO_NATIVE_APP_KEY = 0123456789abcdef0123456789abcdef

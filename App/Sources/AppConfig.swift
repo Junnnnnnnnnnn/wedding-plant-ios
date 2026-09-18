@@ -22,6 +22,13 @@ enum AppConfig {
         return trimmed.isEmpty ? "https://weddingplant.app" : trimmed
     }()
 
+    /// 문의 메일 주소.
+    ///
+    /// 애플이 **필수로 요구하는 것은 App Store Connect 의 지원 URL**(지침 1.5)이고
+    /// 앱 안의 문의 버튼 자체가 지침 항목은 아니다. 다만 계정이 있는 앱은 심사자가
+    /// 지원 경로를 확인하는 경우가 있고, 사용자가 막혔을 때 나갈 길이 생긴다.
+    static let supportEmail = "seoulmomenttw@gmail.com"
+
     /// 개인정보처리방침. 웹의 공개 페이지를 그대로 쓴다.
     ///
     /// **스토어 심사에 필요하다** — 앱이 개인정보를 수집하면 접근 가능한 URL 을

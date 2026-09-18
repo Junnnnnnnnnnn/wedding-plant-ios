@@ -27,6 +27,19 @@ public enum Endpoint {
         )
     }
 
+    /// Sign in with Apple. 신원 토큰을 앱 JWT 로 교환. 인증 불필요.
+    ///
+    /// **앱이 제3자 소셜 로그인만 제공하면 애플은 이것을 함께 내라고 요구한다**
+    /// (심사 지침 4.8). 카카오 하나뿐이면 반려다.
+    ///
+    /// - Parameter name: 애플이 **첫 로그인 때 한 번만** 주는 이름. 두 번째부터는
+    ///   아무리 요청해도 안 오므로, 받은 그때 함께 보낸다 — 놓치면 영영 모른다.
+    public static func appleLogin(identityToken: String, name: String?) throws -> HTTPRequest {
+        var body = ["identityToken": identityToken]
+        if let name, !name.isEmpty { body["name"] = name }
+        return try .json(.post, "/plan/auth/apple/login", body: body, requiresAuth: false)
+    }
+
     // MARK: - 사용자
 
     public static func user() -> HTTPRequest {

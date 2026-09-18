@@ -136,7 +136,9 @@ public struct UnreadCount: Codable, Hashable, Sendable {
     }
 }
 
-/// 로그인 응답 (`POST /plan/auth/kakao/login`). 앱 자체 JWT를 담는다.
+/// 로그인 응답. 앱 자체 JWT 를 담는다.
+///
+/// `POST /plan/auth/kakao/login` 과 `POST /plan/auth/apple/login` 이 같은 모양을 낸다.
 public struct AuthToken: Codable, Hashable, Sendable {
     public var token: String
 

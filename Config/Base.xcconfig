@@ -15,12 +15,25 @@ API_BASE_URL = http:/$()/localhost:3111
 // 웹 사이트 주소. 개인정보처리방침 링크에 쓴다(안드로이드의 WEB_BASE_URL 과 같은 값).
 WEB_BASE_URL = https:/$()/weddingplant.app
 
-// 푸시 알림 엔타이틀먼트.
+// 카카오 네이티브 앱 키.
 //
-// 비워 두면 엔타이틀먼트 파일을 쓰지 않는다 — 무료 Apple ID 로도 실기기 설치가 된다.
+// **웹의 REST API 키·JS 키가 아니다.** 카카오 개발자 콘솔의 `앱 키 > 네이티브 앱 키`다.
+// 비워 두면 SDK 를 켜지 않고 로그인 버튼 자리에 안내가 뜬다(크래시 아님) —
+// 다만 게스트 모드를 없앤 뒤로는 **키가 없으면 아무도 앱에 들어올 수 없다.**
+//
+// 저장소가 공개라 실제 키는 Local.xcconfig 에만 둔다.
+KAKAO_NATIVE_APP_KEY =
+
+// 엔타이틀먼트 (푸시 + Sign in with Apple).
+//
+// 비워 두면 엔타이틀먼트 파일을 쓰지 않는다 — 무료 Apple ID 로도 실기기 설치가 되고,
+// CI 시뮬레이터 빌드(코드 서명 없음)도 그대로 돈다.
+//
 // 유료 Apple Developer Program 이 준비되면 Local.xcconfig 에서 켠다:
 //   WP_ENTITLEMENTS = App/Resources/WeddingPlant.entitlements
-// (무료 계정으로 켜면 "no valid aps-environment entitlement" 로 서명이 실패한다)
+//
+// **Sign in with Apple 도 이 파일에 들어 있다.** 무료 계정으로 켜면
+// "no valid aps-environment entitlement" 로 서명이 실패한다.
 WP_ENTITLEMENTS =
 CODE_SIGN_ENTITLEMENTS = $(WP_ENTITLEMENTS)
 

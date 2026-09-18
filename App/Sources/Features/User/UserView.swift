@@ -113,12 +113,20 @@ struct UserView: View {
 
             // 개인정보처리방침은 **로그인 여부와 상관없이 항상** 보여야 한다. 앱 안에
             // 접근 경로가 있는지를 심사에서 본다 (안드로이드도 같은 자리에 둔다).
-            Link("개인정보처리방침", destination: AppLinks.privacyPolicy)
-                .font(WPFont.hak(12, .regular))
-                .underline()
-                .foregroundStyle(WPColor.gray400)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(4)
+            HStack(spacing: 14) {
+                Spacer(minLength: 0)
+                Link("개인정보처리방침", destination: AppLinks.privacyPolicy)
+                    .accessibilityIdentifier("user.privacy")
+                Text("·")
+                // 사용자가 막혔을 때 나갈 길. 심사자도 지원 경로를 여기서 본다.
+                Link("문의하기", destination: AppLinks.support)
+                    .accessibilityIdentifier("user.support")
+                Spacer(minLength: 0)
+            }
+            .font(WPFont.hak(12, .regular))
+            .underline()
+            .foregroundStyle(WPColor.gray400)
+            .padding(4)
 
             Spacer().frame(height: 16)
 

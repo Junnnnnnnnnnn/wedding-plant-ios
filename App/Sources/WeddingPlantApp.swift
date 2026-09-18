@@ -26,6 +26,9 @@ struct WeddingPlantApp: App {
                 .environmentObject(push)
                 .task {
                     if !env.isDemo {
+                        // 카카오 SDK 는 키가 있을 때만 켠다 — 없으면 크래시가 아니라
+                        // 로그인 버튼 자리에서 설정 문제라고 말해 준다.
+                        SocialLoginService.initializeKakaoIfNeeded()
                         AppDelegate.pushService = push
                         push.start(env: env)
                         await env.refreshAuthState()
@@ -49,6 +52,9 @@ struct WeddingPlantApp: App {
                 // 웹과 같은 주소(`/share/{code}`)를 Universal Link 로 받는다.
                 // 실제로 동작하려면 웹 서버에 `apple-app-site-association` 이 있어야 한다.
                 .onOpenURL { url in
+                    // 카카오톡에서 돌아오는 주소를 **먼저** 잡는다. 공유 링크
+                    // 처리에 먼저 넘기면 `kakao{앱키}://` 를 공유 코드로 잘못 읽는다.
+                    if SocialLoginService.handleKakaoOpenURL(url) { return }
                     env.handle(url: url)
                 }
         }
