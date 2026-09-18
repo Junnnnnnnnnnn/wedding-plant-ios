@@ -40,6 +40,54 @@ public enum ShareLink {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// 초대 하나 — 코드와 **역할**.
+    ///
+    /// **초대 링크가 역할을 지닌다.** `?as=spouse` 로 들어오면 바로 `SPOUSE`,
+    /// 그냥 들어오면 `READ` 다. 역할을 흘리면 배우자로 부르고도 상대가 조언자로
+    /// 들어온다.
+    ///
+    /// 이미 배우자가 있으면 배우자 링크로 와도 조용히 `READ` 로 들어온다 —
+    /// **먼저 들어온 사람이 배우자**다. 그 판단은 백엔드가 한다.
+    public struct Invite: Hashable, Sendable {
+        public var code: String
+        public var asSpouse: Bool
+
+        public init(code: String, asSpouse: Bool) {
+            self.code = code
+            self.asSpouse = asSpouse
+        }
+
+        /// 로그인 후 이어서 참여할 때 저장해 두는 모양. 역할을 함께 싣는다.
+        public var storageValue: String {
+            asSpouse ? "\(code)?as=spouse" : code
+        }
+
+        /// 저장해 둔 값에서 되읽는다.
+        public init?(storageValue raw: String) {
+            let trimmed = raw.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { return nil }
+            let parts = trimmed.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+            let code = String(parts[0]).trimmingCharacters(in: .whitespaces)
+            guard !code.isEmpty else { return nil }
+            let query = parts.count > 1 ? String(parts[1]) : ""
+            self.init(code: code, asSpouse: query.lowercased().contains("as=spouse"))
+        }
+    }
+
+    /// 링크에서 코드와 역할을 함께 읽는다.
+    ///
+    /// **`?as=spouse` 를 반드시 함께 읽어야 한다** — 코드만 읽으면 배우자 초대가
+    /// 조언자 초대로 조용히 바뀐다.
+    public static func invite(from url: URL) -> Invite? {
+        guard let code = shareCode(from: url) else { return nil }
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first { $0.name.lowercased() == "as" }?
+            .value?
+            .lowercased()
+        return Invite(code: code, asSpouse: query == "spouse")
+    }
+
     /// 문자열로 받은 링크. 코드만 그대로 넘어와도(`"ABC123"`) 받아준다.
     ///
     /// 로그인 후 이어서 참여할 때 저장해 둔 값이 코드 자체이기 때문이다.

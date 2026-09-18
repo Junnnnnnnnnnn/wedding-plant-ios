@@ -203,6 +203,17 @@ public enum Endpoint {
         HTTPRequest(path: "/plan/room/share-code")
     }
 
+    /// 공유 링크로 방 참여.
+    ///
+    /// **`?as=spouse` 가 빠지면 배우자로 부르고도 상대가 `READ` 로 들어온다.**
+    /// 이미 배우자가 있으면 배우자 링크로 와도 조용히 `READ` 다 —
+    /// 먼저 들어온 사람이 배우자이고, 그 판단은 백엔드가 한다.
+    public static func joinRoom(shareCode: String, asSpouse: Bool) -> HTTPRequest {
+        var request = HTTPRequest(method: .post, path: "/plan/room/\(escape(shareCode))")
+        if asSpouse { request.query["as"] = "spouse" }
+        return request
+    }
+
     public static func joinRoom(shareCode: String) -> HTTPRequest {
         HTTPRequest(method: .post, path: "/plan/room/\(escape(shareCode))")
     }

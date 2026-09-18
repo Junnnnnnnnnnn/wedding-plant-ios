@@ -82,9 +82,15 @@ final class BudgetDetailViewModel: ObservableObject {
 
         // roomId 를 알아야 나머지 요청 경로가 정해지므로 먼저 받아온다.
         let user = try? await env.api.send(Endpoint.user(), decoding: PlanUser.self)
-        // roomId: 인자 우선, 없으면 /plan/user 의 roomId (웹과 동일)
+        // roomId: 인자 우선 → **귀속된 방** → /plan/user 의 roomId.
+        //
+        // 귀속을 빠뜨리면 배우자가 이 화면에서만 자기 개인 예산(빈 값)을 본다 —
+        // 웹이 `/main` 에만 리다이렉트를 걸었다가 `/calendar`·`/budget-detail` 로
+        // 샌 것과 같은 구멍이다.
         if let arg = roomIdFromArg, !arg.trimmingCharacters(in: .whitespaces).isEmpty {
             roomId = arg
+        } else if let bound = env.boundRoomId {
+            roomId = String(bound)
         } else {
             roomId = user?.roomId.map(String.init)
         }

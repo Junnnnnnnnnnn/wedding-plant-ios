@@ -1,5 +1,6 @@
 import SwiftUI
 import WPDomain
+import WPModels
 import WPNetworking
 
 /// 웹 `app/share/[shareCode]/page.tsx` 이식.
@@ -15,15 +16,20 @@ final class ShareJoinViewModel: ObservableObject {
         case joined
         /// 비로그인 → 로그인 안내
         case loginRequired
+        /// 배우자 초대 — **수락 전에 반드시 묻는다.**
+        case askingSpouse(myScheduleCount: Int)
         case failed(String)
     }
 
     @Published private(set) var state: State = .joining
 
     let shareCode: String
+    /// **초대 링크가 역할을 지닌다.** `?as=spouse` 면 귀속, 아니면 조언자다.
+    let asSpouse: Bool
 
-    init(shareCode: String) {
+    init(shareCode: String, asSpouse: Bool) {
         self.shareCode = shareCode
+        self.asSpouse = asSpouse
     }
 
     func join(env: AppEnvironment, guest: GuestStore) async {
@@ -41,10 +47,45 @@ final class ShareJoinViewModel: ObservableObject {
             return
         }
 
+        // **조언자(`READ`)는 귀속이 아니다.** 남의 플랜을 같이 보며 거드는 자리라
+        // 자기 플랜을 그대로 두고, 경고도 띄우지 않고 바로 참여한다.
+        if asSpouse {
+            // **수락 전에 반드시 묻는다.** 예전에는 열자마자 참여시켜서, 눌러 보고
+            // 나서야 자기 플랜이 안 보이는 걸 알았다.
+            //
+            // 내가 만들어 둔 일정이 **있을 때만** 개수를 말한다 — 0 건인 사람에게
+            // "일정이 안 보이게 된다" 고 하면 없는 손해를 지어내는 셈이다.
+            let mine = try? await env.api.send(
+                Endpoint.scheduleList(status: .normal),
+                decoding: SchedulePage.self
+            )
+            state = .askingSpouse(myScheduleCount: mine?.total ?? 0)
+            return
+        }
+
+        await performJoin(code: code, env: env, guest: guest)
+    }
+
+    /// 배우자 초대를 수락했을 때. 거절하면 참여 요청이 **나가지 않는다.**
+    func confirmSpouseJoin(env: AppEnvironment, guest: GuestStore) async {
+        await performJoin(
+            code: shareCode.trimmingCharacters(in: .whitespaces),
+            env: env,
+            guest: guest
+        )
+    }
+
+    private func performJoin(code: String, env: AppEnvironment, guest: GuestStore) async {
         state = .joining
         do {
-            try await env.api.sendIgnoringData(Endpoint.joinRoom(shareCode: code))
+            try await env.api.sendIgnoringData(
+                Endpoint.joinRoom(shareCode: code, asSpouse: asSpouse)
+            )
             guest.shareAfterLogin = nil
+            // **귀속 캐시를 비운다.** 안 비우면 방금 배우자가 된 사람이 다음 진입에서
+            // 여전히 "귀속 아님" 으로 읽혀 자기 개인 플랜(빈 화면)을 본다.
+            env.boundRoom = .unknown
+            env.boundRoomPlan = nil
             state = .joined
         } catch let error as APIError {
             // 401 은 여기서 직접 처리한다. 공통 처리는 토큰만 지우고 끝나서
@@ -83,11 +124,14 @@ struct ShareJoinView: View {
 
     init(
         shareCode: String,
+        asSpouse: Bool,
         onJoined: @escaping () -> Void,
         onLoginRequested: @escaping () -> Void,
         onClose: @escaping () -> Void
     ) {
-        _model = StateObject(wrappedValue: ShareJoinViewModel(shareCode: shareCode))
+        _model = StateObject(
+            wrappedValue: ShareJoinViewModel(shareCode: shareCode, asSpouse: asSpouse)
+        )
         self.onJoined = onJoined
         self.onLoginRequested = onLoginRequested
         self.onClose = onClose
@@ -106,7 +150,22 @@ struct ShareJoinView: View {
                 }
 
             case .loginRequired:
-                LoginRequiredCard(onLogin: onLoginRequested, onClose: onClose)
+                LoginRequiredCard(
+                    // 로그인 전 초대 화면에도 같은 사실을 **미리** 단다.
+                    // 로그인하고 나면 곧바로 참여가 끝나 되돌아볼 자리가 없다.
+                    // 거기서는 그 사람에게 플랜이 있는지 알 수 없으므로 **개수를
+                    // 말하지 않는다.**
+                    spouseNotice: model.asSpouse,
+                    onLogin: onLoginRequested,
+                    onClose: onClose
+                )
+
+            case .askingSpouse(let count):
+                SpouseJoinWarningCard(myScheduleCount: count) {
+                    Task { await model.confirmSpouseJoin(env: env, guest: guest) }
+                } onCancel: {
+                    onClose()
+                }
 
             case .joining, .joined:
                 VStack(spacing: 16) {
@@ -186,6 +245,8 @@ private struct FailedCard: View {
 }
 
 private struct LoginRequiredCard: View {
+    /// 배우자 초대인지. 맞으면 귀속된다는 사실을 **미리** 알려 준다.
+    var spouseNotice: Bool = false
     var onLogin: () -> Void
     var onClose: () -> Void
 
@@ -195,6 +256,18 @@ private struct LoginRequiredCard: View {
                 .font(WPFont.hak(18, .bold))
                 .foregroundStyle(WPColor.textPrimary)
                 .multilineTextAlignment(.center)
+
+            // 로그인하고 나면 곧바로 참여가 끝나 되돌아볼 자리가 없다.
+            // **여기서는 개수를 말하지 않는다** — 그 사람에게 플랜이 있는지 알 수 없다.
+            if spouseNotice {
+                Spacer().frame(height: 10)
+                Text("신랑·신부 초대예요. 수락하면 이 방이 내 플랜이 되고, 지금 만들어 둔 일정은 화면에서 내려갑니다(지워지지는 않아요).")
+                    .font(WPFont.hak(13))
+                    .lineSpacing(5)
+                    .foregroundStyle(WPColor.fgSubtle)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             Spacer().frame(height: 20)
 
@@ -229,5 +302,80 @@ private struct LoginRequiredCard: View {
         .frame(maxWidth: 384)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .padding(.horizontal, 24)
+    }
+}
+
+
+/// 배우자 초대를 수락하기 전에 묻는다.
+///
+/// 예전에는 `/share/[code]` 가 열자마자 참여시켜서, 눌러 보고 나서야 자기 플랜이
+/// 안 보이는 걸 알았다.
+///
+/// **"사라집니다" 라고 쓰지 말 것.** 초대 전에 만들어 둔 개인 플랜은 화면에서
+/// 내려갈 뿐 지워지지 않는다 — DB 에 그대로 있고 방에서 나가면 다시 홈에 뜬다.
+/// 나중에 "사라진다더니 남아 있네" 가 되면 다음 경고까지 못 믿는다.
+private struct SpouseJoinWarningCard: View {
+    var myScheduleCount: Int
+    var onConfirm: () -> Void
+    var onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("신랑·신부로 참여할까요?")
+                .font(WPFont.hak(18, .bold))
+                .foregroundStyle(WPColor.textPrimary)
+
+            Spacer().frame(height: 10)
+
+            Text("수락하면 **이 방이 내 플랜이 됩니다.** 홈·캘린더·예산이 전부 이 방을 보게 돼요.")
+                .font(WPFont.hak(14))
+                .lineSpacing(6)
+                .foregroundStyle(WPColor.gray500)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // **일정이 있을 때만 개수를 말한다.** 0 건인 사람에게 "일정이 안 보이게
+            // 된다" 고 하면 없는 손해를 지어내는 셈이다.
+            if myScheduleCount > 0 {
+                Spacer().frame(height: 12)
+                Text("지금 만들어 둔 일정 \(myScheduleCount)건은 화면에서 내려가요. 지워지지는 않고, 방에서 나가면 다시 보입니다.")
+                    .font(WPFont.hak(13))
+                    .lineSpacing(5)
+                    .foregroundStyle(WPColor.fgSubtle)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
+
+            Spacer().frame(height: 22)
+
+            Button(action: onConfirm) {
+                Text("신랑·신부로 참여하기")
+                    .font(WPFont.hak(15, .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("share.spouse.confirm")
+
+            Spacer().frame(height: 10)
+
+            // 거절하면 **참여 요청이 나가지 않는다.**
+            Button(action: onCancel) {
+                Text("아니요, 돌아갈게요")
+                    .font(WPFont.hak(14))
+                    .foregroundStyle(WPColor.gray400)
+                    .padding(8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("share.spouse.cancel")
+        }
+        .padding(24)
+        .frame(maxWidth: 340)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 20, y: 8)
+        .padding(.horizontal, 20)
     }
 }

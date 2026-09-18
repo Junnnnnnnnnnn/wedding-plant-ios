@@ -31,6 +31,22 @@ final class AppEnvironment: ObservableObject {
     /// 한 번씩 보게 된다.
     @Published var planComplete: Bool?
 
+    /// 신랑·신부로 귀속된 방. **모든 방 화면이 이 값을 본다.**
+    ///
+    /// 웹은 `BoundRoomRedirect` 가 주소에 `roomId` 를 얹는 방식이라 화면마다 새는
+    /// 구멍이 있었다(`/main` 에만 걸었다가 `/calendar` 로 샜고, `/add-plen` 은
+    /// `roomId` 없이 열리면 새 일정이 **화면에 보이지도 않는 개인 플랜에** 저장됐다).
+    /// 앱에는 주소가 없으므로 **여기 한 곳**에 두고 화면들이 읽는다 — 목록을
+    /// 화면마다 복사할 일이 없다.
+    @Published var boundRoom: BoundRoom.Cache = .unknown
+
+    /// 귀속된 방 그 자체. `/plan/room/list` 가 이름·날짜·멤버를 다 주므로 방 상세
+    /// 엔드포인트를 따로 부르지 않는다.
+    @Published var boundRoomPlan: Plan?
+
+    /// 귀속된 방 id. 없으면 `nil` — 그때는 각 화면이 `/plan/user` 의 방을 쓴다.
+    var boundRoomId: Int? { boundRoom.roomId }
+
     init(api: APIClient, tokenStore: any TokenStoring, baseURL: URL, isDemo: Bool) {
         self.api = api
         self.tokenStore = tokenStore
@@ -68,6 +84,7 @@ final class AppEnvironment: ObservableObject {
             env.isAuthenticated = !loggedOut
             // 데모는 네트워크를 기다리지 않고 바로 화면을 낸다.
             env.planComplete = loggedOut ? nil : !forceOnboarding
+            env.boundRoom = .notBound
             return env
         }
 
@@ -92,8 +109,10 @@ final class AppEnvironment: ObservableObject {
     /// - Returns: 공유 링크로 인식했는지. 아니면 다른 처리기가 볼 수 있게 false.
     @discardableResult
     func handle(url: URL) -> Bool {
-        guard let code = ShareLink.shareCode(from: url) else { return false }
-        pendingShareCode = code
+        // **`?as=spouse` 를 반드시 함께 읽는다.** 코드만 읽으면 배우자로 부르고도
+        // 상대가 조언자로 들어온다 — 초대 링크가 역할을 지닌다.
+        guard let invite = ShareLink.invite(from: url) else { return false }
+        pendingShareCode = invite.storageValue
         return true
     }
 
@@ -131,9 +150,39 @@ final class AppEnvironment: ObservableObject {
         planComplete = true
     }
 
+    /// 귀속 여부를 다시 묻는다.
+    ///
+    /// **캐시가 "귀속 아님" 이면 가리지 않고, 아는 방이 있으면 묻기 전에 먼저
+    /// 옮긴다.** 어느 쪽이든 뒤에서 다시 물어 값을 고쳐 둔다 — 그 사이 초대를
+    /// 수락했을 수 있다.
+    ///
+    /// 캐시하지 않으면 귀속이 **아닌 대부분의 사용자도** 방 화면에 들어올 때마다
+    /// `/plan/room/list` 를 기다리는 동안 흰 막을 본다. 고치려던 것보다 나쁘다.
+    func refreshBoundRoom() async {
+        guard let token = await tokenStore.currentToken(), !token.isEmpty else {
+            boundRoom = .notBound
+            return
+        }
+        let planUserId = JWTDecoder.planUserId(from: token)
+        guard let list = try? await api.send(Endpoint.roomList(), decoding: RoomList.self) else {
+            // 못 물어봤다고 귀속을 지우지 않는다 — 아는 값이 있으면 그대로 둔다.
+            if boundRoom == .unknown { boundRoom = .notBound }
+            return
+        }
+        if let room = BoundRoom.find(in: list.list, planUserId: planUserId) {
+            boundRoom = .bound(roomId: room.roomId)
+            boundRoomPlan = room
+        } else {
+            boundRoom = .notBound
+            boundRoomPlan = nil
+        }
+    }
+
     func signOut() async {
         await tokenStore.clear()
         isAuthenticated = false
         planComplete = nil
+        boundRoom = .unknown
+        boundRoomPlan = nil
     }
 }

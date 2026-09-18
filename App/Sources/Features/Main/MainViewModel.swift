@@ -206,13 +206,25 @@ final class MainViewModel: ObservableObject {
 
         do {
             let user = try await env.api.send(Endpoint.user(), decoding: PlanUser.self)
-            roomId = user.roomId.map(String.init)
-            name = user.name ?? ""
-            weddingVenue = user.weddingVenue ?? ""
-            weddingDate = user.weddingDate.flatMap { KstDate(dateString: $0) }
-            members = user.members ?? []
             let token = await env.tokenStore.currentToken()
             planUserId = token.flatMap { JWTDecoder.planUserId(from: $0) }
+
+            if let bound = env.boundRoomPlan {
+                // **귀속된 방이 내 플랜이다.** 부부는 결혼식을 두 번 하지 않는다 —
+                // 홈·캘린더·예산이 전부 이 방을 본다. 개인 플랜은 화면에서 내려갈
+                // 뿐 지워지지 않는다(방에서 나가면 다시 뜬다).
+                roomId = String(bound.roomId)
+                name = bound.ownerName
+                weddingVenue = ""
+                weddingDate = KstDate(dateString: bound.weddingDate)
+                members = bound.members
+            } else {
+                roomId = user.roomId.map(String.init)
+                name = user.name ?? ""
+                weddingVenue = user.weddingVenue ?? ""
+                weddingDate = user.weddingDate.flatMap { KstDate(dateString: $0) }
+                members = user.members ?? []
+            }
             readOnly = PlanRules.isReadOnly(members: members, planUserId: planUserId)
         } catch let error as APIError {
             if error.requiresReauthentication {

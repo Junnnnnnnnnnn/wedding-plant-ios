@@ -1,4 +1,5 @@
 import SwiftUI
+import WPDomain
 
 /// 최상위 화면 전환.
 ///
@@ -49,7 +50,7 @@ struct RootView: View {
         }
         // 공유 링크로 들어오면 어느 화면에 있든 참여 화면이 덮는다 (웹은 `/share/{code}` 페이지).
         .fullScreenCover(item: shareCodeBinding) { pending in
-            ShareJoinView(shareCode: pending.code) {
+            ShareJoinView(shareCode: pending.code, asSpouse: pending.asSpouse) {
                 // 참여 성공 → 참여 플랜 목록 (웹 `router.replace("/plan-list")`)
                 env.pendingShareCode = nil
                 tab = .rooms
@@ -74,7 +75,13 @@ struct RootView: View {
     /// `fullScreenCover(item:)` 이 Identifiable 을 요구해서 감싼다.
     private var shareCodeBinding: Binding<PendingShare?> {
         Binding(
-            get: { env.pendingShareCode.map(PendingShare.init(code:)) },
+            get: {
+                // **저장 값에 역할이 함께 실려 있다.** 코드만 읽으면 배우자 초대가
+                // 조언자 초대로 조용히 바뀐다.
+                env.pendingShareCode
+                    .flatMap(ShareLink.Invite.init(storageValue:))
+                    .map { PendingShare(code: $0.code, asSpouse: $0.asSpouse) }
+            },
             set: { if $0 == nil { env.pendingShareCode = nil } }
         )
     }
@@ -98,7 +105,8 @@ private struct AuthSplash: View {
 
 private struct PendingShare: Identifiable, Hashable {
     var code: String
-    var id: String { code }
+    var asSpouse: Bool
+    var id: String { asSpouse ? "\(code)?as=spouse" : code }
 }
 
 private struct PendingChatRoom: Identifiable, Hashable {

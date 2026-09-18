@@ -53,3 +53,46 @@ final class InviteURLTests: XCTestCase {
         XCTAssertEqual(ShareLink.shareCode(from: url), "ABC123")
     }
 }
+
+/// 초대 링크에서 **역할**을 읽는다.
+///
+/// `?as=spouse` 를 빠뜨리면 배우자로 부르고도 상대가 `READ` 로 들어온다.
+final class InviteRoleTests: XCTestCase {
+
+    func test_링크에서_코드와_역할을_함께_읽는다() {
+        let spouse = ShareLink.invite(from: URL(string: "https://weddingplant.app/share/ABC123?as=spouse")!)
+        XCTAssertEqual(spouse?.code, "ABC123")
+        XCTAssertEqual(spouse?.asSpouse, true)
+
+        let reader = ShareLink.invite(from: URL(string: "https://weddingplant.app/share/ABC123")!)
+        XCTAssertEqual(reader?.code, "ABC123")
+        XCTAssertEqual(reader?.asSpouse, false)
+    }
+
+    func test_커스텀_스킴에서도_역할을_읽는다() {
+        let invite = ShareLink.invite(from: URL(string: "weddingplant://share/X1?as=spouse")!)
+        XCTAssertEqual(invite?.code, "X1")
+        XCTAssertEqual(invite?.asSpouse, true)
+    }
+
+    func test_다른_역할_값은_배우자가_아니다() {
+        let invite = ShareLink.invite(from: URL(string: "https://weddingplant.app/share/X1?as=reader")!)
+        XCTAssertEqual(invite?.asSpouse, false)
+    }
+
+    func test_저장했다_되읽어도_역할이_남는다() {
+        // 로그인 후 이어서 참여할 때 역할을 흘리면 조언자로 들어간다.
+        let spouse = ShareLink.Invite(code: "ABC123", asSpouse: true)
+        XCTAssertEqual(spouse.storageValue, "ABC123?as=spouse")
+        XCTAssertEqual(ShareLink.Invite(storageValue: spouse.storageValue), spouse)
+
+        let reader = ShareLink.Invite(code: "ABC123", asSpouse: false)
+        XCTAssertEqual(reader.storageValue, "ABC123")
+        XCTAssertEqual(ShareLink.Invite(storageValue: reader.storageValue), reader)
+    }
+
+    func test_코드만_저장돼_있어도_받아준다() {
+        XCTAssertEqual(ShareLink.Invite(storageValue: "ABC123")?.asSpouse, false)
+        XCTAssertNil(ShareLink.Invite(storageValue: "   "))
+    }
+}

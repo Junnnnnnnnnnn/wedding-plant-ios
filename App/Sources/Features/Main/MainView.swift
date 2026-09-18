@@ -104,8 +104,25 @@ struct MainView: View {
         // 면은 스크롤 영역 **안**에 있어 내용과 함께 올라간다(웹 `data-mobile-head`).
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
+        // **전환하는 동안 가림막으로 덮는다.** 안 덮으면 방을 묻는 사이에 화면이
+        // 이미 내 개인 플랜을 그려서, 개인 플랜이 떴다가 방 플랜으로 바뀌는 게
+        // 그대로 보인다.
+        //
+        // **공용 로딩 상태를 쓰지 않는다** — 누구나 끌 수 있어서 "스켈레톤을
+        // 보여 주려고 끄는" 한 줄에 가림막까지 꺼지고, 그 틈으로 개인 예산이
+        // 그대로 보였다. 그리고 **불투명이어야 한다**. 반투명이면 떠 있어도 큰
+        // 숫자가 비친다.
+        .overlay {
+            if env.boundRoom.needsCover {
+                Color.white.ignoresSafeArea()
+                    .accessibilityIdentifier("main.boundCover")
+            }
+        }
         .task {
             today = KstDate.today()
+            // 방을 먼저 정하고 목록을 받는다. 순서를 뒤집으면 개인 플랜을 한 번
+            // 그린 뒤 방 플랜으로 바뀐다.
+            await env.refreshBoundRoom()
             await model.load(env: env, guest: guest)
         }
         .navigationDestination(for: Int.self) { scheduleId in

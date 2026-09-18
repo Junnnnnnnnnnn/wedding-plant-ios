@@ -381,7 +381,11 @@ final class AddPlanViewModel: ObservableObject {
             memo: memo.trimmingCharacters(in: .whitespaces),
             // 생성에는 roomId 필수. 빼면 200 인데 목록에 영영 안 나온다.
             // 수정에는 붙이지 않는다.
-            roomId: isEditMode ? nil : roomId,
+            //
+            // **귀속된 방을 여기 한 곳에서 메운다.** 호출부마다 넘기게 하면 한 곳만
+            // 빠뜨려도 새 일정이 **화면에 보이지도 않는 개인 플랜에** 저장된다 —
+            // 실제로 피드의 `내 플랜에 담기` 가 roomId 없이 열리고 있었다.
+            roomId: isEditMode ? nil : (roomId ?? env.boundRoomId),
             addCategoryNameList: addedCategories.isEmpty ? nil : addedCategories,
             isPaid: isPaid,
             // 날짜가 미정이면 시각도 뜻이 없다. 수정에서 지우려면 **빈 문자열**을
