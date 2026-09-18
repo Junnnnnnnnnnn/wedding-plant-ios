@@ -340,4 +340,63 @@ public enum Endpoint {
     public static func notificationStreamPath(roomId: Int) -> String {
         "/plan/notification/chat/\(roomId)"
     }
+
+    // MARK: - 견적 후기 (피드)
+    //
+    // **방 권한과 무관하다.** 후기는 방이 아니라 개인 자격으로 올린다 —
+    // `READ`/`SPOUSE` 게이트를 넣지 말 것.
+
+    /// `GET /plan/feed/list`
+    public static func feedList(
+        page: Int,
+        count: Int,
+        sort: String,
+        categoryName: String? = nil
+    ) -> HTTPRequest {
+        var request = HTTPRequest(path: "/plan/feed/list")
+        request.query["page"] = String(page)
+        request.query["count"] = String(count)
+        request.query["sort"] = sort
+        if let categoryName, !categoryName.isEmpty {
+            request.query["categoryName"] = categoryName
+        }
+        return request
+    }
+
+    /// `GET /plan/feed/my/status` — 사이드의 "내 후기".
+    public static func feedMyStatus() -> HTTPRequest {
+        HTTPRequest(path: "/plan/feed/my/status")
+    }
+
+    /// `GET /plan/feed/postable` — 아직 후기로 안 올린 완료 일정.
+    public static func feedPostable() -> HTTPRequest {
+        HTTPRequest(path: "/plan/feed/postable")
+    }
+
+    /// `GET /plan/feed/stats` — 같은 카테고리 안에서의 시세.
+    ///
+    /// 표본이 적으면 **서버가 아예 안 내려 준다**(`MIN_STATS_SAMPLE` = 5).
+    /// 3개로 시세를 말하는 건 조작보다 큰 거짓말이다.
+    public static func feedStats(categoryName: String) -> HTTPRequest {
+        var request = HTTPRequest(path: "/plan/feed/stats")
+        request.query["categoryName"] = categoryName
+        return request
+    }
+
+    /// `POST /plan/feed` — 완료한 일정에 별점과 한 줄을 얹는다.
+    public static func createFeedPost(_ body: FeedPostRequest) throws -> HTTPRequest {
+        try .json(.post, "/plan/feed", body: body)
+    }
+
+    /// `POST /plan/feed/{id}/vote` — 도움이 돼요 / 안 돼요.
+    ///
+    /// 바디 키는 **`value`** 다. 앱이 먼저 맞았던 자리이니 바꾸지 말 것.
+    public static func voteFeedPost(id: Int, value: String) throws -> HTTPRequest {
+        try .json(.post, "/plan/feed/\(id)/vote", body: ["value": value])
+    }
+
+    /// `DELETE /plan/feed/{id}/vote` — 같은 값을 다시 눌렀을 때(취소).
+    public static func cancelFeedVote(id: Int) -> HTTPRequest {
+        HTTPRequest(method: .delete, path: "/plan/feed/\(id)/vote")
+    }
 }
