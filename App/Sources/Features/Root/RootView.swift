@@ -152,8 +152,7 @@ struct MainTabShell: View {
                 case .settings:
                     UserView()
                 case .feed:
-                    // 피드는 준비중 알림만 띄우고 탭이 바뀌지 않으므로 여기 올 일이 없다.
-                    MainView()
+                    FeedView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

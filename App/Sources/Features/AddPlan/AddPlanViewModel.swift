@@ -65,12 +65,47 @@ final class AddPlanViewModel: ObservableObject {
     /// 검색 요청 순번. 늦게 도착한 이전 응답이 최신 결과를 덮어쓰지 않도록 쓴다.
     private var searchSequence = 0
 
-    init(editId: Int? = nil, roomId: Int? = nil, initialDate: String? = nil) {
+    /// - Parameter prefill: 피드의 `내 플랜에 담기` 가 넘기는 값.
+    ///   **리텐션 축이 이것이다** — 후기를 보다가 코어(내 플랜)로 되돌아오는 길.
+    init(
+        editId: Int? = nil,
+        roomId: Int? = nil,
+        initialDate: String? = nil,
+        prefill: Prefill? = nil
+    ) {
         self.editId = editId
         self.roomId = roomId
         self.isEditMode = editId != nil
         if let initialDate, let parsed = KstDate(dateString: initialDate) {
             self.date = parsed
+        }
+        if let prefill {
+            // 업체명이 제목이 된다 — 일정 제목은 개인 메모인 경우가 많아,
+            // 후기에서 담을 때는 고른 장소 이름이 더 쓸모 있다.
+            self.title = prefill.title
+            if !prefill.categoryName.isEmpty {
+                self.category = PlanCategory(name: prefill.categoryName)
+            }
+            // **금액이 비공개면 비워 둔다.** 0 을 넣으면 "0원짜리 일정" 이 된다.
+            if let amount = prefill.amount { self.amount = String(amount) }
+            self.location = prefill.location ?? ""
+            self.selectedPlaceName = prefill.location ?? ""
+        }
+    }
+
+    /// 다른 화면에서 값을 채워 열 때 쓰는 묶음.
+    struct Prefill: Hashable, Sendable {
+        var title: String
+        var categoryName: String
+        /// 비공개면 `nil`. **0 으로 채우지 말 것.**
+        var amount: Int?
+        var location: String?
+
+        init(title: String, categoryName: String, amount: Int? = nil, location: String? = nil) {
+            self.title = title
+            self.categoryName = categoryName
+            self.amount = amount
+            self.location = location
         }
     }
 

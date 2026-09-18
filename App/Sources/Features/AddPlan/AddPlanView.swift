@@ -35,9 +35,20 @@ struct AddPlanView: View {
     /// 저장이 끝났을 때 목록을 새로 고치도록 알린다.
     var onSaved: () -> Void
 
-    init(editId: Int? = nil, roomId: Int? = nil, initialDate: String? = nil, onSaved: @escaping () -> Void) {
+    init(
+        editId: Int? = nil,
+        roomId: Int? = nil,
+        initialDate: String? = nil,
+        prefill: AddPlanViewModel.Prefill? = nil,
+        onSaved: @escaping () -> Void
+    ) {
         _model = StateObject(
-            wrappedValue: AddPlanViewModel(editId: editId, roomId: roomId, initialDate: initialDate)
+            wrappedValue: AddPlanViewModel(
+                editId: editId,
+                roomId: roomId,
+                initialDate: initialDate,
+                prefill: prefill
+            )
         )
         self.onSaved = onSaved
     }

@@ -46,12 +46,12 @@ enum WPTab: String, CaseIterable, Identifiable {
 ///
 /// iOS 기본 `TabView` 를 쓰지 않는 이유: 웹·안드로이드가 흰 배경에 4칸 균등 배치인
 /// 커스텀 바를 쓰고 있어서, `TabView` 로는 같은 모양이 나오지 않는다.
-/// "피드" 탭은 웹과 동일하게 **준비중 알림만** 띄운다 (라우팅 없음).
+///
+/// **피드는 이제 실제 화면으로 간다.** 예전의 "서비스 준비중" 알림은 웹·안드로이드
+/// 양쪽에서 이미 지웠다 — 눌러도 아무 일이 없는 탭은 앱 심사(애플 2.1)에도 걸린다.
 struct BottomTabBar: View {
     @Binding var active: WPTab
     var unreadCount: Int = 0
-
-    @State private var showFeedPrepAlert = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -61,11 +61,7 @@ struct BottomTabBar: View {
                     active: active == tab,
                     badgeCount: tab == .rooms ? unreadCount : 0
                 ) {
-                    if tab == .feed {
-                        showFeedPrepAlert = true
-                    } else {
-                        active = tab
-                    }
+                    active = tab
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -73,11 +69,6 @@ struct BottomTabBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color.white)
-        .alert("서비스 준비중입니다.", isPresented: $showFeedPrepAlert) {
-            Button("닫기", role: .cancel) {}
-        } message: {
-            Text("조금만 기다려 주세요")
-        }
     }
 }
 

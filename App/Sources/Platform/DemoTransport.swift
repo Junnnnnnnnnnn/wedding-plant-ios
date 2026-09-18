@@ -60,6 +60,12 @@ struct DemoTransport: HTTPTransport {
             json = DemoData.chatHistory
         } else if path.hasSuffix("/plan/room/list") {
             json = DemoData.roomList
+        } else if path.hasSuffix("/plan/feed/list") {
+            json = DemoData.feed(categoryName: request.url.queryValue("categoryName"))
+        } else if path.hasSuffix("/plan/feed/my/status") {
+            json = DemoData.feedMyStatus
+        } else if path.hasSuffix("/plan/feed/stats") {
+            json = DemoData.feedStats(categoryName: request.url.queryValue("categoryName"))
         } else {
             // 아직 데모 데이터를 만들지 않은 엔드포인트는 성공만 돌려준다.
             json = "{\"result\":true}"
@@ -335,5 +341,75 @@ enum DemoData {
            ]}
         ]}}
         """
+    }
+
+    // MARK: - 견적 후기
+
+    /// **비공개 금액은 `amount` 키를 아예 뺀다** — `0` 을 넣으면 "0원" 으로 그려진다.
+    /// `notHelpfulCount` 도 넣지 않는다. 응답에 없는 것이 계약이다.
+    static func feed(categoryName: String?) -> String {
+        let all: [(id: Int, category: String, json: String)] = [
+            (1, "스튜디오", """
+            {"id":1,"categoryName":"스튜디오","title":"라뮈에스튜디오","amount":450,
+             "isAmountPublic":true,"region":"서울 강남구",
+             "address":"서울 강남구 논현로 842","placeId":"kakao-1",
+             "lat":37.5172,"lng":127.0286,"rating":5,
+             "body":"원본 800장 다 받았어요. 실장님이 포즈를 잘 잡아 주셔서 어색하지 않았습니다.",
+             "authorDDay":131,"authorRole":"BRIDE","helpfulCount":12,
+             "myVote":null,"isMine":false,"createDate":"2026-09-15T02:00:00Z"}
+            """),
+            (2, "예식장", """
+            {"id":2,"categoryName":"예식장","title":"더채플앳청담","amount":1240,
+             "isAmountPublic":true,"region":"서울 강남구",
+             "address":"서울 강남구 선릉로 757","placeId":"kakao-2",
+             "lat":37.5237,"lng":127.0468,"rating":4,
+             "body":"보증인원이 200명이라 부담이 있었지만 홀이 예뻐서 만족합니다.",
+             "authorDDay":-12,"authorRole":"GROOM","helpfulCount":31,
+             "myVote":"HELPFUL","isMine":false,"createDate":"2026-09-11T02:00:00Z"}
+            """),
+            // 금액 비공개 + 장소 없음. 두 분기를 한 카드로 본다.
+            (3, "청첩장", """
+            {"id":3,"categoryName":"청첩장","title":"바른손 모바일 청첩장",
+             "isAmountPublic":false,"rating":4,
+             "body":"디자인은 많은데 고르는 데 오래 걸렸어요.",
+             "authorDDay":0,"authorRole":"BRIDE","helpfulCount":3,
+             "myVote":null,"isMine":true,"createDate":"2026-08-02T02:00:00Z"}
+            """),
+            (4, "신혼여행", """
+            {"id":4,"categoryName":"신혼여행","title":"푸꾸옥 5박 7일","amount":820,
+             "isAmountPublic":true,"region":"해외",
+             "lat":0,"lng":0,"rating":5,
+             "body":"해외라 지도에는 안 뜨지만 가격 대비 최고였습니다.",
+             "authorDDay":-40,"authorRole":"GROOM","helpfulCount":8,
+             "myVote":null,"isMine":false,"createDate":"2026-07-20T02:00:00Z"}
+            """),
+        ]
+        let picked = categoryName.map { name in all.filter { $0.category == name } } ?? all
+        let list = picked.map(\.json).joined(separator: ",")
+        return "{\"result\":true,\"data\":{\"total\":\(picked.count),\"list\":[\(list)]}}"
+    }
+
+    static let feedMyStatus = """
+    {"result":true,"data":{"postCount":1,"receivedHelpfulCount":3,"postableScheduleCount":2}}
+    """
+
+    /// 표본이 적은 카테고리는 **서버가 아예 안 내려 준다**(`MIN_STATS_SAMPLE` = 5).
+    /// 데모도 같게 흉내 낸다 — 자가 안 뜨는 분기를 화면에서 볼 수 있어야 한다.
+    static func feedStats(categoryName: String?) -> String {
+        switch categoryName {
+        case "스튜디오":
+            return """
+            {"result":true,"data":{"categoryName":"스튜디오","sampleCount":42,
+             "median":520,"p25":380,"p75":700}}
+            """
+        case "예식장":
+            return """
+            {"result":true,"data":{"categoryName":"예식장","sampleCount":67,
+             "median":1100,"p25":850,"p75":1500}}
+            """
+        default:
+            // 표본이 모자라면 데이터를 주지 않는다.
+            return "{\"result\":true}"
+        }
     }
 }

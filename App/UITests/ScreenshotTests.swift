@@ -132,16 +132,7 @@ final class ScreenshotTests: XCTestCase {
             capture(app, "06-user")
         }
 
-        // 피드 탭은 웹과 동일하게 "준비중" 알림만 띄운다.
-        if app.buttons["tab.feed"].isHittable {
-            app.buttons["tab.feed"].tap()
-            settle(1.5)
-            capture(app, "07-feed-preparing")
-            if app.buttons["닫기"].isHittable {
-                app.buttons["닫기"].tap()
-                settle(1.0)
-            }
-        }
+        // 피드는 이제 실제 화면이다 — 목록·상세는 `test_04c_피드` 가 따로 찍는다.
 
         if app.buttons["tab.home"].isHittable {
             app.buttons["tab.home"].tap()
@@ -246,6 +237,41 @@ final class ScreenshotTests: XCTestCase {
     }
 
     // MARK: - 예산 상세
+
+    /// 피드 — 견적 후기 목록과 상세.
+    ///
+    /// **금액이 맨 왼쪽 위에 혼자 크게** 와야 한다(시안 D). 이 화면에서 사람이 하는
+    /// 일이 금액을 위아래로 훑는 것이라, 같은 x 좌표에 세로로 줄서야 비교가 된다.
+    func test_04c_피드() {
+        let app = makeApp()
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        settle(2.0)
+
+        let feedTab = app.buttons["tab.feed"]
+        guard feedTab.waitForExistence(timeout: 10) else { return }
+        feedTab.tap()
+        settle(2.5)
+        capture(app, "07-feed-list")
+
+        // 카테고리 칩으로 좁혀 본다. 칩은 **마스터 목록**이라 스크롤해도 안 늘어난다.
+        let chip = app.buttons.containing(
+            NSPredicate(format: "label CONTAINS %@", "스튜디오")
+        ).firstMatch
+        if chip.isHittable {
+            chip.tap()
+            settle(1.5)
+            capture(app, "07b-feed-filtered")
+        }
+
+        // 카드를 누르면 상세. **요청이 한 건도 안 나간다** — 목록이 항목을 넘긴다.
+        let card = app.otherElements["feed.card"].firstMatch
+        if card.waitForExistence(timeout: 5) {
+            card.tap()
+            settle(2.0)
+            capture(app, "08-feed-detail")
+        }
+    }
 
     /// 홈의 `추가` → 등록 시트.
     ///
