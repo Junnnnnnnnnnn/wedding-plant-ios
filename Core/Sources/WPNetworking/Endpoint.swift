@@ -399,4 +399,49 @@ public enum Endpoint {
     public static func cancelFeedVote(id: Int) -> HTTPRequest {
         HTTPRequest(method: .delete, path: "/plan/feed/\(id)/vote")
     }
+
+    // MARK: - 자랑하기 (/brag)
+    //
+    // **피드와 규칙이 정반대다** — 여기는 닉네임을 내는 것이 목적이다.
+    // 두 모듈의 코드를 서로 베낄 때 여기서 가장 먼저 사고가 난다.
+
+    public static func bragList(page: Int, count: Int) -> HTTPRequest {
+        var request = HTTPRequest(path: "/plan/brag/list")
+        request.query["page"] = String(page)
+        request.query["count"] = String(count)
+        return request
+    }
+
+    public static func brag(id: Int) -> HTTPRequest {
+        HTTPRequest(path: "/plan/brag/\(id)")
+    }
+
+    /// `GET /plan/brag/my` — 내 플랜이 지금 올라가 있는지.
+    public static func bragMy() -> HTTPRequest {
+        HTTPRequest(path: "/plan/brag/my")
+    }
+
+    /// `PUT /plan/brag` — 올린다.
+    ///
+    /// **멱등이고 `publishedAt` 도 안 민다** — 밀면 토글을 만질 때마다 목록 맨
+    /// 위로 올라온다.
+    public static func publishBrag() -> HTTPRequest {
+        HTTPRequest(method: .put, path: "/plan/brag")
+    }
+
+    /// `DELETE /plan/brag` — 내린다.
+    ///
+    /// **행을 지우지 않는다**(`status = UNPUBLISHED`). 다시 올리면 같은 행을 쓰므로
+    /// **좋아요가 이어진다.**
+    public static func unpublishBrag() -> HTTPRequest {
+        HTTPRequest(method: .delete, path: "/plan/brag")
+    }
+
+    public static func likeBrag(id: Int) -> HTTPRequest {
+        HTTPRequest(method: .post, path: "/plan/brag/like/\(id)")
+    }
+
+    public static func unlikeBrag(id: Int) -> HTTPRequest {
+        HTTPRequest(method: .delete, path: "/plan/brag/like/\(id)")
+    }
 }
