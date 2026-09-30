@@ -61,7 +61,8 @@ struct DemoTransport: HTTPTransport {
         } else if path.hasSuffix("/plan/room/list") {
             json = DemoData.roomList
         } else if path.hasSuffix("/plan/feed/list") {
-            json = DemoData.feed(categoryName: request.url.queryValue("categoryName"))
+            // 후기 목록의 카테고리 키는 `category` 다(서버 `GetPlanFeedListRequest`, Endpoint.feedList)
+            json = DemoData.feed(categoryName: request.url.queryValue("category"))
         } else if path.hasSuffix("/plan/feed/postable") {
             json = DemoData.feedPostable
         } else if path.hasSuffix("/plan/feed/my/status") {

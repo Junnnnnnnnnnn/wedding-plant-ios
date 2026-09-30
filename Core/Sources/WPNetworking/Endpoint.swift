@@ -381,8 +381,11 @@ public enum Endpoint {
         request.query["page"] = String(page)
         request.query["count"] = String(count)
         request.query["sort"] = sort
+        // 서버 DTO(`GetPlanFeedListRequest`)의 키는 `category` 다. 전역 검증이 모르는 키를
+        // 거절해서(`forbidNonWhitelisted`) `categoryName=` 으로 보내면 카테고리 칩마다 400 이었다
+        // (2026-09-30 리뷰). 웹·안드로이드도 `category` 를 보낸다.
         if let categoryName, !categoryName.isEmpty {
-            request.query["categoryName"] = categoryName
+            request.query["category"] = categoryName
         }
         return request
     }
