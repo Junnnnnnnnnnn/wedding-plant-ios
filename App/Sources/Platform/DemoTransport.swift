@@ -9,6 +9,7 @@ import WPUtils
 /// 채워진 화면을 보여준다. 실행 인자에 `-WPDemoMode` 가 있으면 활성화된다.
 actor DemoTransport: HTTPTransport {
     private var invitation: [String: Any]?
+    private var reminder: [String: Any] = ["leadDays": [7, 1, 0], "hour": 9, "email": false, "emailAddress": "demo@example.com", "devices": ["ios": 1]]
     init(newUser: Bool = false) { self.newUser = newUser }
     /// 로딩 상태가 화면에 보이도록 약간의 지연을 준다.
     var latency: Duration = .milliseconds(200)
@@ -51,9 +52,11 @@ actor DemoTransport: HTTPTransport {
         } else if path.contains("/plan/pass/file/schedule/") {
             json = "{\"result\":true,\"data\":{\"canOpen\":true,\"roomId\":1,\"quotaBytes\":1073741824,\"usedBytes\":0,\"list\":[]}}"
         } else if path.hasSuffix("/plan/pass/reminder-setting") {
-            if request.method == .put, let data = request.body {
-                json = "{\"result\":true,\"data\":\(String(decoding: data, as: UTF8.self))}"
-            } else { json = "{\"result\":true,\"data\":{\"leadDays\":[7,1,0],\"hour\":9,\"email\":false,\"emailAddress\":\"demo@example.com\",\"devices\":{\"ios\":1}}}" }
+            if request.method == .put, let data = request.body,
+               let edits = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                for (key, value) in edits { reminder[key] = value }
+            }
+            json = String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": reminder]), as: UTF8.self)
         } else if path.contains("/plan/invitation/") && path.hasSuffix("/guestbook") {
             json = "{\"result\":true,\"data\":{\"wishes\":[],\"total\":0}}"
         } else if path.hasSuffix("/plan/auth/kakao/login") {

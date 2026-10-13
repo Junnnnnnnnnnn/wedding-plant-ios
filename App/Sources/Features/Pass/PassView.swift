@@ -64,42 +64,6 @@ struct PassPlansView: View {
                 if let resolvedRoom { state = try await env.api.send(Endpoint.pass(roomId: resolvedRoom)) }
                 products = try await Product.products(for: plans.map(\.0))
             } catch { self.error = error.localizedDescription }
-        }.sheet(isPresented: $reminders) { ReminderSettingsView() }
-    }
-}
-
-struct ReminderSettingsView: View {
-    @EnvironmentObject private var env: AppEnvironment
-    @Environment(\.dismiss) private var dismiss
-    @State private var setting = ReminderSetting(leadDays: [7,1,0])
-    @State private var loaded = false
-    @State private var busy = false
-    @State private var error: String?
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("언제 받을까요?") {
-                    ForEach([7,3,1,0], id: \.self) { day in
-                        Toggle(day == 0 ? "당일" : day == 1 ? "하루 전" : "\(day)일 전", isOn: Binding(get: { setting.leadDays.contains(day) }, set: { on in setting.leadDays.removeAll { $0 == day }; if on { setting.leadDays.append(day) }; setting.leadDays.sort(by: >) }))
-                    }
-                    Picker("받는 시각 (한국 시간)", selection: $setting.hour) { ForEach(7...22, id: \.self) { Text("\($0)시").tag($0) } }
-                }
-                Section("알림 받을 곳") {
-                    Text("앱 알림 · 내 기기 \(setting.devices.ios + setting.devices.android)대")
-                    Toggle("이메일로도 받기", isOn: $setting.email).disabled(setting.emailAddress == nil)
-                    Text(setting.emailAddress ?? "확인된 이메일 주소가 없어요").font(.footnote)
-                }
-                if let error { Text(error).foregroundStyle(.red) }
-            }.disabled(!loaded || busy).navigationTitle("결제일 알림")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
-                    ToolbarItem(placement: .confirmationAction) { Button("저장") { Task { await save() } }.disabled(!loaded || busy) }
-                }
-        }.task { do { setting = try await env.api.send(Endpoint.reminderSetting()); loaded = true } catch { self.error = error.localizedDescription } }
-    }
-    private func save() async {
-        busy = true; defer { busy = false }
-        do { setting = try await env.api.send(Endpoint.saveReminder(leadDays: setting.leadDays, hour: setting.hour, email: setting.email)); dismiss() }
-        catch { self.error = error.localizedDescription }
+        }.fullScreenCover(isPresented: $reminders) { ReminderSettingsView(roomId: resolvedRoom) }
     }
 }

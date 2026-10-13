@@ -31,7 +31,7 @@ final class GardenCanvas: UIView {
     private var link: CADisplayLink?
     private var lastTick: CFTimeInterval?
     private var flightViews: [Int: UIImageView] = [:]
-    private let dialog = UILabel()
+    private let dialog = GardenDialogLabel()
     private let speaker = UILabel()
     private let nameplate = UILabel()
     private let bubble = UIButton(type: .custom)
@@ -67,7 +67,7 @@ final class GardenCanvas: UIView {
         dialog.textColor = UIColor(red: 0.96, green: 0.95, blue: 0.9, alpha: 1)
         dialog.numberOfLines = 0; dialog.backgroundColor = UIColor(red: 0.09, green: 0.235, blue: 0.184, alpha: 1)
         dialog.layer.borderColor = UIColor(red: 0.937, green: 0.855, blue: 0.647, alpha: 1).cgColor
-        dialog.layer.borderWidth = 3; dialog.isUserInteractionEnabled = true
+        dialog.isUserInteractionEnabled = true
         dialog.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(skipLine)))
         dialog.isAccessibilityElement = true; dialog.accessibilityTraits = .button
         speaker.font = dialog.font; speaker.textColor = dialog.textColor; speaker.backgroundColor = dialog.backgroundColor
@@ -77,7 +77,9 @@ final class GardenCanvas: UIView {
         nameplate.backgroundColor = UIColor(red: 0.969, green: 0.961, blue: 0.929, alpha: 1)
         nameplate.layer.borderWidth = 2; nameplate.layer.borderColor = dialog.backgroundColor?.cgColor
         nameplate.text = demo ? "  우진 & 채원 · 축하의 정원  예시  " : "  축하의 정원  "; addSubview(nameplate)
-        speaker.text = demo ? " 웨딩플랜트 " : " 정원지기 "
+        speaker.text = demo ? "웨딩플랜트" : "정원지기"
+        speaker.textAlignment = .center
+        speaker.layer.borderColor = dialog.backgroundColor?.cgColor; speaker.layer.borderWidth = 3
         if !peek && (demo || empty) { addSubview(dialog); addSubview(speaker) }
         bubble.titleLabel?.font = dialog.font; bubble.titleLabel?.numberOfLines = 0
         bubble.setTitleColor(UIColor(red: 0.09, green: 0.235, blue: 0.184, alpha: 1), for: .normal)
@@ -112,9 +114,9 @@ final class GardenCanvas: UIView {
     func stop() { link?.invalidate(); link = nil; lastTick = nil }
     override func layoutSubviews() {
         super.layoutSubviews()
-        dialog.frame = CGRect(x: 9, y: bounds.height - 80, width: bounds.width - 18, height: 70)
-        nameplate.frame = CGRect(x: 12, y: 12, width: min(bounds.width - 24, nameplate.intrinsicContentSize.width + 12), height: 28)
-        speaker.frame = CGRect(x: 24, y: bounds.height - 88, width: 98, height: 18)
+        dialog.frame = CGRect(x: 9, y: bounds.height - 79, width: bounds.width - 18, height: 70)
+        nameplate.frame = CGRect(x: 14, y: 14, width: min(bounds.width - 28, nameplate.intrinsicContentSize.width + 12), height: 28)
+        speaker.frame = CGRect(x: 18, y: dialog.frame.minY - 17, width: speaker.intrinsicContentSize.width + 26, height: 30)
         updateFlight()
     }
     private var unit: CGFloat { bounds.width / 320 }
@@ -136,19 +138,26 @@ final class GardenCanvas: UIView {
         updateFlight(); if !peek { updateBubble() }; setNeedsDisplay()
     }
     private func advanceDialog() {
-        if typed < lines[line].count && engine.time - typedAt >= 0.056 { typed += 1; typedAt = engine.time }
+        // Carry the remainder between display frames: resetting to `time` makes a 56 ms
+        // character take 4 × 16.7 ms and delays the following drop by almost 0.3 seconds.
+        if typed < lines[line].count {
+            let count = min(lines[line].count - typed, Int((engine.time - typedAt) / 0.056))
+            if count > 0 { typed += count; typedAt += Double(count) * 0.056 }
+        }
         if typed == lines[line].count {
-            if completedAt == nil { completedAt = engine.time }
+            if completedAt == nil { completedAt = typedAt }
             if engine.time - (completedAt ?? engine.time) >= 2.6 { nextLine() }
         }
-        let full = "   " + lines[line] + "   ▾"
-        let attributed = NSMutableAttributedString(string: full)
-        let shown = String(full.prefix(typed + 3)).utf16.count
+        let full = lines[line]
+        let paragraph = NSMutableParagraphStyle(); paragraph.minimumLineHeight = 18; paragraph.maximumLineHeight = 18
+        let attributed = NSMutableAttributedString(string: full, attributes: [.paragraphStyle: paragraph])
+        let shown = String(full.prefix(typed)).utf16.count
         if shown < full.utf16.count { attributed.addAttribute(.foregroundColor, value: UIColor.clear, range: NSRange(location: shown, length: full.utf16.count - shown)) }
         dialog.attributedText = attributed
+        dialog.updateIndicators(line: line, count: lines.count, more: typed == full.count && engine.time.truncatingRemainder(dividingBy: 0.8) < 0.4)
         dialog.accessibilityLabel = "\(speaker.text ?? ""): \(lines[line]) (다음 이야기)"
     }
-    @objc private func skipLine() { if typed < lines[line].count { typed = lines[line].count } else { nextLine() } }
+    @objc private func skipLine() { if typed < lines[line].count { typed = lines[line].count; typedAt = engine.time; completedAt = engine.time } else { nextLine() } }
     private func nextLine() {
         line = (line + 1) % lines.count; typed = 0; completedAt = nil; typedAt = engine.time
         guard demo, engine.time - lastBeat >= 6 else { return }
@@ -214,13 +223,83 @@ final class GardenCanvas: UIView {
             }
             c.setFillColor(UIColor(red: 238/255, green: 230/255, blue: 196/255, alpha: 0.72).cgColor)
             for p in engine.particles { c.fill(CGRect(x: p.x.rounded(), y: p.y.rounded(), width: 2, height: 3)) }
-            if empty {
-                c.setStrokeColor(UIColor.white.withAlphaComponent(0.3 + 0.3 * sin(engine.time * .pi / 1.4)).cgColor)
-                c.setLineDash(phase: 0, lengths: [2,2]); c.setLineWidth(1)
-                for p in SeasideEngine.positions.prefix(8) { c.stroke(CGRect(x: p[0] - 10, y: p[1] - 40, width: 20, height: 20)) }
-            }
         }
         screen.interpolationQuality = .none
         frame.draw(in: CGRect(x: 0, y: sceneY, width: bounds.width, height: 440 * unit))
+        if empty {
+            // Seats are a screen-resolution overlay in Android, not part of the pixel scene.
+            let side = min(34, max(16, bounds.width * 0.056)), arm = side * 0.45
+            for (index, p) in SeasideEngine.positions.prefix(8).enumerated() {
+                let x = p[0] * unit, y = sceneY + (p[1] - 30) * unit
+                guard y >= -side && y <= bounds.height + side else { continue }
+                screen.saveGState(); screen.setAlpha(SeasideEngine.emptySeatOpacity(time: engine.time, index: index))
+                let box = CGRect(x: x - side / 2, y: y - side / 2, width: side, height: side)
+                screen.setFillColor(UIColor(red: 23/255, green: 60/255, blue: 47/255, alpha: 89/255).cgColor); screen.fill(box)
+                screen.setStrokeColor(UIColor.white.cgColor); screen.setLineDash(phase: 0, lengths: [4,3]); screen.setLineWidth(2)
+                screen.stroke(box.insetBy(dx: 1, dy: 1))
+                screen.setFillColor(UIColor.white.cgColor)
+                screen.fill(CGRect(x: x - arm / 2, y: y - 1, width: arm, height: 2))
+                screen.fill(CGRect(x: x - 1, y: y - arm / 2, width: 2, height: arm))
+                screen.restoreGState()
+            }
+        }
     }
+}
+
+/// Android DialogBox: outer forest ring, corner-cut gold border, stable text wrap,
+/// one square per line and a 0.8-second blinking continuation marker.
+private final class GardenDialogLabel: UILabel {
+    private let frameLayer = CAShapeLayer()
+    private let forestLayer = CAShapeLayer()
+    private let marks = CAShapeLayer()
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        clipsToBounds = false
+        layer.insertSublayer(forestLayer, at: 0)
+        layer.insertSublayer(frameLayer, at: 1)
+        layer.addSublayer(marks)
+        frameLayer.fillColor = UIColor(red: 239/255, green: 218/255, blue: 165/255, alpha: 1).cgColor
+        forestLayer.fillColor = UIColor(red: 23/255, green: 60/255, blue: 47/255, alpha: 1).cgColor
+        forestLayer.fillRule = .evenOdd
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        frameLayer.frame = bounds.insetBy(dx: -6, dy: -6)
+        let box = CGRect(x: 6, y: 6, width: bounds.width, height: bounds.height)
+        forestLayer.frame = frameLayer.frame
+        let ring = UIBezierPath(rect: frameLayer.bounds); ring.append(UIBezierPath(rect: box))
+        forestLayer.path = ring.cgPath
+        let path = UIBezierPath()
+        for r in [CGRect(x: box.minX, y: 3, width: box.width, height: 3),
+                  CGRect(x: box.minX, y: box.maxY, width: box.width, height: 3),
+                  CGRect(x: 3, y: box.minY, width: 3, height: box.height),
+                  CGRect(x: box.maxX, y: box.minY, width: 3, height: box.height)] { path.append(UIBezierPath(rect: r)) }
+        frameLayer.path = path.cgPath
+    }
+    override func drawText(in rect: CGRect) {
+        super.drawText(in: CGRect(x: 12, y: 17, width: max(0, rect.width - 70), height: max(36, rect.height - 29)))
+    }
+    func updateIndicators(line: Int, count: Int, more: Bool) {
+        // Off squares share the forest-green backdrop; the active square is gold.
+        let path = UIBezierPath()
+        for index in 0..<count {
+            let x = bounds.width - 30 - CGFloat(count * 10 - 4) + CGFloat(index * 10)
+            if index == line { path.append(UIBezierPath(rect: CGRect(x: x, y: bounds.height - 16, width: 6, height: 6))) }
+        }
+        if more {
+            path.move(to: CGPoint(x: bounds.width - 24, y: bounds.height - 15))
+            path.addLine(to: CGPoint(x: bounds.width - 12, y: bounds.height - 15))
+            path.addLine(to: CGPoint(x: bounds.width - 18, y: bounds.height - 9)); path.close()
+        }
+        marks.fillColor = frameLayer.fillColor; marks.path = path.cgPath
+        let off = UIBezierPath()
+        for index in 0..<count where index != line {
+            let x = bounds.width - 30 - CGFloat(count * 10 - 4) + CGFloat(index * 10)
+            off.append(UIBezierPath(rect: CGRect(x: x, y: bounds.height - 16, width: 6, height: 6)))
+        }
+        offMarks.fillColor = UIColor(red: 47/255, green: 86/255, blue: 70/255, alpha: 1).cgColor
+        offMarks.path = off.cgPath
+    }
+    private lazy var offMarks: CAShapeLayer = { let value = CAShapeLayer(); layer.addSublayer(value); return value }()
 }

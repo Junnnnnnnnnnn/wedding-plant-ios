@@ -17,6 +17,6 @@ public enum PayThisWeek {
         guard !setting.leadDays.isEmpty else { return "알림 시점을 고르지 않았어요" }
         let days = Set(setting.leadDays).sorted(by: >).map { $0 == 0 ? "당일" : $0 == 1 ? "하루 전" : "\($0)일 전" }.joined(separator: " · ")
         let hour = setting.hour
-        return "\(days) \(hour < 12 ? "오전" : "오후") \(hour % 12 == 0 ? 12 : hour % 12)시".trimmingCharacters(in: .whitespaces)
+        return "\(days) \(ReminderRules.hourLabel(hour))"
     }
 }

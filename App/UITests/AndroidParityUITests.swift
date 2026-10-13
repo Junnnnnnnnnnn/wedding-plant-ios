@@ -10,7 +10,7 @@ final class AndroidParityUITests: XCTestCase {
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
     }
-    func testFiveTabsAndAddReturnsToSchedule() {
+    func testFiveTabsAndFilledAddReturnsToSchedule() {
         let app = launch()
         for tab in ["home", "schedule", "add", "explore", "rooms"] { XCTAssertTrue(app.buttons["tab.\(tab)"].waitForExistence(timeout: 10)) }
         app.buttons["tab.schedule"].tap()
@@ -18,6 +18,12 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertFalse(app.buttons["calendar.close"].exists)
         app.buttons["tab.add"].tap()
         XCTAssertTrue(app.textFields["addplan.title"].waitForExistence(timeout: 5))
+        app.textFields["addplan.title"].tap(); app.textFields["addplan.title"].typeText("드레스 투어\n")
+        let dress = app.buttons["드레스"].firstMatch
+        XCTAssertTrue(dress.waitForExistence(timeout: 5)); dress.tap()
+        let card = app.buttons["카드"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5)); card.tap()
+        XCTAssertTrue(app.textFields["addplan.amount"].waitForExistence(timeout: 5))
         capture(app, "parity-add")
         let close = app.buttons["addplan.back"]
         XCTAssertTrue(close.exists); close.tap()
@@ -83,7 +89,14 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(benefits.waitForExistence(timeout: 8)); capture(app, "parity-pass-intro"); benefits.tap()
         XCTAssertTrue(app.webViews.buttons["플랜 등록·서류 첨부 시연 다시 보기"].waitForExistence(timeout: 10))
         capture(app, "parity-pass-docs-demo")
-        app.webViews.links["패스 알아보기"].tap()
+        for (label, name) in [("엑셀 정리", "excel"), ("결제일 알림", "reminders"), ("청첩장", "invitation")] {
+            let chapter = app.webViews.buttons[label]
+            XCTAssertTrue(chapter.waitForExistence(timeout: 5)); chapter.tap()
+            // Let the section transition finish; the demonstration itself remains animated.
+            Thread.sleep(forTimeInterval: 1)
+            capture(app, "parity-pass-\(name)-demo")
+        }
+        app.webViews.links["요금제 보기"].tap()
         XCTAssertTrue(app.staticTexts["iOS 구매 연결을 준비하고 있어요. 이미 이용 중인 패스는 두 사람 모두 그대로 쓸 수 있어요."].waitForExistence(timeout: 5) || app.navigationBars["준비 패스"].exists)
         capture(app, "parity-pass-plans")
     }
@@ -143,7 +156,7 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertFalse(app.buttons["payment.3"].exists)
         capture(app, "parity-upcoming-payments")
         reminder.tap()
-        XCTAssertTrue(app.switches["3일 전"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reminder.lead.3"].waitForExistence(timeout: 5))
     }
     func testHomeBudgetProfileAndReminderSave() {
         let app = launch(["-WPPassEnabled"])
@@ -153,10 +166,11 @@ final class AndroidParityUITests: XCTestCase {
         let reminders = app.buttons["결제일 알림 설정"]
         for _ in 0..<5 { if reminders.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(reminders.isHittable); reminders.tap()
-        XCTAssertTrue(app.switches["3일 전"].waitForExistence(timeout: 5))
-        app.switches["3일 전"].tap()
+        XCTAssertTrue(app.buttons["reminder.lead.3"].waitForExistence(timeout: 5))
+        app.buttons["reminder.lead.3"].tap()
         capture(app, "parity-reminders")
-        app.buttons["저장"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "저장했어요")).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["reminder.back"].tap()
         XCTAssertTrue(app.buttons["결제일 알림 설정"].waitForExistence(timeout: 5))
     }
     func testCreatePlanShowsBloomBeforeReturning() {

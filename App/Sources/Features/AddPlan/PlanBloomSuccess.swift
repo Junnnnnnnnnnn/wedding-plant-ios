@@ -19,6 +19,8 @@ struct PlanBloomSuccess: View {
     let amount: Double
     let remaining: Double?
     var action: BloomAction = .create
+    var motionEnabled = true
+    var showsBackdrop = true
     let onClose: () -> Void
     @StateObject private var tilt = CardTilt()
     @Environment(\.scenePhase) private var scenePhase
@@ -27,29 +29,29 @@ struct PlanBloomSuccess: View {
     private var over: Bool { (remaining ?? 0) < 0 }
     var body: some View {
         ZStack {
-            Color.black.opacity(0.5).ignoresSafeArea().onTapGesture(perform: onClose)
+            (showsBackdrop ? Color.black.opacity(0.5) : Color(hex: 0xFAFAFA)).ignoresSafeArea().onTapGesture { if showsBackdrop { onClose() } }
             ScrollView {
                 VStack(spacing: 0) {
                     card
                         .rotation3DEffect(.degrees(min(12, max(-12, -tilt.x * 0.55))), axis: (x: 1,y: 0,z: 0), perspective: 0.4)
                         .rotation3DEffect(.degrees(min(12, max(-12, -tilt.y * 0.55))), axis: (x: 0,y: 1,z: 0), perspective: 0.4)
                 }.frame(maxWidth: 390).padding(.horizontal, 22).padding(.vertical, 28).frame(maxWidth: .infinity)
-            }.defaultScrollAnchor(.center)
-        }.presentationBackground(.clear).onAppear { tilt.start() }.onDisappear { tilt.stop() }
-            .onChange(of: scenePhase) { _, phase in if phase == .active { tilt.start() } else { tilt.stop() } }
+            }.defaultScrollAnchor(showsBackdrop ? .center : .top)
+        }.presentationBackground(.clear).onAppear { if motionEnabled { tilt.start() } }.onDisappear { tilt.stop() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active && motionEnabled { tilt.start() } else { tilt.stop() } }
     }
     private var card: some View {
         VStack(spacing: 0) {
-            TimelineView(.animation(minimumInterval: 1 / 30, paused: scenePhase != .active)) { context in
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: !motionEnabled || scenePhase != .active)) { context in
                 ZStack {
-                    Ellipse().stroke(colors[4].opacity(0.2), lineWidth: 1).frame(width: 170, height: 145).offset(x: tilt.y * 0.15, y: -tilt.x * 0.15)
-                    BloomFlower().frame(width: 150, height: 135).rotationEffect(.degrees(sin(context.date.timeIntervalSince(started) / 6 * 2 * .pi) * 3)).offset(x: tilt.y * 0.45, y: -tilt.x * 0.45)
+                    Ellipse().stroke(colors[4].opacity(0.2), lineWidth: 1).frame(width: 150, height: 135).offset(x: tilt.y * 0.15, y: -tilt.x * 0.15)
+                    BloomFlower().frame(width: 150, height: 135).rotationEffect(.degrees(motionEnabled ? sin(context.date.timeIntervalSince(started) / 6 * 2 * .pi) * 3 : 0)).offset(x: tilt.y * 0.45, y: -tilt.x * 0.45)
                 }.frame(width: 150, height: 135)
             }
-            Text("플랜이 \(action.verb)되었어요").font(WPFont.hak(28, .bold)).tracking(-0.9).foregroundStyle(colors[3]).padding(.top, 14)
+            Text("플랜이 \(action.verb)되었어요").font(WPFont.hak(28, .bold)).tracking(-0.9).foregroundStyle(colors[3]).frame(minHeight: 35).padding(.top, 14)
             reward.padding(.top, 20)
             Button(action: onClose) {
-                Text(over ? "확인했어요  →" : action == .create ? "좋아, 다음 플랜으로  →" : "확인  →").font(WPFont.hak(13, .bold)).foregroundStyle(Color(hex: 0xFFFDF3)).frame(maxWidth: .infinity).padding(.vertical, 15).background(colors[9], in: RoundedRectangle(cornerRadius: 11))
+                Text(over ? "확인했어요  →" : action == .create ? "좋아, 다음 플랜으로  →" : "확인  →").font(WPFont.hak(13, .bold)).foregroundStyle(Color(hex: 0xFFFDF3)).frame(maxWidth: .infinity, minHeight: 20).padding(.vertical, 15).background(colors[9], in: RoundedRectangle(cornerRadius: 11))
             }.padding(.top, 16).accessibilityIdentifier("bloom.close")
             if over { Text("다음 플랜을 정할 때 예산을 조정해 보세요.").font(WPFont.hak(10)).foregroundStyle(colors[4]).padding(.top, 15) }
         }.padding(.horizontal, 19).padding(.top, 50).padding(.bottom, 30)
@@ -61,20 +63,20 @@ struct PlanBloomSuccess: View {
                 }
             }.clipShape(RoundedRectangle(cornerRadius: 16)).padding(8)
             .background(LinearGradient(colors: [0xFAF4CE,0x96C6AE,0xE9BED8,0xC5E2E1,0xF3E5CB].map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 23))
-            .overlay(alignment: .topLeading) { Image("heart_sprout").resizable().frame(width: 28,height: 28).clipShape(RoundedRectangle(cornerRadius: 9)).padding(18) }
-            .overlay(alignment: .topTrailing) { Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 20)).foregroundStyle(colors[3]).frame(width: 48, height: 48) }.accessibilityLabel("\(action.verb) 완료 닫기") }
-            .overlay(alignment: .bottom) { Text("✧ BLOOM TOGETHER ✧").font(WPFont.hak(7)).tracking(1).foregroundStyle(colors[4]).padding(.bottom, 5) }
+            .overlay(alignment: .topLeading) { Image(uiImage: UIImage(named: "heart_sprout.png") ?? UIImage()).resizable().frame(width: 28,height: 28).clipShape(RoundedRectangle(cornerRadius: 9)).padding(18) }
+            .overlay(alignment: .topTrailing) { Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(colors[3]).frame(width: 48, height: 48) }.accessibilityLabel("\(action.verb) 완료 닫기").padding(8) }
+            .overlay(alignment: .bottom) { Text("✧ BLOOM TOGETHER ✧").font(WPFont.hak(7)).tracking(1).foregroundStyle(colors[4]).frame(minHeight: 10).padding(.bottom, 13) }
     }
     private var reward: some View {
         VStack(spacing: 0) {
             if amount > 0 {
-                Text(remaining == nil ? action == .create ? "이번 플랜에 담은 금액" : action == .update ? "수정한 플랜의 금액" : "지운 플랜의 금액" : over ? "총예산을 초과했어요" : "앞으로 총 사용할 수 있는 금액").font(WPFont.hak(11)).foregroundStyle(colors[4])
+                Text(remaining == nil ? action == .create ? "이번 플랜에 담은 금액" : action == .update ? "수정한 플랜의 금액" : "지운 플랜의 금액" : over ? "총예산을 초과했어요" : "앞으로 총 사용할 수 있는 금액").font(WPFont.hak(11)).foregroundStyle(colors[4]).frame(minHeight: 17)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(wpThousands(abs(remaining ?? amount))).font(.custom("KakaoSmallSans-Bold", size: 37))
                     Text(over ? "만 원 초과" : "만 원").font(WPFont.hak(14, .bold))
-                }.foregroundStyle(over ? .red : colors[5]).padding(.top, 5)
+                }.foregroundStyle(over ? .red : colors[5]).frame(minHeight: 43).padding(.top, 5)
                 colors[8].frame(height: 1).padding(.top, 12)
-                HStack { Text(title).lineLimit(1); Spacer(); Text("\(wpThousands(amount))만 원").bold().strikethrough(action == .delete) }.font(WPFont.hak(11)).foregroundStyle(colors[4]).padding(.top, 10)
+                HStack { Text(title).lineLimit(1); Spacer(); Text("\(wpThousands(amount))만 원").font(WPFont.hak(11, .bold)).strikethrough(action == .delete) }.font(WPFont.hak(11)).foregroundStyle(colors[4]).frame(minHeight: 17).padding(.top, 10)
             } else {
                 Text(action == .create ? "플랜 +1" : action == .update ? "플랜 수정" : "플랜 -1").font(WPFont.hak(27, .bold))
                 Text(title).font(WPFont.hak(13)).padding(.vertical, 7)

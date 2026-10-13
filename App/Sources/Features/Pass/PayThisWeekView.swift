@@ -59,6 +59,7 @@ struct PayThisWeekView: View {
                         }.foregroundStyle(Color(hex: 0xCC1873)).padding(12)
                             .background(Color(hex: 0xFFF7FB), in: RoundedRectangle(cornerRadius: 16))
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: 0xF4DCE8), lineWidth: pass.hasPass ? 0 : 1))
+                            .overlay { if !pass.hasPass { PassHighlightBorder(radius: 16) } }
                     }.buttonStyle(.plain).accessibilityIdentifier("payment.reminders")
                 }
             }.padding(16).background(.white, in: RoundedRectangle(cornerRadius: 22))
@@ -66,7 +67,7 @@ struct PayThisWeekView: View {
                 .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
                 .padding(.horizontal, 16).padding(.top, 16)
                 .task(id: roomId) { await load() }
-                .sheet(isPresented: $showSettings, onDismiss: { Task { await load() } }) { ReminderSettingsView() }
+                .fullScreenCover(isPresented: $showSettings, onDismiss: { Task { await load() } }) { ReminderSettingsView(roomId: roomId) }
                 .fullScreenCover(isPresented: $showPass, onDismiss: { Task { await load() } }) { PassView(roomId: roomId) }
         }
     }

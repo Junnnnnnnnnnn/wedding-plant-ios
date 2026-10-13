@@ -14,7 +14,7 @@ struct PermissionsStep: View {
             VStack(spacing: 20) {
                 LandingHero(title: "이렇게 챙겨 드릴게요", subtitle: "필요한 것만 쓰고, 언제든 폰 설정에서 바꿀 수 있어요", titleSize: 28, subtitleSize: 14, useUserFont: false)
                 VStack(spacing: 10) {
-                    Image("heart_sprout").resizable().frame(width: 56,height: 56).clipShape(RoundedRectangle(cornerRadius: 16)).offset(x: tilt.y*0.35,y: -tilt.x*0.35)
+                    Image(uiImage: UIImage(named: "heart_sprout.png") ?? UIImage()).resizable().frame(width: 56,height: 56).clipShape(RoundedRectangle(cornerRadius: 16)).offset(x: tilt.y*0.35,y: -tilt.x*0.35)
                     Text("플랜이 등록되었어요").font(WPFont.hak(19, .bold)).foregroundStyle(Color(hex: 0x284C39))
                     Text("우리의 준비가 한 장씩 쌓여요").font(WPFont.hak(11)).foregroundStyle(Color(hex: 0x598463))
                 }.padding(.vertical, 22).frame(maxWidth: 248).background(LinearGradient(colors: Array(BloomAction.create.colors.prefix(3)), startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 13)).padding(6).background(LinearGradient(colors: [0xFAF4CE,0x96C6AE,0xE9BED8,0xC5E2E1,0xF3E5CB].map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18)).rotation3DEffect(.degrees(max(-14,min(14,-tilt.x*0.7))), axis: (x: 1,y: 0,z: 0)).rotation3DEffect(.degrees(max(-14,min(14,-tilt.y*0.7))), axis: (x: 0,y: 1,z: 0))

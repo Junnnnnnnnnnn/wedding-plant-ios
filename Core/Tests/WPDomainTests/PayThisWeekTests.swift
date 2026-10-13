@@ -23,7 +23,7 @@ final class PayThisWeekTests: XCTestCase {
     func testReminderSummaryUsesConfiguredDaysAndKoreanClock() {
         XCTAssertEqual(PayThisWeek.reminderText(.init(leadDays: [])), "알림 시점을 고르지 않았어요")
         XCTAssertEqual(PayThisWeek.reminderText(.init()), "7일 전 · 하루 전 · 당일 오전 9시")
-        XCTAssertEqual(PayThisWeek.reminderText(.init(leadDays: [0, 3, 3], hour: 12)), "3일 전 · 당일 오후 12시")
+        XCTAssertEqual(PayThisWeek.reminderText(.init(leadDays: [0, 3, 3], hour: 12)), "3일 전 · 당일 낮 12시")
         XCTAssertEqual(PayThisWeek.reminderText(.init(leadDays: [1], hour: 22)), "하루 전 오후 10시")
     }
 }

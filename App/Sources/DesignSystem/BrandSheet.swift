@@ -26,6 +26,14 @@ var wpStatusBarHeight: CGFloat {
         .first ?? 0
 }
 
+private struct BrandStatusInsetKey: EnvironmentKey { static let defaultValue: CGFloat? = nil }
+extension EnvironmentValues {
+    var brandStatusInset: CGFloat? {
+        get { self[BrandStatusInsetKey.self] }
+        set { self[BrandStatusInsetKey.self] = newValue }
+    }
+}
+
 /// 분홍 머리 면.
 ///
 /// **스크롤 영역 안에 두세요** (웹 `data-mobile-head`). 내용과 함께 올라가야 작은
@@ -34,6 +42,7 @@ var wpStatusBarHeight: CGFloat {
 ///
 /// - Parameter corner: 웹 `rounded-b-[28px]`(홈·목록) / `rounded-b-[24px]`(캘린더·상세)
 struct BrandHead<Content: View>: View {
+    @Environment(\.brandStatusInset) private var statusInset
     var corner: CGFloat = 28
     var horizontal: CGFloat = 16
     var top: CGFloat = 16
@@ -47,7 +56,7 @@ struct BrandHead<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, horizontal)
-        .padding(.top, top + wpStatusBarHeight)
+        .padding(.top, top + (statusInset ?? wpStatusBarHeight))
         .padding(.bottom, bottom)
         .background {
             GeometryReader { geometry in

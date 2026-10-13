@@ -53,6 +53,14 @@ public final class SeasideEngine {
         [147,345,0.96,122,185,325,366], [164,411,1.05,119,199,384,414],
         [150,251,0.86,146,153,251,251], [174,251,0.86,170,177,251,251]
     ]
+    /// CSS steps(4, end), applied independently to each half of the 2.8-second cycle.
+    public static func emptySeatOpacity(time: Double, index: Int) -> Double {
+        let progress = (time + Double(index) * 0.35).truncatingRemainder(dividingBy: 2.8) / 2.8
+        let p = progress < 0 ? progress + 1 : progress
+        let first = p < 0.5, u = p < 0.5 ? p * 2 : (p - 0.5) * 2
+        let step = floor(u * 4) / 4
+        return first ? 1 - 0.5 * step : 0.5 + 0.5 * step
+    }
     public init(groom: String = "정우진", bride: String = "이채원", wishes: [InvitationWish] = [], quietCouple: Bool = false, seed: UInt64 = 42) {
         self.quietCouple = quietCouple; randomState = seed
         actors = Self.positions.enumerated().map { Actor(id: $0.offset, position: $0.element) }

@@ -49,7 +49,7 @@ struct CoupleChatTab: View {
                     Text(String(name.prefix(1))).font(.custom("KakaoSmallSans-Bold", size: 22)).foregroundStyle(.white).frame(width: 64, height: 64).background(WPColor.primary, in: Circle())
                     Text("?").font(.custom("KakaoSmallSans-Bold", size: 22)).foregroundStyle(WPColor.primary).frame(width: 64, height: 64).background(.white, in: Circle()).overlay(Circle().stroke(WPColor.primary.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [5,4])))
                 }.frame(height: 84)
-                Text(state == .unavailable ? "대화방을 준비하고 있어요" : "같이 준비할 사람을\n불러 주세요").font(.custom("KakaoSmallSans-Bold", size: 20)).tracking(-0.6).lineSpacing(5).padding(.top, 20)
+                Text(state == .unavailable ? "대화방을 열지 못했어요" : "함께 준비할 사람을\n불러 주세요").font(.custom("KakaoSmallSans-Bold", size: 20)).tracking(-0.6).lineSpacing(5).padding(.top, 20)
                 Text(state == .unavailable ? "신랑·신부는 있는데 두 사람의 대화방이 없어요. 고객센터로 알려 주시면 바로 열어 드릴게요." : "링크를 받은 사람이 들어오면 여기서 둘이 이야기하고, 일정과 예산도 같이 봐요.").font(.custom("KakaoSmallSans-Regular", size: 14.5)).lineSpacing(7).foregroundStyle(WPColor.gray500).frame(maxWidth: 260).padding(.top, 8)
                 if state == .solo {
                     Button { share = true } label: { Label("초대 링크 보내기", systemImage: "link").font(.custom("KakaoSmallSans-Bold", size: 15.5)).foregroundStyle(.white).padding(.horizontal, 20).frame(height: 48).background(WPColor.primary, in: RoundedRectangle(cornerRadius: 14)) }.disabled(invite?.canInvite != true || invite?.shareCode.isEmpty != false).padding(.top, 20).accessibilityIdentifier("chat.invite")
