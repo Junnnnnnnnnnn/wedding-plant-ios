@@ -246,16 +246,52 @@ final class AndroidParityUITests: XCTestCase {
         capture(app, "parity-landing")
         app.buttons["auth.email"].tap()
         let email = app.textFields["email.address"]
-        XCTAssertTrue(email.waitForExistence(timeout: 5)); email.tap(); email.typeText("invalid")
+        XCTAssertTrue(email.waitForExistence(timeout: 5))
+        let close = app.buttons["email.close"]
+        XCTAssertTrue(close.exists)
+        let heading = app.staticTexts["email.title"]
+        XCTAssertLessThan(abs(heading.frame.midY - close.frame.midY), 4, "Title and close share one header row")
+        capture(app, "email-compact-initial")
+        email.tap(); email.typeText("invalid")
         app.buttons["email.submit"].tap()
         XCTAssertTrue(app.staticTexts["email.error"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["email.submit"].isHittable)
+        capture(app, "email-compact-validation")
         email.tap(); email.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 7) + "member@example.com")
         app.buttons["email.submit"].tap()
         let password = app.secureTextFields["email.password"]
         XCTAssertTrue(password.waitForExistence(timeout: 5)); password.tap(); password.typeText("test-password")
+        XCTAssertTrue(app.buttons["email.submit"].isHittable)
         capture(app, "parity-email-password")
         app.buttons["email.submit"].tap()
         XCTAssertTrue(app.buttons["tab.home"].waitForExistence(timeout: 10))
+    }
+    func testEmailSignupAndPasswordResetFitSheet() {
+        let app = launch(["-WPLoggedOut"])
+        XCTAssertTrue(app.buttons["auth.email"].waitForExistence(timeout: 10)); app.buttons["auth.email"].tap()
+        let email = app.textFields["email.address"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5)); email.tap(); email.typeText("new-member@example.com")
+        app.buttons["email.submit"].tap()
+        let code = app.textFields["email.code"]
+        XCTAssertTrue(code.waitForExistence(timeout: 5)); code.tap(); code.typeText("123456")
+        let password = app.secureTextFields["email.password"]
+        XCTAssertTrue(password.waitForExistence(timeout: 5)); password.tap(); password.typeText("new-password")
+        XCTAssertTrue(app.buttons["email.submit"].isHittable)
+        capture(app, "email-compact-signup")
+        app.buttons["email.close"].tap()
+        app.buttons["auth.email"].tap()
+        XCTAssertTrue(email.waitForExistence(timeout: 5)); email.tap(); email.typeText("member@example.com")
+        app.buttons["email.submit"].tap()
+        let forgot = app.buttons["비밀번호를 잊으셨나요?"]
+        XCTAssertTrue(forgot.waitForExistence(timeout: 5)); forgot.tap()
+        XCTAssertTrue(code.waitForExistence(timeout: 5)); code.tap(); code.typeText("123456")
+        password.tap(); password.typeText("updated-password")
+        XCTAssertTrue(app.buttons["email.submit"].isHittable)
+        capture(app, "email-compact-reset")
+        app.buttons["email.submit"].tap()
+        XCTAssertTrue(app.staticTexts["비밀번호를 바꿨어요"].waitForExistence(timeout: 5))
+        app.buttons["email.submit"].tap()
+        XCTAssertTrue(password.waitForExistence(timeout: 5))
     }
     func testInvitationLandingMotionAndPreview() {
         let app = launch(); app.buttons["tab.explore"].tap()

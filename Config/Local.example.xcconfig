@@ -8,6 +8,9 @@
 //
 // 시뮬레이터 + PC 로컬 백엔드:
 //   API_BASE_URL = http:/$()/localhost:3111
+// 다른 프로젝트가 3111을 사용한다면 웨딩플랜트 API의 실제 포트를 지정한다.
+// 예: PORT=3112 npm run start:local → API_BASE_URL = http:/$()/localhost:3112
+// 이메일 확인에서 `Cannot POST /plan/auth/email/check`가 나오면 먼저 서버/포트를 확인한다.
 //
 // 실기기 + PC 로컬 백엔드 (아이폰과 PC 가 같은 Wi-Fi 여야 한다):
 //   PC 의 로컬 IP 를 쓴다. Windows 는 `ipconfig`, Mac 은 `ipconfig getifaddr en0` 로 확인.

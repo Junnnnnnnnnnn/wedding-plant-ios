@@ -15,6 +15,7 @@ struct EmailAuthSheet: View {
     @State private var busy = false
     @State private var error: String?
     @State private var resendAt = Date.distantPast
+    @State private var contentHeight: CGFloat = 240
     @FocusState private var focus: Field?
     enum Field { case email, password, code }
 
@@ -30,22 +31,28 @@ struct EmailAuthSheet: View {
         }
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
+        ScrollView {
+          VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .center, spacing: 8) {
                 if step != .email && step != .resetDone {
-                    Button { back() } label: { Image(systemName: "chevron.left").frame(width: 32, height: 32) }
+                    Button { back() } label: { WPMaterialIcon(kind: .back).frame(width: 22, height: 22).frame(width: 44, height: 44) }
                         .accessibilityLabel("뒤로")
                 }
-                Spacer()
-                Button { dismiss() } label: { Image(systemName: "xmark").frame(width: 32, height: 32) }.accessibilityLabel("닫기")
-            }
-            Text(title).font(WPFont.hak(22, .bold))
+                Text(title).wpTypography(22, .bold, lineHeight: 28)
+                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader).accessibilityIdentifier("email.title")
+                Button { dismiss() } label: {
+                    WPMaterialIcon(kind: .close).frame(width: 22, height: 22)
+                        .foregroundStyle(WPColor.gray500).frame(width: 44, height: 44)
+                }.accessibilityLabel("닫기").accessibilityIdentifier("email.close")
+            }.buttonStyle(.plain).disabled(busy)
             if step != .email { Text(email).font(WPFont.hak(14)).foregroundStyle(WPColor.gray500) }
             switch step {
             case .email:
                 TextField("이메일 주소", text: $email).keyboardType(.emailAddress).textContentType(.emailAddress)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().focused($focus, equals: .email)
                     .modifier(AuthField()).accessibilityIdentifier("email.address")
+                    .submitLabel(.continue).onSubmit { submit() }
             case .password, .signup:
                 if step == .signup { Text("8자 이상으로 정해 주세요.").font(WPFont.hak(14)) }
                 passwordField
@@ -70,21 +77,31 @@ struct EmailAuthSheet: View {
             case .resetDone:
                 Text("새 비밀번호로 로그인해 주세요.").font(WPFont.hak(14))
             }
-            if let error { Text(error).font(WPFont.hak(13)).foregroundStyle(.red).accessibilityIdentifier("email.error") }
+            if let error {
+                Text(error).wpTypography(13, lineHeight: 19).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("email.error")
+            }
             Button { submit() } label: {
                 HStack {
                     if busy { ProgressView().tint(.white) }
                     Text(buttonTitle).font(WPFont.hak(16, .bold))
-                }.frame(maxWidth: .infinity).frame(height: 48)
+                }.frame(maxWidth: .infinity).frame(height: 50)
                     .foregroundStyle(.white).background(WPColor.primary, in: RoundedRectangle(cornerRadius: 14))
             }.disabled(busy).accessibilityIdentifier("email.submit")
             if step == .password {
                 Button("비밀번호를 잊으셨나요?") { run { try await sendCode(next: .reset) } }
                     .font(WPFont.hak(13)).frame(maxWidth: .infinity).disabled(busy)
             }
+          }
+          .foregroundStyle(WPColor.textPrimary).padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 24)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = ceil($0) }
         }
-        .foregroundStyle(WPColor.textPrimary).padding(24).background(.white)
-        .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+        .scrollBounceBehavior(.basedOnSize).scrollDismissesKeyboard(.interactively)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(.white)
+        .presentationBackground(.white).presentationCornerRadius(28)
+        .presentationDetents([.height(contentHeight)]).presentationDragIndicator(.visible)
+        .presentationContentInteraction(.scrolls)
         .preferredColorScheme(.light).interactiveDismissDisabled(busy)
         .onAppear { focus = .email }
     }
@@ -116,7 +133,7 @@ struct EmailAuthSheet: View {
         Task { @MainActor in
             defer { busy = false }
             do { try await action() }
-            catch { self.error = error.localizedDescription }
+            catch { self.error = EmailAuthRules.errorMessage(error) }
         }
     }
     private func sendCode(next: Step?) async throws {

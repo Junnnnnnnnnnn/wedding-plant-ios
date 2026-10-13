@@ -4,6 +4,13 @@ import WPNetworking
 @testable import WPDomain
 
 final class AndroidParityTests: XCTestCase {
+    func testEmailFailureHidesMissingRouteAndKeepsUsefulValidation() {
+        let missing = APIError.http(status: 404, body: "{\"message\":\"Cannot POST /plan/auth/email/check\"}")
+        XCTAssertEqual(EmailAuthRules.errorMessage(missing), "이메일 로그인을 연결하지 못했어요. 잠시 후 다시 시도해 주세요.")
+        XCTAssertEqual(EmailAuthRules.errorMessage(APIError.http(status: 429, body: nil)), "요청이 많아요. 잠시 기다린 뒤 다시 시도해 주세요.")
+        XCTAssertEqual(EmailAuthRules.errorMessage(APIError.http(status: 503, body: "internal server details")), "서버에 잠시 문제가 생겼어요. 조금 뒤 다시 시도해 주세요.")
+        XCTAssertEqual(EmailAuthRules.errorMessage(APIError.backend(message: "비밀번호가 맞지 않아요.")), "비밀번호가 맞지 않아요.")
+    }
     func testGalleryMosaicKeepsEverySlotInAndroidOrder() {
         XCTAssertEqual(InvitationRules.galleryRows(count: 1, layout: "mosaic"), [.mosaic(big: 0, top: nil, bottom: nil)])
         XCTAssertEqual(InvitationRules.galleryRows(count: 8, layout: "mosaic"), [
