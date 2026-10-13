@@ -14,6 +14,8 @@ import WPUtils
 @MainActor
 final class ChatViewModel: ObservableObject {
 
+    @Published var activities: [PlanActivity] = []
+    @Published var planRoomId: Int?
     @Published var loading = true
     @Published var roomName = "플랜톡"
     @Published var members: [Member] = []
@@ -27,12 +29,17 @@ final class ChatViewModel: ObservableObject {
 
     let chatRoomId: Int
 
+    @Published var sharingSchedule: Int?
+    @Published var sharedSchedule: Int?
+    @Published var shareError: String?
+    private var shareTimeout: Task<Void, Never>?
     private var socket: ChatSocket?
     private var myId: String?
     private var page = 1
     private var socketMessageCounter = 0
 
-    init(chatRoomId: Int) {
+    init(chatRoomId: Int, planRoomId: Int? = nil) {
+        self.planRoomId = planRoomId
         self.chatRoomId = chatRoomId
     }
 
@@ -40,7 +47,7 @@ final class ChatViewModel: ObservableObject {
         members.isEmpty ? "대화 중인 멤버" : members.map(\.name).joined(separator: ", ")
     }
 
-    var canSend: Bool { !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var canSend: Bool { connected && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     // MARK: - 로딩
 
@@ -54,6 +61,7 @@ final class ChatViewModel: ObservableObject {
         myId = JWTDecoder.planUserId(from: token)
 
         await load(env: env)
+        await loadActivities(env: env)
         connectSocket(env: env)
     }
 
@@ -68,43 +76,48 @@ final class ChatViewModel: ObservableObject {
         if let info {
             if !info.name.isEmpty { roomName = info.name }
             members = info.memberList
+            planRoomId = info.planUserRoomId ?? planRoomId
         }
 
-        let history = try? await env.api.send(
-            Endpoint.chatHistory(chatRoomId: chatRoomId, page: 1, count: ChatTimeline.pageSize),
-            decoding: ChatHistoryPage.self
-        )
-        let items = history?.list ?? []
-        lines = ChatTimeline.lines(from: items, myId: myId)
-        hasMore = ChatTimeline.hasMore(receivedCount: items.count)
-        loading = false
+        defer { loading = false }
+        do {
+            let history: ChatHistoryPage = try await env.api.send(Endpoint.chatHistory(chatRoomId: chatRoomId, page: 1, count: ChatTimeline.pageSize))
+            lines = ChatTimeline.lines(from: history.list, myId: myId)
+            hasMore = ChatTimeline.hasMore(receivedCount: history.list.count)
+            errorMessage = nil
+        } catch { errorMessage = error.localizedDescription }
     }
 
-    /// 위로 스크롤했을 때 이전 페이지를 앞에 붙인다.
+    /// Failed pages do not advance the cursor or masquerade as the end of history.
     func loadMore(env: AppEnvironment) async {
         guard !loading, !loadingMore, hasMore else { return }
-        loadingMore = true
-        defer { loadingMore = false }
-
-        let next = page + 1
-        let history = try? await env.api.send(
-            Endpoint.chatHistory(chatRoomId: chatRoomId, page: next, count: ChatTimeline.pageSize),
-            decoding: ChatHistoryPage.self
-        )
-        let items = history?.list ?? []
-        page = next
-        lines = ChatTimeline.prepend(ChatTimeline.lines(from: items, myId: myId), to: lines)
-        hasMore = ChatTimeline.hasMore(receivedCount: items.count)
+        loadingMore = true; defer { loadingMore = false }
+        do {
+            let next = page + 1
+            let history: ChatHistoryPage = try await env.api.send(Endpoint.chatHistory(chatRoomId: chatRoomId, page: next, count: ChatTimeline.pageSize))
+            lines = ChatTimeline.prepend(ChatTimeline.lines(from: history.list, myId: myId), to: lines)
+            page = next; hasMore = ChatTimeline.hasMore(receivedCount: history.list.count); errorMessage = nil
+        } catch { errorMessage = error.localizedDescription }
     }
 
-    /// 소켓이 끊겨 있던 동안 놓친 메시지를 REST 로 메운다.
+    /// Fill the entire disconnection gap, including gaps longer than one REST page.
     private func syncMissed(env: AppEnvironment) async {
-        let history = try? await env.api.send(
-            Endpoint.chatHistory(chatRoomId: chatRoomId, page: 1, count: ChatTimeline.pageSize),
-            decoding: ChatHistoryPage.self
-        )
-        guard let items = history?.list, !items.isEmpty else { return }
-        lines = ChatTimeline.merge(lines, ChatTimeline.lines(from: items, myId: myId))
+        let known = Set(lines.map(\.id)); var seen = Set<String>(); var next = 1
+        do {
+            while !Task.isCancelled {
+                let history: ChatHistoryPage = try await env.api.send(Endpoint.chatHistory(chatRoomId: chatRoomId, page: next, count: ChatTimeline.pageSize))
+                let incoming = ChatTimeline.lines(from: history.list, myId: myId)
+                let ids = Set(incoming.map(\.id))
+                lines = ChatTimeline.merge(lines, incoming)
+                if !ids.isDisjoint(with: known) || !ChatTimeline.hasMore(receivedCount: history.list.count) || ids.isSubset(of: seen) { break }
+                seen.formUnion(ids); next += 1
+            }
+        } catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }
+    }
+
+    func loadActivities(env: AppEnvironment) async {
+        guard let planRoomId else { return }
+        if let page: PlanActivityPage = try? await env.api.send(Endpoint.activities(roomId: planRoomId)), !Task.isCancelled { activities = page.list }
     }
 
     // MARK: - 소켓
@@ -123,6 +136,7 @@ final class ChatViewModel: ObservableObject {
                 applyRoomList(payload)
             case let .serverError(message):
                 errorMessage = message
+                if sharingSchedule != nil { sharingSchedule = nil; shareError = message; shareTimeout?.cancel() }
             case .reconnected:
                 Task { await self.syncMissed(env: env) }
             }
@@ -156,6 +170,7 @@ final class ChatViewModel: ObservableObject {
             myId: myId,
             fallbackId: "sock-\(socketMessageCounter)"
         )
+        if line.isMine, line.schedule?.id == sharingSchedule { completeShare() }
         // 같은 id 가 이미 있으면 넣지 않는다 (재연결 시 중복 방지).
         guard !lines.contains(where: { $0.id == line.id }) else { return }
         lines.append(line)
@@ -193,9 +208,29 @@ final class ChatViewModel: ObservableObject {
 
     func send() {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard connected, !text.isEmpty else { return }
         socket?.send(text: text)
         input = ""
+    }
+
+    func shareSchedule(_ id: Int) {
+        guard sharingSchedule == nil else { return }
+        sharedSchedule = nil; shareError = nil
+        guard connected else { shareError = "연결이 끊겼어요. 잠시 후 다시 시도해 주세요."; return }
+        sharingSchedule = id
+        guard socket?.sendSchedule(id, onAck: { [weak self] in self?.completeShare() }) == true else {
+            sharingSchedule = nil; shareError = "보내지 못했어요. 다시 시도해 주세요."; return
+        }
+        shareTimeout?.cancel()
+        shareTimeout = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(10)) } catch { return }
+            guard let self, sharingSchedule == id else { return }
+            sharingSchedule = nil; shareError = "전송 결과를 확인하지 못했어요. 대화에 올라갔는지 먼저 확인해 주세요."
+        }
+    }
+    private func completeShare() {
+        guard let id = sharingSchedule else { return }
+        shareTimeout?.cancel(); sharingSchedule = nil; sharedSchedule = id; shareError = nil
     }
 
     func rename(to name: String, env: AppEnvironment) async {

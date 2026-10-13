@@ -26,11 +26,11 @@ public struct BragPost: Codable, Hashable, Sendable, Identifiable {
     public var weddingDate: String?
     /// 남은 일수. `"D-66"` 문장은 화면이 만든다.
     public var dday: Int?
-    public var totalBudget: Int
+    public var totalBudget: Double
     /// 실제 지출.
-    public var usedAmount: Int
+    public var usedAmount: Double
     /// 아직 안 쓴 예정 몫.
-    public var plannedAmount: Int
+    public var plannedAmount: Double
     public var planCount: Int
     public var doneCount: Int
     /// 카드 칩으로 낼 카테고리 이름. 지출 큰 순.
@@ -47,9 +47,9 @@ public struct BragPost: Codable, Hashable, Sendable, Identifiable {
         nickname: String = "",
         weddingDate: String? = nil,
         dday: Int? = nil,
-        totalBudget: Int = 0,
-        usedAmount: Int = 0,
-        plannedAmount: Int = 0,
+        totalBudget: Double = 0,
+        usedAmount: Double = 0,
+        plannedAmount: Double = 0,
         planCount: Int = 0,
         doneCount: Int = 0,
         categories: [String] = [],
@@ -80,9 +80,9 @@ public struct BragPost: Codable, Hashable, Sendable, Identifiable {
         self.nickname = try c.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         self.weddingDate = try c.decodeIfPresent(String.self, forKey: .weddingDate)
         self.dday = try c.decodeIfPresent(Int.self, forKey: .dday)
-        self.totalBudget = try c.decode(LooseInt.self, forKey: .totalBudget).wrappedValue ?? 0
-        self.usedAmount = try c.decode(LooseInt.self, forKey: .usedAmount).wrappedValue ?? 0
-        self.plannedAmount = try c.decode(LooseInt.self, forKey: .plannedAmount).wrappedValue ?? 0
+        self.totalBudget = try c.decode(LooseDouble.self, forKey: .totalBudget).wrappedValue ?? 0
+        self.usedAmount = try c.decode(LooseDouble.self, forKey: .usedAmount).wrappedValue ?? 0
+        self.plannedAmount = try c.decode(LooseDouble.self, forKey: .plannedAmount).wrappedValue ?? 0
         self.planCount = try c.decodeIfPresent(Int.self, forKey: .planCount) ?? 0
         self.doneCount = try c.decodeIfPresent(Int.self, forKey: .doneCount) ?? 0
         self.categories = try c.decodeIfPresent([String].self, forKey: .categories) ?? []
@@ -112,11 +112,11 @@ public struct BragPage: Codable, Hashable, Sendable {
 /// 예산 막대·범례용. 지출 큰 순.
 public struct BragChartItem: Codable, Hashable, Sendable, Identifiable {
     public var categoryName: String
-    public var usedAmount: Int
+    public var usedAmount: Double
 
     public var id: String { categoryName }
 
-    public init(categoryName: String = "", usedAmount: Int = 0) {
+    public init(categoryName: String = "", usedAmount: Double = 0) {
         self.categoryName = categoryName
         self.usedAmount = usedAmount
     }
@@ -124,7 +124,7 @@ public struct BragChartItem: Codable, Hashable, Sendable, Identifiable {
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.categoryName = try c.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
-        self.usedAmount = try c.decode(LooseInt.self, forKey: .usedAmount).wrappedValue ?? 0
+        self.usedAmount = try c.decode(LooseDouble.self, forKey: .usedAmount).wrappedValue ?? 0
     }
 }
 
@@ -142,7 +142,7 @@ public struct BragPlanItem: Codable, Hashable, Sendable, Identifiable {
     public var id: Int
     public var categoryName: String
     public var title: String
-    public var amount: Int?
+    public var amount: Double?
     public var startDate: String?
     public var status: String?
     /// 돈이 나갔는지. **`status` 와 다른 축이다.**
@@ -169,7 +169,7 @@ public struct BragPlanItem: Codable, Hashable, Sendable, Identifiable {
         id: Int = 0,
         categoryName: String = "",
         title: String = "",
-        amount: Int? = nil,
+        amount: Double? = nil,
         startDate: String? = nil,
         status: String? = nil,
         isPaid: Bool? = nil,
@@ -194,7 +194,7 @@ public struct BragPlanItem: Codable, Hashable, Sendable, Identifiable {
         self.id = try c.decodeIfPresent(Int.self, forKey: .id) ?? 0
         self.categoryName = try c.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
-        self.amount = try c.decode(LooseInt.self, forKey: .amount).wrappedValue
+        self.amount = try c.decode(LooseDouble.self, forKey: .amount).wrappedValue
         self.startDate = try c.decodeIfPresent(String.self, forKey: .startDate)
         self.status = try c.decodeIfPresent(String.self, forKey: .status)
         self.isPaidRaw = try c.decodeIfPresent(Bool.self, forKey: .isPaidRaw)
@@ -217,9 +217,9 @@ public struct BragDetail: Codable, Hashable, Sendable {
     public var nickname: String
     public var weddingDate: String?
     public var dday: Int?
-    public var totalBudget: Int
-    public var usedAmount: Int
-    public var plannedAmount: Int
+    public var totalBudget: Double
+    public var usedAmount: Double
+    public var plannedAmount: Double
     public var planCount: Int
     public var doneCount: Int
     public var categories: [String]
@@ -235,9 +235,9 @@ public struct BragDetail: Codable, Hashable, Sendable {
         nickname: String = "",
         weddingDate: String? = nil,
         dday: Int? = nil,
-        totalBudget: Int = 0,
-        usedAmount: Int = 0,
-        plannedAmount: Int = 0,
+        totalBudget: Double = 0,
+        usedAmount: Double = 0,
+        plannedAmount: Double = 0,
         planCount: Int = 0,
         doneCount: Int = 0,
         categories: [String] = [],
@@ -272,9 +272,9 @@ public struct BragDetail: Codable, Hashable, Sendable {
         self.nickname = try c.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         self.weddingDate = try c.decodeIfPresent(String.self, forKey: .weddingDate)
         self.dday = try c.decodeIfPresent(Int.self, forKey: .dday)
-        self.totalBudget = try c.decode(LooseInt.self, forKey: .totalBudget).wrappedValue ?? 0
-        self.usedAmount = try c.decode(LooseInt.self, forKey: .usedAmount).wrappedValue ?? 0
-        self.plannedAmount = try c.decode(LooseInt.self, forKey: .plannedAmount).wrappedValue ?? 0
+        self.totalBudget = try c.decode(LooseDouble.self, forKey: .totalBudget).wrappedValue ?? 0
+        self.usedAmount = try c.decode(LooseDouble.self, forKey: .usedAmount).wrappedValue ?? 0
+        self.plannedAmount = try c.decode(LooseDouble.self, forKey: .plannedAmount).wrappedValue ?? 0
         self.planCount = try c.decodeIfPresent(Int.self, forKey: .planCount) ?? 0
         self.doneCount = try c.decodeIfPresent(Int.self, forKey: .doneCount) ?? 0
         self.categories = try c.decodeIfPresent([String].self, forKey: .categories) ?? []

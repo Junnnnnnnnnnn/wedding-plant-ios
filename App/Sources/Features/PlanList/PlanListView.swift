@@ -19,7 +19,7 @@ struct PlanListView: View {
             WPScreenBackground()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text("참여 플랜")
+                Text("채팅")
                     .font(WPFont.hak(24, .bold))
                     .foregroundStyle(WPColor.textPrimary)
                     .padding(.leading, 20)
@@ -213,8 +213,8 @@ private struct RoomCard: View {
 
     /// 예정 몫. `remainingBudget = budget - (예정 + 사용)` 이므로
     /// **지출 = (budget - remaining) - 예정** 이다.
-    private var plannedAmount: Int { max(0, room.plannedUseAmount) }
-    private var usedAmount: Int { max(0, room.budget - room.remainingBudget - plannedAmount) }
+    private var plannedAmount: Double { max(0, room.plannedUseAmount) }
+    private var usedAmount: Double { max(0, room.budget - room.remainingBudget - plannedAmount) }
 
     private var usedRatio: CGFloat {
         guard room.budget > 0 else { return 0 }

@@ -7,7 +7,9 @@ import WPUtils
 /// CI(GitHub Actions) 시뮬레이터는 로컬 백엔드(`:3111`)에 접근할 수 없다.
 /// 그래서 스크린샷·동영상 촬영과 SwiftUI 프리뷰에서는 이 전송 계층을 주입해
 /// 채워진 화면을 보여준다. 실행 인자에 `-WPDemoMode` 가 있으면 활성화된다.
-struct DemoTransport: HTTPTransport {
+actor DemoTransport: HTTPTransport {
+    private var invitation: [String: Any]?
+    init(newUser: Bool = false) { self.newUser = newUser }
     /// 로딩 상태가 화면에 보이도록 약간의 지연을 준다.
     var latency: Duration = .milliseconds(200)
 
@@ -24,7 +26,37 @@ struct DemoTransport: HTTPTransport {
         let path = request.url.path
         let json: String
 
-        if path.hasSuffix("/plan/auth/kakao/login") {
+        if path.contains("/plan/auth/email/") {
+            if path.hasSuffix("/check") {
+                let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: String]
+                json = body?["email"]?.hasPrefix("new") == true ? "{\"result\":true,\"data\":{\"exists\":false}}" : "{\"result\":true,\"data\":{\"exists\":true}}"
+            } else if path.hasSuffix("/login") || path.hasSuffix("/signup") {
+                json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
+            } else { json = "{\"result\":true}" }
+        } else if path.hasSuffix("/plan/my-invitation") {
+            if request.method == .put, let data = request.body,
+               var body = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                body["slug"] = "demo-couple"; body["updatedAt"] = UUID().uuidString
+                let photoKeys: [String] = body["photos"] as? [String] ?? []
+                let photoObjects: [[String: String]] = photoKeys.map { ["key": $0] }
+                body["photos"] = photoObjects
+                invitation = body
+            }
+            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
+            let body: [String: Any] = ["result": true, "data": ["roomId": 1, "hasPass": hasPass, "canEdit": hasPass || invitation != nil, "invitation": invitation as Any? ?? NSNull()]]
+            json = String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self)
+        } else if path.contains("/plan/pass/room/") {
+            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
+            json = "{\"result\":true,\"data\":{\"hasPass\":\(hasPass),\"plan\":\"YEARLY\",\"buyerName\":\"지수\"}}"
+        } else if path.contains("/plan/pass/file/schedule/") {
+            json = "{\"result\":true,\"data\":{\"canOpen\":true,\"roomId\":1,\"quotaBytes\":1073741824,\"usedBytes\":0,\"list\":[]}}"
+        } else if path.hasSuffix("/plan/pass/reminder-setting") {
+            if request.method == .put, let data = request.body {
+                json = "{\"result\":true,\"data\":\(String(decoding: data, as: UTF8.self))}"
+            } else { json = "{\"result\":true,\"data\":{\"leadDays\":[7,1,0],\"hour\":9,\"email\":false,\"emailAddress\":\"demo@example.com\",\"devices\":{\"ios\":1}}}" }
+        } else if path.contains("/plan/invitation/") && path.hasSuffix("/guestbook") {
+            json = "{\"result\":true,\"data\":{\"wishes\":[],\"total\":0}}"
+        } else if path.hasSuffix("/plan/auth/kakao/login") {
             json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
         } else if path.contains("total-amount") {
             // `/plan/user/total-amount` 와 `/plan/room/total-amount/{roomId}` 둘 다.
@@ -59,7 +91,9 @@ struct DemoTransport: HTTPTransport {
             // 대화 기록: /plan/chat/{chatRoomId}
             json = DemoData.chatHistory
         } else if path.hasSuffix("/plan/room/list") {
-            json = DemoData.roomList
+            json = ProcessInfo.processInfo.arguments.contains("-WPSolo") ? "{\"result\":true,\"data\":{\"list\":[]}}" : DemoData.roomList
+        } else if path.hasSuffix("/plan/room/share-code") {
+            json = "{\"result\":true,\"data\":{\"shareCode\":\"demo-invite\",\"canInvite\":true}}"
         } else if path.hasSuffix("/plan/feed/list") {
             // 후기 목록의 카테고리 키는 `category` 다(서버 `GetPlanFeedListRequest`, Endpoint.feedList)
             json = DemoData.feed(categoryName: request.url.queryValue("category"))
@@ -132,7 +166,7 @@ enum DemoData {
           "roomId":1,"hasSeenMainGuide":true,"hasSeenBudgetGuide":true,"hasSeenChatGuide":true,
           "members":[
             {"planUserId":"demo-user","name":"지수","image":null,"permission":"OWNER"},
-            {"planUserId":"u2","name":"현우","image":null,"permission":"WRITE"}
+            {"planUserId":"u2","name":"현우","image":null,"permission":"SPOUSE"}
           ],
           "chatRooms":[{"id":10,"name":"본식 준비"},{"id":11,"name":"신혼여행"}]
         }}
@@ -292,7 +326,7 @@ enum DemoData {
     static let chatInfo = """
     {"result":true,"data":{"id":10,"name":"본식 준비","memberList":[
       {"planUserId":"demo-user","name":"지수","image":null,"permission":"OWNER"},
-      {"planUserId":"u2","name":"현우","image":null,"permission":"WRITE"}
+      {"planUserId":"u2","name":"현우","image":null,"permission":"SPOUSE"}
     ]}}
     """
 
@@ -336,10 +370,10 @@ enum DemoData {
         {"result":true,"data":{"total":2,"list":[
           {"roomId":1,"onwerName":"지수","weddingDate":"\(weddingDate)","budget":5000,
            "remainingBudget":2850,"planCount":6,
-           "chatRooms":[{"id":10,"name":"본식 준비"}],
+           "chatRooms":[{"id":10,"name":"본식 준비","isCouple":true}],
            "members":[
              {"planUserId":"demo-user","name":"지수","image":null,"permission":"OWNER"},
-             {"planUserId":"u2","name":"현우","image":null,"permission":"WRITE"}
+             {"planUserId":"u2","name":"현우","image":null,"permission":"SPOUSE"}
            ]},
           {"roomId":2,"onwerName":"현우","weddingDate":"\(weddingDate)","budget":3000,
            "remainingBudget":1900,"planCount":3,

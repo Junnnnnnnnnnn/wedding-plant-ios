@@ -8,7 +8,7 @@ import WPModels
 public enum PlanCompletion {
     /// - Note: 웹과 동일하게 **예산 0원도 "입력됨"으로 본다** (`null` 여부만 본다).
     ///   사용자가 의도적으로 0을 넣은 경우를 미입력으로 되돌리지 않기 위함.
-    public static func isComplete(name: String?, weddingDate: String?, budget: Int?) -> Bool {
+    public static func isComplete(name: String?, weddingDate: String?, budget: Double?) -> Bool {
         let hasName = !(name ?? "").trimmingCharacters(in: .whitespaces).isEmpty
         let hasWeddingDate = !(weddingDate ?? "").trimmingCharacters(in: .whitespaces).isEmpty
         let hasBudget = budget != nil

@@ -5,7 +5,7 @@ public struct ChatSchedule: Codable, Hashable, Sendable, Identifiable {
     public var id: Int
     public var categoryName: String
     public var title: String
-    @LooseInt public var amount: Int?
+    @LooseDouble public var amount: Double?
     /// "YYYY-MM-DD"
     public var startDate: String?
     public var status: String
@@ -15,7 +15,7 @@ public struct ChatSchedule: Codable, Hashable, Sendable, Identifiable {
         id: Int = 0,
         categoryName: String = "",
         title: String = "",
-        amount: Int? = nil,
+        amount: Double? = nil,
         startDate: String? = nil,
         status: String = "NORMAL",
         location: String? = nil
@@ -23,7 +23,7 @@ public struct ChatSchedule: Codable, Hashable, Sendable, Identifiable {
         self.id = id
         self.categoryName = categoryName
         self.title = title
-        self._amount = LooseInt(wrappedValue: amount)
+        self._amount = LooseDouble(wrappedValue: amount)
         self.startDate = startDate
         self.status = status
         self.location = location
@@ -34,7 +34,7 @@ public struct ChatSchedule: Codable, Hashable, Sendable, Identifiable {
         self.id = ChatHistoryItem.looseId(container, .id) ?? 0
         self.categoryName = try container.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
-        self._amount = try container.decode(LooseInt.self, forKey: .amount)
+        self._amount = try container.decode(LooseDouble.self, forKey: .amount)
         self.startDate = try container.decodeIfPresent(String.self, forKey: .startDate)
         self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? "NORMAL"
         self.location = try container.decodeIfPresent(String.self, forKey: .location)
@@ -122,11 +122,13 @@ public struct ChatHistoryPage: Codable, Hashable, Sendable {
 
 /// `GET /plan/chat/info/{chatRoomId}` 응답.
 public struct ChatRoomInfo: Codable, Hashable, Sendable {
+    public var planUserRoomId: Int?
     public var id: Int?
     public var name: String
     public var memberList: [Member]
 
-    public init(id: Int? = nil, name: String = "", memberList: [Member] = []) {
+    public init(id: Int? = nil, planUserRoomId: Int? = nil, name: String = "", memberList: [Member] = []) {
+        self.planUserRoomId = planUserRoomId
         self.id = id
         self.name = name
         self.memberList = memberList
@@ -134,6 +136,7 @@ public struct ChatRoomInfo: Codable, Hashable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.planUserRoomId = try container.decodeIfPresent(Int.self, forKey: .planUserRoomId)
         self.id = try container.decodeIfPresent(Int.self, forKey: .id)
         self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         self.memberList = try container.decodeIfPresent([Member].self, forKey: .memberList) ?? []

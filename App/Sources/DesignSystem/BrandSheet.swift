@@ -38,6 +38,7 @@ struct BrandHead<Content: View>: View {
     var horizontal: CGFloat = 16
     var top: CGFloat = 16
     var bottom: CGFloat = 20
+    var overhang: CGFloat = 0
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -48,14 +49,12 @@ struct BrandHead<Content: View>: View {
         .padding(.horizontal, horizontal)
         .padding(.top, top + wpStatusBarHeight)
         .padding(.bottom, bottom)
-        .background(brandGradient)
-        .clipShape(
-            .rect(
-                bottomLeadingRadius: corner,
-                bottomTrailingRadius: corner,
-                style: .continuous
-            )
-        )
+        .background {
+            GeometryReader { geometry in
+                brandGradient.frame(height: max(0, geometry.size.height - overhang))
+                    .clipShape(.rect(bottomLeadingRadius: corner, bottomTrailingRadius: corner, style: .continuous))
+            }
+        }
     }
 }
 

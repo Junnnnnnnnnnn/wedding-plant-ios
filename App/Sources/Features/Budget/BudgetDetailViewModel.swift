@@ -42,11 +42,11 @@ final class BudgetDetailViewModel: ObservableObject {
 
     // MARK: - 파생 값
 
-    var initialCapital: Int { detail?.initialCapital ?? 0 }
-    var plannedTotal: Int { detail?.plannedUseAmount ?? 0 }
-    var usedTotal: Int { detail?.usedAmount ?? 0 }
-    var remaining: Int { detail?.remaining ?? 0 }
-    var savings: Int { detail?.savings ?? 0 }
+    var initialCapital: Double { detail?.initialCapital ?? 0 }
+    var plannedTotal: Double { detail?.plannedUseAmount ?? 0 }
+    var usedTotal: Double { detail?.usedAmount ?? 0 }
+    var remaining: Double { detail?.remaining ?? 0 }
+    var savings: Double { detail?.savings ?? 0 }
     var usedPercent: Int { detail?.usedPercent ?? 0 }
 
     /// 도넛이 그릴 구간. 계산은 Core 가 한다.

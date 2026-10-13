@@ -41,11 +41,6 @@ struct RootView: View {
         }
         .environmentObject(guide)
         .environment(\.guideAnchors, guideAnchors)
-        .overlay {
-            if guide.visible {
-                GuideOverlay(steps: guide.steps, anchors: guideAnchors) { guide.close() }
-            }
-        }
         .tint(WPColor.primary)
         // 앱이 켜져 있을 때 온 알림은 배너 대신 토스트로 (배너까지 뜨면 두 번 알리는 셈이다).
         .overlay(alignment: .top) {
@@ -64,7 +59,7 @@ struct RootView: View {
             ShareJoinView(shareCode: pending.code, asSpouse: pending.asSpouse) {
                 // 참여 성공 → 참여 플랜 목록 (웹 `router.replace("/plan-list")`)
                 env.pendingShareCode = nil
-                tab = .rooms
+                tab = .home
             } onLoginRequested: {
                 env.pendingShareCode = nil
                 env.isAuthenticated = false
@@ -158,26 +153,33 @@ private struct PushToast: View {
 ///
 /// 각 화면이 자기 배경과 상태바 여백을 직접 처리하므로 여기서는 배치만 한다.
 struct MainTabShell: View {
+    @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var notifications: InAppNotifications
     @Binding var tab: WPTab
-
+    @State private var showAdd = false
+    @State private var revision = UUID()
     var body: some View {
         VStack(spacing: 0) {
             Group {
+                if env.boundRoom.needsCover && (tab == .home || tab == .schedule || tab == .add) {
+                    VStack(spacing: 16) {
+                        if let error = env.boundRoomError { Text(error); Button("다시 시도") { Task { await env.refreshBoundRoom() } } }
+                        else { ProgressView() }
+                    }.task { await env.refreshBoundRoom() }
+                } else {
                 switch tab {
-                case .home:
-                    MainView()
-                case .rooms:
-                    PlanListView()
-                case .settings:
-                    UserView()
-                case .feed:
-                    FeedView()
+                case .home, .add: MainView()
+                case .schedule: CalendarView(roomId: env.boundRoomId, showsClose: false)
+                case .rooms: CoupleChatTab()
+                case .explore: ExploreView()
                 }
+                }
+            }.id(revision).frame(maxWidth: .infinity, maxHeight: .infinity)
+            BottomTabBar(active: $tab, unreadCount: notifications.unreadCount, onAdd: { if !env.boundRoom.needsCover { showAdd = true } }, onSelect: { revision = UUID() })
+        }.background(WPColor.background)
+            .onChange(of: env.roomsRevision) { _, _ in revision = UUID() }
+            .fullScreenCover(isPresented: $showAdd) {
+                AddPlanView(roomId: env.boundRoomId) { revision = UUID() }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            BottomTabBar(active: $tab)
-        }
-        .background(WPColor.background)
     }
 }

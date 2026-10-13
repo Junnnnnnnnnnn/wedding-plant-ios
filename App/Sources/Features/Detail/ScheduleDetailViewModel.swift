@@ -2,6 +2,8 @@ import Combine
 import Foundation
 import WPModels
 import WPNetworking
+import WPDomain
+import WPUtils
 
 /// 웹 `app/schedule-detail/page.tsx` 의 상태 관리.
 @MainActor
@@ -15,9 +17,14 @@ final class ScheduleDetailViewModel: ObservableObject {
     @Published var sessionExpired = false
     @Published var isGuest = false
 
+    @Published var permission: PlanPermission?
+    @Published var roomId: Int?
+    var canWrite: Bool { isGuest || permission.map { $0.canEdit } == true }
+    var canSeeDocuments: Bool { !isGuest && (permission == .owner || permission == .spouse) }
     let scheduleId: Int
 
-    init(scheduleId: Int) {
+    init(scheduleId: Int, roomId: Int? = nil) {
+        self.roomId = roomId
         self.scheduleId = scheduleId
     }
 
@@ -50,10 +57,20 @@ final class ScheduleDetailViewModel: ObservableObject {
 
         isGuest = false
         loading = true
+        permission = nil
         errorMessage = nil
         defer { loading = false }
 
         do {
+            let me = JWTDecoder.planUserId(from: token)
+            let rooms: RoomList = try await env.api.send(Endpoint.roomList())
+            var resolved = roomId ?? env.boundRoomId
+            if resolved == nil { let user: PlanUser = try await env.api.send(Endpoint.user()); resolved = user.roomId }
+            roomId = resolved
+            permission = rooms.list.first { $0.roomId == resolved }.flatMap { BoundRoom.myPermission(in: $0, planUserId: me) }
+            if permission == nil, let user: PlanUser = try? await env.api.send(Endpoint.user()), user.roomId == resolved {
+                permission = user.members?.first { $0.planUserId.lowercased() == me?.lowercased() }?.permission
+            }
             // 화면이 로딩 카드를 직접 그리므로 전역 오버레이는 띄우지 않는다.
             detail = try await env.api.send(
                 Endpoint.schedule(id: scheduleId),
@@ -70,7 +87,7 @@ final class ScheduleDetailViewModel: ObservableObject {
     }
 
     func delete(env: AppEnvironment, guest: GuestStore) async {
-        guard let id = detail?.id, !deleting else { return }
+        guard canWrite, let id = detail?.id, !deleting else { return }
 
         if isGuest {
             guest.deleteSchedule(id: id)

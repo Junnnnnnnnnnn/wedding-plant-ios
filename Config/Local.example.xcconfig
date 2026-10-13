@@ -45,3 +45,8 @@ API_BASE_URL = http:/$()/localhost:3111
 // 카카오 네이티브 앱 키. 콘솔의 `앱 키 > 네이티브 앱 키` 다.
 // **REST API 키·JS 키가 아니다.** 이 값이 없으면 로그인 자체가 막힌다.
 // KAKAO_NATIVE_APP_KEY = 0123456789abcdef0123456789abcdef
+
+// Google OAuth: iOS client, backend web client, and reversed iOS callback scheme.
+GOOGLE_IOS_CLIENT_ID =
+GOOGLE_SERVER_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID =

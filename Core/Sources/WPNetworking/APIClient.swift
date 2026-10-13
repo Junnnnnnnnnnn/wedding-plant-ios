@@ -72,9 +72,6 @@ public actor APIClient {
 
     private func perform(_ request: HTTPRequest) async throws -> HTTPResponse {
         let prepared = try await prepare(request)
-        // 인증 헤더를 실제로 붙였을 때만 401 을 "세션 만료" 로 본다.
-        // 비로그인 게스트가 받는 401 은 정상 상황이라 지울 토큰도 없다.
-        let didAttachToken = prepared.headers["Authorization"] != nil
         let response: HTTPResponse
         do {
             response = try await transport.send(prepared)
@@ -84,15 +81,13 @@ public actor APIClient {
             throw APIError.transport(String(describing: error))
         }
 
-        // 세션 정리는 401/403 에서만 한다.
-        // 5xx·네트워크 오류로 토큰을 지우면 일시적 장애에 사용자가 강제 로그아웃되고
-        // 저장 데이터까지 날아간다.
-        if response.status == 401 || response.status == 403 {
-            if didAttachToken {
-                // 만료된 토큰을 들고 계속 재시도하는 것을 막기 위해 즉시 폐기한다.
-                await tokenStore?.clear()
-            }
-            throw APIError.unauthorized
+        // Android contract: a rejected request never destroys a stored session.
+        // Renew only the session used by this request, so logout/account switches win.
+        if let renewed = response.headers.first(where: { $0.key.lowercased() == "x-renewed-token" })?.value,
+           !renewed.isEmpty,
+           let current = await tokenStore?.currentToken(),
+           prepared.headers["Authorization"] == "Bearer \(current)" {
+            await tokenStore?.save(renewed)
         }
         guard response.isSuccess else {
             throw APIError.http(
@@ -124,11 +119,6 @@ public actor APIClient {
 
         if request.requiresAuth {
             guard let token = await tokenStore?.currentToken(), !token.isEmpty else {
-                throw APIError.unauthorized
-            }
-            // 만료가 확실한 토큰은 네트워크를 태우지 않고 바로 걸러낸다.
-            if JWTDecoder.isExpired(token) {
-                await tokenStore?.clear()
                 throw APIError.unauthorized
             }
             headers["Authorization"] = "Bearer \(token)"

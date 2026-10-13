@@ -22,7 +22,7 @@ public struct FeedPost: Codable, Hashable, Sendable, Identifiable {
     ///
     /// - Important: **비공개면 필드 자체가 없다.** `?? 0` 이나 `?? 0.0` 으로 채우지
     ///   말 것 — "0원" 으로 그려진다. `nil` 이면 "금액 비공개" 를 내야 한다.
-    public var amount: Int?
+    public var amount: Double?
     public var isAmountPublic: Bool
     /// 시/구 까지만. 필터에 쓴다. **백엔드가 자른다 — 앱에서 자르지 말 것.**
     /// 프론트에 맡기면 앱마다 다르게 자르고, 한 곳만 빠뜨려도 전체 주소가 올라간다.
@@ -67,7 +67,7 @@ public struct FeedPost: Codable, Hashable, Sendable, Identifiable {
         id: Int = 0,
         categoryName: String = "",
         title: String = "",
-        amount: Int? = nil,
+        amount: Double? = nil,
         isAmountPublic: Bool = false,
         region: String? = nil,
         address: String? = nil,
@@ -109,7 +109,7 @@ public struct FeedPost: Codable, Hashable, Sendable, Identifiable {
         self.categoryName = try c.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
         // **키가 없으면 nil 로 둔다.** 0 으로 채우면 "0원" 으로 그려진다.
-        self.amount = try c.decode(LooseInt.self, forKey: .amount).wrappedValue
+        self.amount = try c.decode(LooseDouble.self, forKey: .amount).wrappedValue
         self.isAmountPublic = try c.decodeIfPresent(Bool.self, forKey: .isAmountPublic) ?? false
         self.region = try c.decodeIfPresent(String.self, forKey: .region)
         self.address = try c.decodeIfPresent(String.self, forKey: .address)
@@ -171,7 +171,7 @@ public struct PostableSchedule: Codable, Hashable, Sendable, Identifiable {
     public var scheduleId: Int
     public var categoryName: String
     public var title: String
-    public var amount: Int?
+    public var amount: Double?
     /// 일정에 적힌 장소. 카카오에서 고른 경우 주소가 아니라 **업체명**이다.
     /// 주소로 알고 파싱하면 지역이 늘 빈다(웹에서 실제로 겪은 버그).
     public var location: String?
@@ -185,7 +185,7 @@ public struct PostableSchedule: Codable, Hashable, Sendable, Identifiable {
         scheduleId: Int = 0,
         categoryName: String = "",
         title: String = "",
-        amount: Int? = nil,
+        amount: Double? = nil,
         location: String? = nil,
         locationLat: Double? = nil,
         locationLng: Double? = nil,
@@ -206,7 +206,7 @@ public struct PostableSchedule: Codable, Hashable, Sendable, Identifiable {
         self.scheduleId = try c.decodeIfPresent(Int.self, forKey: .scheduleId) ?? 0
         self.categoryName = try c.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
-        self.amount = try c.decode(LooseInt.self, forKey: .amount).wrappedValue
+        self.amount = try c.decode(LooseDouble.self, forKey: .amount).wrappedValue
         self.location = try c.decodeIfPresent(String.self, forKey: .location)
         self.locationLat = try c.decodeIfPresent(Double.self, forKey: .locationLat)
         self.locationLng = try c.decodeIfPresent(Double.self, forKey: .locationLng)
@@ -253,16 +253,16 @@ public struct FeedVoteResult: Codable, Hashable, Sendable {
 public struct FeedCategoryStats: Codable, Hashable, Sendable {
     public var categoryName: String
     public var sampleCount: Int
-    public var median: Int
-    public var p25: Int
-    public var p75: Int
+    public var median: Double
+    public var p25: Double
+    public var p75: Double
 
     public init(
         categoryName: String = "",
         sampleCount: Int = 0,
-        median: Int = 0,
-        p25: Int = 0,
-        p75: Int = 0
+        median: Double = 0,
+        p25: Double = 0,
+        p75: Double = 0
     ) {
         self.categoryName = categoryName
         self.sampleCount = sampleCount
@@ -275,9 +275,9 @@ public struct FeedCategoryStats: Codable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.categoryName = try c.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.sampleCount = try c.decodeIfPresent(Int.self, forKey: .sampleCount) ?? 0
-        self.median = try c.decode(LooseInt.self, forKey: .median).wrappedValue ?? 0
-        self.p25 = try c.decode(LooseInt.self, forKey: .p25).wrappedValue ?? 0
-        self.p75 = try c.decode(LooseInt.self, forKey: .p75).wrappedValue ?? 0
+        self.median = try c.decode(LooseDouble.self, forKey: .median).wrappedValue ?? 0
+        self.p25 = try c.decode(LooseDouble.self, forKey: .p25).wrappedValue ?? 0
+        self.p75 = try c.decode(LooseDouble.self, forKey: .p75).wrappedValue ?? 0
     }
 }
 

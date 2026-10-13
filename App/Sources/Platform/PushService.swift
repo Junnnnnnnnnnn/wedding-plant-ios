@@ -30,7 +30,8 @@ final class PushService: NSObject, ObservableObject {
     @Published var pendingChatRoomId: Int?
 
     /// 지금 열려 있는 채팅방. 이 방의 알림은 배너도 토스트도 띄우지 않는다.
-    var currentChatRoomId: Int?
+    @Published var currentChatRoomId: Int?
+    var sseIsLive: ((Int) -> Bool)?
 
     private let tokenProvider: any PushTokenProviding
     private weak var env: AppEnvironment?
@@ -159,6 +160,7 @@ extension PushService: UNUserNotificationCenterDelegate {
                 // 지금 보고 있는 대화다. 소켓으로 이미 화면에 떴다.
                 return []
             case .inAppOnly:
+                if let room = payload.chatRoomId, sseIsLive?(room) == true { return [] }
                 toast = PushRouting.toastText(for: payload)
                 return []
             case .system:

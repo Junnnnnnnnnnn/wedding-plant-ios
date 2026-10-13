@@ -45,10 +45,9 @@ final class SchedulePaidTests: XCTestCase {
 
     func test_완료_미결제_정산_전() {
         let x = item(status: "COMPLETED", isPaid: false)
-        XCTAssertFalse(x.isPaid, "끝났어도 아직 쓴 돈이 아니다")
+        XCTAssertTrue(x.isPaid, "완료 일정은 저장된 결제 값과 무관하게 결제다")
         XCTAssertTrue(x.isScheduleCompleted)
-        XCTAssertEqual(x.paymentMismatch, .unpaidDone)
-        XCTAssertEqual(x.paymentMismatch?.label, "미결제")
+        XCTAssertNil(x.paymentMismatch)
     }
 
     // MARK: - nil 은 false 가 아니다 (가장 중요한 규칙)

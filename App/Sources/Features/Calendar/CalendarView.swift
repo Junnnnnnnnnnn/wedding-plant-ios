@@ -24,11 +24,14 @@ struct CalendarView: View {
     @State private var selectedDate: KstDate?
     @State private var addPlanDate: KstDate?
     @State private var showAddPlan = false
+    @State private var showExport = false
     @State private var openSchedule: ScheduleRef?
 
+    private let showsClose: Bool
     private let roomId: Int?
 
-    init(roomId: Int? = nil, readOnly: Bool = false) {
+    init(roomId: Int? = nil, readOnly: Bool = false, showsClose: Bool = true) {
+        self.showsClose = showsClose
         self.roomId = roomId
         _model = StateObject(
             wrappedValue: CalendarViewModel(roomId: roomId.map(String.init), readOnly: readOnly)
@@ -59,6 +62,7 @@ struct CalendarView: View {
                 .padding(.bottom, 24)
             }
         }
+        .sheet(isPresented: $showExport) { CalendarExportSheet(roomId: roomId) }
         .navigationBarBackButtonHidden()
         .task { await model.load(env: env, guest: guest) }
         .sheet(item: $selectedDate) { date in
@@ -84,7 +88,7 @@ struct CalendarView: View {
         // 시트 안에서는 NavigationStack 으로 push 할 수 없어 커버로 띄운다.
         // 상세 화면은 자체 뒤로가기(dismiss)를 갖고 있어 그대로 동작한다.
         .fullScreenCover(item: $openSchedule) { schedule in
-            ScheduleDetailView(scheduleId: schedule.id)
+            ScheduleDetailView(scheduleId: schedule.id, roomId: roomId)
                 .environmentObject(env)
                 .environmentObject(guest)
         }
@@ -120,6 +124,9 @@ struct CalendarView: View {
             }
             .accessibilityIdentifier("calendar.next")
 
+            RoundIconButton(symbol: "square.and.arrow.up", label: "파일로 보관하기", tint: WPColor.gray600) { showExport = true }.accessibilityIdentifier("calendar.export")
+
+            if showsClose {
             // 웹의 세로 구분선
             Rectangle()
                 .fill(WPColor.gray200)
@@ -130,6 +137,7 @@ struct CalendarView: View {
                 dismiss()
             }
             .accessibilityIdentifier("calendar.close")
+            }
         }
         .padding(.leading, 24)
         .padding(.trailing, 12)

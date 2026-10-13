@@ -94,7 +94,7 @@ final class BudgetDonutTests: XCTestCase {
             (1000, 0, 0), (0, 500, 0), (1000, 600, 400), (500, 900, 900),
         ]
         for (capital, used, planned) in cases {
-            let s = BudgetDonutSegments(capital: capital, used: used, planned: planned)
+            let s = BudgetDonutSegments(capital: Double(capital), used: Double(used), planned: Double(planned))
             XCTAssertTrue(
                 s.fitsInRing,
                 "자본 \(capital) · 사용 \(used) · 예정 \(planned) 에서 구간이 겹친다"

@@ -1,6 +1,7 @@
 import SwiftUI
 import WPModels
 import WPUtils
+import WPNetworking
 
 /// 웹 `app/schedule-detail/page.tsx` 이식.
 ///
@@ -16,9 +17,12 @@ struct ScheduleDetailView: View {
     @StateObject private var model: ScheduleDetailViewModel
     @State private var showDeleteConfirm = false
     @State private var showEdit = false
+    @State private var showFeed = false
+    @State private var showChatShare = false
+    @State private var feedEligible = false
 
-    init(scheduleId: Int) {
-        _model = StateObject(wrappedValue: ScheduleDetailViewModel(scheduleId: scheduleId))
+    init(scheduleId: Int, roomId: Int? = nil) {
+        _model = StateObject(wrappedValue: ScheduleDetailViewModel(scheduleId: scheduleId, roomId: roomId))
     }
 
     var body: some View {
@@ -53,12 +57,44 @@ struct ScheduleDetailView: View {
                             ExtraCategoriesCard(categories: extras)
                         }
 
+                        if model.scheduleId > 0 && model.canSeeDocuments {
+                            PassDocumentsView(scheduleId: model.scheduleId).padding(.top, 20)
+                        }
+                        if model.scheduleId > 0 {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Button { showChatShare = true } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "bubble.left.and.bubble.right").font(.system(size: 22)).foregroundStyle(WPColor.primary)
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            Text("채팅으로 보내기").font(WPFont.hak(15, .bold))
+                                            Text("신랑 · 신부와의 대화로 보내요").font(WPFont.hak(12)).foregroundStyle(.secondary)
+                                        }
+                                        Spacer(); Image(systemName: "chevron.right")
+                                    }.padding(18)
+                                }.buttonStyle(.plain)
+                                Divider().padding(.horizontal, 18)
+                                if feedEligible {
+                                    Button { showFeed = true } label: {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: "square.and.arrow.up").font(.system(size: 22)).foregroundStyle(WPColor.primary)
+                                            VStack(alignment: .leading, spacing: 5) {
+                                                Text("피드에 공유하기").font(WPFont.hak(15, .bold))
+                                                Text("다른 커플에게 익명으로 준비 경험을 나눠요").font(WPFont.hak(12)).foregroundStyle(.secondary)
+                                            }
+                                            Spacer(); Image(systemName: "chevron.right")
+                                        }.padding(18)
+                                    }.buttonStyle(.plain)
+                                } else {
+                                    Text("내가 만든 플랜은 완료하면 피드에 올릴 수 있어요").font(WPFont.hak(12)).foregroundStyle(.secondary).padding(18)
+                                }
+                            }.background(.white, in: RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(WPColor.gray200)).padding(.top, 16)
+                        }
                         Spacer().frame(height: 16)
-                        ActionButtons(deleting: model.deleting) {
+                        if model.canWrite { ActionButtons(deleting: model.deleting) {
                             showEdit = true
                         } onDelete: {
                             showDeleteConfirm = true
-                        }
+                        } }
                     } else {
                         ErrorCard(message: model.errorMessage) {
                             Task { await model.load(env: env, guest: guest) }
@@ -80,17 +116,26 @@ struct ScheduleDetailView: View {
             }
         }
         .navigationBarBackButtonHidden()
-        .task { await model.load(env: env, guest: guest) }
+        .task {
+            await model.load(env: env, guest: guest)
+            if let page = try? await env.api.send(Endpoint.feedPostable(), decoding: PostablePage.self) {
+                feedEligible = page.list.contains { $0.scheduleId == model.scheduleId }
+            }
+        }
+        .sheet(isPresented: $showChatShare) { ShareScheduleSheet(scheduleId: model.scheduleId, title: model.detail?.title ?? "") }
+        .sheet(isPresented: $showFeed) { FeedPostSheet(initialScheduleId: model.scheduleId) { feedEligible = false; showFeed = false } }
         .fullScreenCover(isPresented: $showEdit) {
             // 수정은 추가와 같은 화면이다. editId 만 넘기면 상세를 불러와 채운다.
-            AddPlanView(editId: model.scheduleId) {
+            AddPlanView(editId: model.scheduleId, roomId: model.roomId) {
                 Task { await model.load(env: env, guest: guest) }
             }
             .environmentObject(env)
             .environmentObject(guest)
         }
-        .onChange(of: model.deleted) { _, deleted in
-            if deleted { dismiss() }
+        .fullScreenCover(isPresented: $model.deleted) {
+            PlanBloomSuccess(title: model.detail?.title ?? "", amount: model.detail?.amount ?? 0, remaining: nil, action: .delete) {
+                model.deleted = false; dismiss()
+            }
         }
         .onChange(of: model.sessionExpired) { _, expired in
             if expired { dismiss() }
@@ -167,6 +212,7 @@ private struct DeleteConfirmDialog: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(deleting)
+                    .accessibilityIdentifier("detail.confirmDelete")
                 }
             }
             .padding(24)

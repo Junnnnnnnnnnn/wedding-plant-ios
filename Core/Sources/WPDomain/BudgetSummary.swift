@@ -3,11 +3,11 @@ import WPModels
 
 /// 메인·예산 화면에서 쓰는 금액 요약. 단위는 **만원**(백엔드 계약과 동일).
 public struct BudgetSummary: Hashable, Sendable {
-    public let total: Int
-    public let used: Int
-    public let remaining: Int
+    public let total: Double
+    public let used: Double
+    public let remaining: Double
 
-    public init(total: Int, used: Int, remaining: Int) {
+    public init(total: Double, used: Double, remaining: Double) {
         self.total = total
         self.used = used
         self.remaining = remaining

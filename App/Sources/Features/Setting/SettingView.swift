@@ -28,6 +28,7 @@ struct SettingView: View {
                     case .name: NameStep(model: model)
                     case .welcome: WelcomeStep(model: model)
                     case .terms: TermsStep(model: model, onSubmit: submit)
+                    case .permissions: PermissionsStep { model.goTo(.invite) }
                     case .invite: InviteStep(model: model, onDone: onComplete)
                     }
                 }
@@ -38,7 +39,7 @@ struct SettingView: View {
                 // 웹: 예산·이름·환영·약관 단계에만 뒤로가기. 축하·날짜에는 없음.
                 // **초대 단계에도 달지 않는다** — 저장이 이미 끝난 뒤라 되돌아갈
                 // 곳이 없다.
-                if model.step != .celebration && model.step != .date && model.step != .invite {
+                if model.step != .celebration && model.step != .date && model.step != .invite && model.step != .permissions {
                     Button {
                         model.back()
                     } label: {
@@ -92,6 +93,7 @@ private struct CelebrationStep: View {
         // 이모지는 웹 원문 그대로다. 임의로 빼면 문구가 달라진다.
         LandingHero(title: "결혼", subtitle: "🎉 축하드려요 🎉", useUserFont: false)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay { CelebrationConfetti().ignoresSafeArea() }
     }
 }
 
@@ -378,7 +380,7 @@ private struct WPTextField: View {
             .font(WPFont.tmoney(18, .semibold))
             .foregroundStyle(WPColor.stone900)
             .multilineTextAlignment(.center)
-            .keyboardType(numeric ? .numberPad : .default)
+            .keyboardType(numeric ? .decimalPad : .default)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .focused($focused)

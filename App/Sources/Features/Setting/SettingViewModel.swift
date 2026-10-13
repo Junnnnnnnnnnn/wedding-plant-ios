@@ -20,6 +20,7 @@ final class SettingViewModel: ObservableObject {
         case name
         case welcome
         case terms
+        case permissions
         /// **맨 끝, 약관 동의 다음.**
         ///
         /// 이 앱의 메리트가 "신랑·신부가 같이" 인데 예전에는 초대 진입점이 홈의
@@ -89,7 +90,7 @@ final class SettingViewModel: ObservableObject {
             name = value
         }
         if let value = user.budget {
-            budget = "\(value)"
+            budget = MoneyInput.text(value)
         }
         if let raw = user.weddingDate, let parsed = KstDate(dateString: raw) {
             date = parsed
@@ -100,8 +101,8 @@ final class SettingViewModel: ObservableObject {
     // MARK: - 입력
 
     func setBudget(_ value: String) {
-        // 숫자만 허용, 최대 7자리 (웹의 type="number" 대응)
-        budget = String(value.filter(\.isNumber).prefix(7))
+        // 최대 7자리, 소수 금액도 서버 값 그대로 유지.
+        budget = MoneyInput.accept(value, previous: budget, maxDigits: 7)
     }
 
     func setName(_ value: String) {
@@ -155,7 +156,7 @@ final class SettingViewModel: ObservableObject {
         case .budget: step = .date
         // **초대 단계에는 뒤로가기를 달지 않는다** — 저장이 이미 끝난 뒤라
         // 되돌아갈 곳이 없다.
-        case .date, .celebration, .invite: break
+        case .date, .celebration, .permissions, .invite: break
         }
     }
 
@@ -167,7 +168,7 @@ final class SettingViewModel: ObservableObject {
         guard !submitting else { return }
 
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
-        let budgetValue = Int(budget) ?? 0
+        let budgetValue = Double(budget) ?? 0
         let agreementDate = KstDate.todayString()
 
         guest.save(name: trimmedName, budget: budgetValue, weddingDate: date)
@@ -196,9 +197,8 @@ final class SettingViewModel: ObservableObject {
         do {
             try await env.api.sendIgnoringData(Endpoint.createSetting(request))
         } catch {
-            // 웹과 동일하게 POST 가 실패해도 진행하되, 실패 사실은 알린다.
+            // Keep the filled form available for retry; consent/profile was not saved.
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
-            onDone()
             return
         }
 
@@ -210,7 +210,7 @@ final class SettingViewModel: ObservableObject {
         // 저장된다. 앞에 두면 (1) 초대받은 사람이 빈 플랜에 들어오고,
         // (2) 필수·제3자 제공 동의를 받기 전에 접근 권한을 주는 링크가 나가고,
         // (3) 초대만 보내고 약관에서 이탈하면 상대가 영영 빈 플랜에 남는다.
-        step = .invite
+        step = .permissions
         await loadInviteURL(env: env)
     }
 
@@ -223,6 +223,7 @@ final class SettingViewModel: ObservableObject {
         defer { inviteLoading = false }
         guard let code = try? await env.api.send(Endpoint.shareCode(), decoding: ShareCode.self)
         else { return }
+        guard code.canInvite else { errorMessage = "이미 신랑 · 신부와 함께 쓰는 플랜이 있어요."; inviteURL = nil; return }
         inviteURL = ShareLink.inviteURL(
             webBaseURL: AppConfig.webBaseURL,
             code: code.shareCode,

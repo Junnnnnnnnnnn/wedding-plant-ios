@@ -93,6 +93,7 @@ struct FeedDetailView: View {
                     .font(WPFont.hak(15, .bold))
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer(minLength: 0)
+                if !post.isMine { ModerationMenu(targetType: "FEED", targetId: post.id) { dismiss() }.foregroundStyle(.white) }
             }
 
             Spacer().frame(height: 12)

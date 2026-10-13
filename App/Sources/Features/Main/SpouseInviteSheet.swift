@@ -3,135 +3,87 @@ import WPDomain
 import WPModels
 import WPNetworking
 
-/// 홈의 초대 띠에서 여는 시트. 온보딩의 `함께할 사람` 단계와 **같은 링크**를 보낸다.
-///
-/// **`?as=spouse` 가 빠지면 배우자로 부르고도 상대가 `READ` 로 들어온다** —
-/// 초대 링크가 역할을 지닌다. 링크 조립은 `ShareLink.inviteURL` 한 곳이다.
-///
-/// 조언자(`READ`)로 부르는 길도 함께 둔다. 남의 플랜을 같이 보며 거드는 자리라
-/// 귀속이 아니고, 받는 사람은 자기 플랜을 그대로 둔다.
 struct SpouseInviteSheet: View {
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
-
-    @State private var code: String?
+    @State private var invite: ShareCode?
+    @State private var user: PlanUser?
+    @State private var bound: Plan?
     @State private var loading = true
-    @State private var shareTarget: ShareTarget?
-
+    @State private var busy = false
+    @State private var share = false
+    @State private var confirming = false
+    @State private var error: String?
+    private var couple: [Member] { (user?.members ?? []).filter { ["OWNER", "SPOUSE"].contains($0.permission.rawValue.uppercased()) } }
+    private var canRemove: Bool { couple.contains { $0.planUserId == user?.id && $0.permission == .owner } && couple.contains { $0.permission == .spouse } }
+    private var url: String? { invite.flatMap { ShareLink.inviteURL(webBaseURL: AppConfig.webBaseURL, code: $0.shareCode, asSpouse: true) } }
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("누구와 함께 준비하세요?")
-                        .font(WPFont.hak(20, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-
-                    Spacer().frame(height: 8)
-
-                    Text("신랑·신부는 일정과 예산을 같이 고칠 수 있어요")
-                        .font(WPFont.hak(13.5))
-                        .foregroundStyle(WPColor.fgSubtle)
-
-                    Spacer().frame(height: 22)
-
-                    if loading {
-                        SkeletonBox(height: 68, corner: 16)
-                        Spacer().frame(height: 10)
-                        SkeletonBox(height: 68, corner: 16)
-                    } else if code == nil {
-                        Text("초대 링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
-                            .font(WPFont.hak(13))
-                            .foregroundStyle(WPColor.fgSubtle)
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("신랑 · 신부를 초대해 함께 준비해요").font(WPFont.hak(13)).foregroundStyle(WPColor.gray400)
+                    Text("신랑 · 신부 두 사람이 함께 써요").font(WPFont.hak(11, .bold)).foregroundStyle(WPColor.primary).padding(12).frame(maxWidth: .infinity).background(WPColor.primary.opacity(0.04), in: Capsule())
+                    if loading { ProgressView().frame(maxWidth: .infinity) }
+                    if let bound {
+                        Text(bound.ownerName.isEmpty ? "신랑 · 신부로 함께 쓰는 플랜이 있어요." : "\(bound.ownerName)님 플랜을 신랑 · 신부로 함께 쓰고 있어요.")
+                        Button("함께하기 그만두기", role: .destructive) { confirming = true }.disabled(busy)
                     } else {
-                        inviteCard(
-                            title: "신랑 · 신부를 부를게요",
-                            body: "일정과 예산을 같이 고칩니다",
-                            asSpouse: true
-                        )
-                        Spacer().frame(height: 10)
-                        inviteCard(
-                            title: "조언자를 부를게요",
-                            body: "같이 보기만 하고 고치지는 않습니다",
-                            asSpouse: false
-                        )
+                        ForEach(couple) { member in
+                            HStack {
+                                Text(String(member.name.prefix(1))).frame(width: 40, height: 40).background(WPColor.primary.opacity(0.1), in: Circle())
+                                Text(member.name); Spacer(); Text(member.permission == .owner ? "방장" : "신랑 · 신부").font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
+                        if canRemove { Button("신랑 · 신부 해제", role: .destructive) { confirming = true }.disabled(busy) }
+                        if invite?.canInvite == true, let url {
+                            Text("우리 결혼 준비, 같이 하자!").font(WPFont.hak(18, .bold))
+                            Text("일정과 예산, 준비 패스를 함께 쓸 수 있어요.").font(WPFont.hak(13)).foregroundStyle(WPColor.gray500)
+                            Button { share = true } label: { Label("초대 링크 보내기", systemImage: "link").frame(maxWidth: .infinity).frame(height: 48) }.buttonStyle(.borderedProminent).accessibilityIdentifier("invite.spouse")
+                            Button("링크 복사") { UIPasteboard.general.string = url }.frame(maxWidth: .infinity)
+                        } else if !loading && invite != nil { Text("이미 신랑 · 신부와 함께 쓰는 플랜이 있어요.").font(.footnote).foregroundStyle(.secondary) }
                     }
-                }
-                .padding(20)
+                    if let error { Text(error).foregroundStyle(.red); Button("다시 시도") { Task { await load() } } }
+                }.padding(20)
+            }.navigationTitle("플랜 공유하기").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() }.disabled(busy) } }
+        }.presentationDetents([.medium, .large]).interactiveDismissDisabled(busy).task { await load() }
+            .sheet(isPresented: $share) { if let url { ActivityShareSheet(items: ["우리 결혼 준비, 같이 하자!\n" + url]) } }
+            .confirmationDialog(bound == nil ? "신랑 · 신부를 해제할까요?" : "함께하기를 그만둘까요?", isPresented: $confirming, titleVisibility: .visible) {
+                Button(bound == nil ? "해제하기" : "그만두기", role: .destructive) { Task { await unlink() } }
+            } message: {
+                Text(bound == nil ? "해제하면 신랑 · 신부가 이 플랜과 대화방에서 빠져요. 주고받은 대화와 일정은 남고, 초대 링크는 새로 바뀌어요." : "그만두면 이 플랜과 대화방에서 빠지고, 홈이 내 플랜으로 돌아가요. 주고받은 대화와 일정은 남아요.")
             }
-            .background(WPColor.background)
-            .navigationTitle("함께할 사람")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("닫기") { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium])
-        .task {
-            defer { loading = false }
-            code = try? await env.api.send(Endpoint.shareCode(), decoding: ShareCode.self).shareCode
-        }
-        .sheet(item: $shareTarget) { target in
-            ActivityShareSheet(items: [target.url])
-        }
     }
-
-    private func inviteCard(title: String, body: String, asSpouse: Bool) -> some View {
-        Button {
-            guard let code,
-                  let url = ShareLink.inviteURL(
-                      webBaseURL: AppConfig.webBaseURL,
-                      code: code,
-                      asSpouse: asSpouse
-                  )
-            else { return }
-            shareTarget = ShareTarget(url: url)
-        } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(WPFont.hak(15, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-                    Text(body)
-                        .font(WPFont.hak(12.5))
-                        .foregroundStyle(WPColor.fgSubtle)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(WPColor.primary)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                asSpouse ? Color(hex: 0xFFF7FA) : Color.white,
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(
-                        asSpouse ? WPColor.primary.opacity(0.25) : WPColor.strokeWeak,
-                        lineWidth: 1
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(asSpouse ? "invite.spouse" : "invite.reader")
+    private func load() async {
+        loading = true; error = nil; defer { loading = false }
+        do {
+            user = try await env.api.send(Endpoint.user())
+            let rooms: RoomList = try await env.api.send(Endpoint.roomList())
+            bound = BoundRoom.find(in: rooms.list, planUserId: user?.id)
+            invite = try await env.api.send(Endpoint.shareCode())
+        } catch { self.error = error.localizedDescription }
     }
-}
-
-private struct ShareTarget: Identifiable, Hashable {
-    var url: String
-    var id: String { url }
+    private func unlink() async {
+        guard !busy else { return }; busy = true; defer { busy = false }
+        let leaving = bound != nil
+        do {
+            try await env.api.sendIgnoringData(HTTPRequest(method: leaving ? .post : .delete, path: leaving ? "/plan/room/leave" : "/plan/room/spouse"))
+            env.boundRoom = .unknown; env.boundRoomPlan = nil
+            await env.refreshBoundRoom(); env.roomsRevision += 1
+            if leaving { dismiss() } else { await load() }
+        } catch { self.error = error.localizedDescription }
+    }
 }
 
 /// 시스템 공유 시트.
 struct ActivityShareSheet: UIViewControllerRepresentable {
     var items: [Any]
+    var onComplete: ((Bool) -> Void)? = nil
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, completed, _, _ in onComplete?(completed) }
+        return controller
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}

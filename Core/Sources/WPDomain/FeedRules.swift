@@ -92,7 +92,7 @@ public enum FeedRules {
     /// **안쪽 눈금**으로 두고 양옆에 그만큼 여유를 준다.
     ///
     /// 끝에 닿아도 6~94% 안에 머물게 눌러 둔다 — 라벨이 잘리지 않는다.
-    public static func scalePercent(_ value: Int, stats: FeedCategoryStats) -> Double {
+    public static func scalePercent(_ value: Double, stats: FeedCategoryStats) -> Double {
         let spread = max(stats.p75 - stats.p25, 1)
         let low = stats.p25 - spread
         let high = stats.p75 + spread

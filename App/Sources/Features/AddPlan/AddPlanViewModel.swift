@@ -27,6 +27,8 @@ final class AddPlanViewModel: ObservableObject {
     /// 돈이 나갔는지. **완료와 다른 축이다** — 계약금을 미리 낸 일정은
     /// 예정이어도 이미 쓴 돈이다. 입력은 금액 바로 아래 체크다.
     @Published var isPaid = false
+    @Published var completed = false
+    private var originalPaid: Bool?
     @Published var location = ""
     @Published var locationLat: Double = 0
     @Published var locationLng: Double = 0
@@ -34,12 +36,14 @@ final class AddPlanViewModel: ObservableObject {
 
     // MARK: 목록·상태
 
-    @Published var categories: [PlanCategory] = []
+    @Published var categories: [PlanCategory] = WeddingCategories.merge([])
     /// 이번 세션에서 사용자가 새로 만든 카테고리 (저장 시 `addCategoryNameList` 로 전송)
     @Published var addedCategories: [String] = []
     @Published var loadingDetail = false
     @Published var saving = false
     @Published var saved = false
+    @Published var remainingBudget: Double?
+    private var resolvedRoomId: Int?
     /// 게스트가 플랜 3개를 이미 채웠음 → 로그인 안내 (웹 `GuestPlanLimitModal`)
     @Published var guestLimitReached = false
     @Published var errorMessage: String?
@@ -53,7 +57,7 @@ final class AddPlanViewModel: ObservableObject {
     @Published var searchUnavailable = false
 
     let isEditMode: Bool
-    private let editId: Int?
+    let editId: Int?
     /// 신규 생성 시 이 플랜을 넣을 방. 메인이 넘겨준다 (웹의 `?roomId=` 와 동일).
     private let roomId: Int?
 
@@ -87,7 +91,7 @@ final class AddPlanViewModel: ObservableObject {
                 self.category = PlanCategory(name: prefill.categoryName)
             }
             // **금액이 비공개면 비워 둔다.** 0 을 넣으면 "0원짜리 일정" 이 된다.
-            if let amount = prefill.amount { self.amount = String(amount) }
+            if let amount = prefill.amount { self.amount = MoneyInput.text(amount) }
             self.location = prefill.location ?? ""
             self.selectedPlaceName = prefill.location ?? ""
         }
@@ -98,10 +102,10 @@ final class AddPlanViewModel: ObservableObject {
         var title: String
         var categoryName: String
         /// 비공개면 `nil`. **0 으로 채우지 말 것.**
-        var amount: Int?
+        var amount: Double?
         var location: String?
 
-        init(title: String, categoryName: String, amount: Int? = nil, location: String? = nil) {
+        init(title: String, categoryName: String, amount: Double? = nil, location: String? = nil) {
             self.title = title
             self.categoryName = categoryName
             self.amount = amount
@@ -138,6 +142,10 @@ final class AddPlanViewModel: ObservableObject {
     // MARK: - 로딩
 
     func load(env: AppEnvironment, guest: GuestStore) async {
+        resolvedRoomId = roomId ?? env.boundRoomId
+        if resolvedRoomId == nil, await env.tokenStore.currentToken()?.isEmpty == false {
+            if let user: PlanUser = try? await env.api.send(Endpoint.user()) { resolvedRoomId = user.roomId }
+        }
         await loadCategories(env: env)
         if let editId {
             await loadDetail(id: editId, env: env, guest: guest)
@@ -149,17 +157,18 @@ final class AddPlanViewModel: ObservableObject {
         let loggedIn = !(token ?? "").isEmpty
         // 비로그인은 인증 없는 경로를 쓴다. 안 그러면 카테고리가 하나도 안 보이고,
         // 카테고리가 필수라 게스트는 플랜을 아예 만들 수 없다.
-        let request = Endpoint.categories(roomId: roomId, loggedIn: loggedIn)
+        let request = Endpoint.categories(roomId: resolvedRoomId, loggedIn: loggedIn)
 
         guard let page = try? await env.api.send(request, decoding: PlanCategoryPage.self) else { return }
-        categories = page.list.sorted { $0.name < $1.name }
+        categories = WeddingCategories.merge(page.list)
+        addedCategories.removeAll { added in categories.contains { WeddingCategories.normalize($0.name) == WeddingCategories.normalize(added) } }
         syncSelectedCategory()
     }
 
     /// 수정 모드에서 상세를 먼저 받아온 경우, 카테고리 목록이 늦게 와도 선택을 맞춰준다.
     private func syncSelectedCategory() {
         guard let current = category, current.id == 0 else { return }
-        guard let matched = categories.first(where: { $0.name == current.name }) else { return }
+        guard let matched = categories.first(where: { WeddingCategories.normalize($0.name) == WeddingCategories.normalize(current.name) }) else { return }
         category = matched
     }
 
@@ -167,6 +176,8 @@ final class AddPlanViewModel: ObservableObject {
         // 게스트 플랜은 id 가 음수이고 서버에 없다. 로컬에서 찾는다.
         if id < 0 {
             guard let item = guest.findSchedule(id: id) else { return }
+            completed = item.isScheduleCompleted
+            originalPaid = item.isPaidRaw
             apply(
                 title: item.title,
                 categoryName: item.categoryName,
@@ -191,6 +202,8 @@ final class AddPlanViewModel: ObservableObject {
                 Endpoint.schedule(id: id),
                 decoding: ScheduleDetail.self
             )
+            completed = detail.isScheduleCompleted
+            originalPaid = detail.isPaidRaw
             apply(
                 title: detail.title,
                 categoryName: detail.categoryName,
@@ -214,7 +227,7 @@ final class AddPlanViewModel: ObservableObject {
         title: String,
         categoryName: String,
         payType: String?,
-        amount: Int?,
+        amount: Double?,
         startDate: String?,
         startTime: String?,
         isPaid: Bool,
@@ -226,7 +239,7 @@ final class AddPlanViewModel: ObservableObject {
         self.title = title
         self.category = PlanCategory(name: categoryName)
         self.payType = PlanPayType.from(api: payType) ?? .other
-        self.amount = amount.map(String.init) ?? ""
+        self.amount = amount.map(MoneyInput.text) ?? ""
         self.date = startDate.flatMap { KstDate(dateString: $0) } ?? KstDate.today()
         self.dateUndecided = (startDate ?? "").trimmingCharacters(in: .whitespaces).isEmpty
         self.startTime = (startTime ?? "").isEmpty ? nil : startTime
@@ -242,8 +255,8 @@ final class AddPlanViewModel: ObservableObject {
     // MARK: - 입력 변경
 
     func setAmount(_ value: String) {
-        // 웹은 콤마를 넣어 보여주고 전송 시 제거한다. 여기서는 숫자만 보관한다.
-        amount = String(value.filter(\.isNumber).prefix(9))
+        // 콤마를 제거하되 소수점은 유지한다.
+        amount = MoneyInput.accept(value, previous: amount)
     }
 
     func setMemo(_ value: String) {
@@ -266,9 +279,9 @@ final class AddPlanViewModel: ObservableObject {
 
     /// 모달에서 새 카테고리를 만든 경우 — 서버에 미리 만들지 않고 저장 시 함께 보낸다(웹과 동일).
     func addCategory(_ name: String) {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let trimmed = WeddingCategories.clean(name)
         guard !trimmed.isEmpty else { return }
-        let exists = categories.contains { $0.name == trimmed } || addedCategories.contains(trimmed)
+        let exists = categories.contains { WeddingCategories.normalize($0.name) == WeddingCategories.normalize(trimmed) } || addedCategories.contains { WeddingCategories.normalize($0) == WeddingCategories.normalize(trimmed) }
         guard !exists else {
             errorMessage = "이미 있는 카테고리예요."
             return
@@ -367,11 +380,15 @@ final class AddPlanViewModel: ObservableObject {
         errorMessage = nil
         defer { saving = false }
 
+        if !isEditMode && resolvedRoomId == nil {
+            errorMessage = "플랜을 불러오지 못했어요. 화면을 다시 열어 주세요."
+            return
+        }
         let request = ScheduleWriteRequest(
             categoryName: category.name,
             title: title.trimmingCharacters(in: .whitespaces),
             payType: payType.rawValue,
-            amount: Int(amount) ?? 0,
+            amount: Double(amount) ?? 0,
             // 미정이면 nil → 명시적 null 로 직렬화된다.
             // 수정에서 이미 잡혀 있던 날짜를 미정으로 되돌릴 수 있어야 하기 때문이다.
             startDate: dateUndecided ? nil : date.dateString,
@@ -385,9 +402,9 @@ final class AddPlanViewModel: ObservableObject {
             // **귀속된 방을 여기 한 곳에서 메운다.** 호출부마다 넘기게 하면 한 곳만
             // 빠뜨려도 새 일정이 **화면에 보이지도 않는 개인 플랜에** 저장된다 —
             // 실제로 피드의 `내 플랜에 담기` 가 roomId 없이 열리고 있었다.
-            roomId: isEditMode ? nil : (roomId ?? env.boundRoomId),
+            roomId: isEditMode ? nil : resolvedRoomId,
             addCategoryNameList: addedCategories.isEmpty ? nil : addedCategories,
-            isPaid: isPaid,
+            isPaid: completed ? originalPaid : isPaid,
             // 날짜가 미정이면 시각도 뜻이 없다. 수정에서 지우려면 **빈 문자열**을
             // 보내야 한다 — 키를 빼면 PATCH 시맨틱상 "변경 없음" 이라 남는다.
             startTime: dateUndecided ? "" : (startTime ?? "")
@@ -398,6 +415,10 @@ final class AddPlanViewModel: ObservableObject {
                 try await env.api.sendIgnoringData(Endpoint.updateSchedule(id: editId, request))
             } else {
                 try await env.api.sendIgnoringData(Endpoint.createSchedule(request))
+            }
+            if (Double(amount) ?? 0) > 0 {
+                var query = Endpoint.amountDetail(roomId: resolvedRoomId.map(String.init)); query.timeout = 3
+                if let amount: AmountDetail = try? await env.api.send(query) { remainingBudget = amount.initialCapital - amount.totalPlannedAndUsedAmount }
             }
             saved = true
         } catch {
@@ -420,7 +441,7 @@ final class AddPlanViewModel: ObservableObject {
             id: 0, // GuestStore 가 음수 id 를 새로 발급한다
             categoryName: category.name,
             title: title.trimmingCharacters(in: .whitespaces),
-            amount: Int(amount) ?? 0,
+            amount: Double(amount) ?? 0,
             startDate: dateUndecided ? nil : date.dateString,
             status: ScheduleStatus(rawValue: "NORMAL"),
             location: location.trimmingCharacters(in: .whitespaces),

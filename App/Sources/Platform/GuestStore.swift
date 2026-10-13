@@ -38,8 +38,8 @@ final class GuestStore: ObservableObject {
     }
 
     /// 단위는 만원. 미입력이면 nil.
-    var budget: Int? {
-        get { defaults.object(forKey: Key.budget) as? Int }
+    var budget: Double? {
+        get { (defaults.object(forKey: Key.budget) as? NSNumber)?.doubleValue }
         set { defaults.set(newValue, forKey: Key.budget) }
     }
 
@@ -81,7 +81,7 @@ final class GuestStore: ObservableObject {
         defaults.set(adAgreementDate, forKey: Key.adAgreementDate)
     }
 
-    func save(name: String, budget: Int?, weddingDate: KstDate?) {
+    func save(name: String, budget: Double?, weddingDate: KstDate?) {
         self.name = name
         self.budget = budget
         self.weddingDate = weddingDate

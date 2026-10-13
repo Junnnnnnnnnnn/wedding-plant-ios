@@ -16,9 +16,9 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(withThousands(-1234), "-1,234")
     }
 
-    func test_소수는_반올림한다() {
-        XCTAssertEqual(withThousands(1234.4), "1,234")
-        XCTAssertEqual(withThousands(1234.5), "1,235")
+    func test_소수금액은_세자리까지_유지한다() {
+        XCTAssertEqual(withThousands(1234.4), "1,234.4")
+        XCTAssertEqual(withThousands(1234.5), "1,234.5")
     }
 
     func test_연도_없는_짧은_날짜() {

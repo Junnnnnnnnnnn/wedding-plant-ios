@@ -16,15 +16,17 @@ import WPUtils
 /// 리텐션 축은 **코어로 되돌리는 것**이다. `내 플랜에 담기` 가 등록 화면을 값이
 /// 채워진 채로 연다. 무한 스크롤로 시간을 뺏는 화면이 아니다.
 struct FeedView: View {
+    var titleSlot: AnyView? = nil
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var model = FeedViewModel()
     @State private var path = NavigationPath()
     @State private var showPostSheet = false
+    @State private var copyPost: FeedPost?
 
     var body: some View {
         NavigationStack(path: $path) {
             content
-        }
+        }.onChange(of: env.moderationRevision) { _, _ in Task { await model.load(env: env, replace: true) } }
     }
 
     private var content: some View {
@@ -33,7 +35,7 @@ struct FeedView: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     head
                     chips
-                    supplyStrip
+                    sortRow
 
                     if model.loading {
                         ForEach(0..<4, id: \.self) { _ in SkeletonRow() }
@@ -47,7 +49,8 @@ struct FeedView: View {
                                 onVote: { vote in
                                     Task { await model.vote(post, vote, env: env) }
                                 },
-                                onOpen: { path.append(post) }
+                                onOpen: { path.append(post) },
+                                onCopy: { copyPost = post }
                             )
                         }
 
@@ -80,6 +83,12 @@ struct FeedView: View {
         .navigationDestination(for: FeedPost.self) { post in
             FeedDetailView(post: post)
         }
+        .fullScreenCover(item: $copyPost) { post in
+            AddPlanView(prefill: .init(title: post.title, categoryName: post.categoryName,
+                                      amount: post.amount, location: post.address ?? post.region),
+                        onSaved: { copyPost = nil })
+                .environmentObject(env)
+        }
         // 후기 작성은 별도 라우트가 아니라 **완료한 일정에서 여는 모달**이다.
         .sheet(isPresented: $showPostSheet) {
             FeedPostSheet {
@@ -92,42 +101,32 @@ struct FeedView: View {
     // MARK: - 머리 면
 
     private var head: some View {
-        BrandHead {
-            Text("견적 후기")
-                .font(WPFont.hak(18, .bold))
-                .tracking(-0.02 * 18)
-                .foregroundStyle(.white)
-
-            Spacer().frame(height: 10)
-
-            Text("먼저 준비한 사람들이 얼마 썼는지 봅니다")
-                .font(WPFont.hak(14))
-                .foregroundStyle(.white.opacity(0.8))
-
-            Spacer().frame(height: 14)
-
-            // 정렬 — 넓게 벌리지 않고 알약 셋만 둔다.
-            HStack(spacing: 6) {
-                ForEach(FeedViewModel.Sort.allCases) { option in
-                    let selected = model.sort == option
-                    Button {
-                        Task { await model.setSort(option, env: env) }
-                    } label: {
-                        Text(option.label)
-                            .font(WPFont.hak(12.5, .bold))
-                            .foregroundStyle(selected ? WPColor.primary : .white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                selected ? Color.white : Color.white.opacity(0.18),
-                                in: Capsule()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-                Spacer(minLength: 0)
+        ExploreHead(switcher: titleSlot ?? AnyView(Text("견적 후기").font(WPFont.hak(18, .bold)).foregroundStyle(.white)),
+                    headline: "다른 커플은 얼마 썼을까",
+                    stats: [("후기", "\(model.total)개")] + (env.isAuthenticated ? [("내 후기", "\(model.myStatus?.postCount ?? 0)개"), ("받은 도움", "\(model.myStatus?.receivedHelpfulCount ?? 0)")] : []),
+                    loading: model.loading && model.posts.isEmpty, action: { showPostSheet = true }) {
+            if let status = model.myStatus, status.postableScheduleCount > 0 {
+                Button { showPostSheet = true } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("완료한 일정 \(status.postableScheduleCount)개를 아직 안 올렸어요").font(WPFont.hak(14, .bold))
+                            Text("올리면 다른 커플의 후기도 더 잘 보입니다").font(WPFont.hak(12)).opacity(0.75)
+                        }
+                        Spacer(minLength: 0); Image(systemName: "chevron.right").font(.system(size: 16))
+                    }.foregroundStyle(.white).padding(14).background(.white.opacity(0.2), in: RoundedRectangle(cornerRadius: 14))
+                }.buttonStyle(.plain).padding(.top, 12).accessibilityIdentifier("feed.write")
             }
         }
+    }
+    private var sortRow: some View {
+        HStack(spacing: 12) {
+            ForEach(FeedViewModel.Sort.allCases) { option in
+                Button { Task { await model.setSort(option, env: env) } } label: {
+                    Text(option.label).font(WPFont.hak(13, model.sort == option ? .bold : .regular)).foregroundStyle(model.sort == option ? WPColor.fgNeutral : WPColor.fgSubtle)
+                }.buttonStyle(.plain)
+            }
+            Spacer()
+        }.padding(.horizontal, 20).padding(.bottom, 4)
     }
 
     // MARK: - 카테고리 칩
@@ -161,37 +160,6 @@ struct FeedView: View {
                 .background(selected ? Color(hex: 0x1A1C20) : WPColor.fill, in: Capsule())
         }
         .buttonStyle(.plain)
-    }
-
-    // MARK: - 공급을 상기시키는 띠
-
-    /// 넓은 화면의 사이드 카드 자리. **좁을 때는 한 줄 띠가 대신한다** —
-    /// 카드를 그대로 위에 얹으면 보러 온 후기가 한 화면 아래로 밀린다.
-    @ViewBuilder
-    private var supplyStrip: some View {
-        if let status = model.myStatus, status.postableScheduleCount > 0 {
-            Button { showPostSheet = true } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("아직 안 올린 완료 일정 \(status.postableScheduleCount)건")
-                        .font(WPFont.hak(13, .bold))
-                    Spacer(minLength: 0)
-                    Text("후기 쓰기")
-                        .font(WPFont.hak(13, .bold))
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .foregroundStyle(WPColor.primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(hex: 0xFFF2F6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 4)
-            .accessibilityIdentifier("feed.write")
-        }
     }
 
     // MARK: - 빈 상태 · 더 보기
@@ -237,6 +205,7 @@ struct FeedCard: View {
     var votePending: Bool
     var onVote: (FeedRules.Vote) -> Void
     var onOpen: () -> Void
+    var onCopy: () -> Void
 
     @Environment(\.openURL) private var openURL
 
@@ -257,6 +226,7 @@ struct FeedCard: View {
                         .lineLimit(1)
                     Stars(rating: post.rating)
                     Spacer(minLength: 0)
+                    if !post.isMine { ModerationMenu(targetType: "FEED", targetId: post.id).foregroundStyle(WPColor.fgMuted) }
                 }
 
                 placeLine
@@ -370,6 +340,13 @@ struct FeedCard: View {
         HStack(spacing: 8) {
             helpfulButton
             notHelpfulButton
+            Button(action: onCopy) {
+                Label("내 플랜에 담기", systemImage: "plus")
+                    .font(WPFont.hak(12.5, .bold))
+                    .foregroundStyle(WPColor.primary)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Color(hex: 0xFFF2F6), in: Capsule())
+            }.buttonStyle(.plain).accessibilityIdentifier("feed.copy.\(post.id)")
             Spacer(minLength: 0)
         }
     }

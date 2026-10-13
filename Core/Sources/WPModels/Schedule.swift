@@ -52,7 +52,7 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
     public var id: Int
     public var categoryName: String
     public var title: String
-    public var amount: Int?
+    public var amount: Double?
     /// "YYYY-MM-DD"
     public var startDate: String?
     /// 등록일 (ISO 문자열)
@@ -91,7 +91,7 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         id: Int,
         categoryName: String,
         title: String,
-        amount: Int? = nil,
+        amount: Double? = nil,
         startDate: String? = nil,
         createDate: String? = nil,
         status: ScheduleStatus? = nil,
@@ -127,7 +127,7 @@ public struct ScheduleItem: Codable, Hashable, Sendable, Identifiable {
         self.categoryName = try container.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         // 금액은 소수로 내려올 수 있다. Int 로 바로 받으면 항목 하나가 리스트 전체를 깨뜨린다.
-        self.amount = try container.decode(LooseInt.self, forKey: .amount).wrappedValue
+        self.amount = try container.decode(LooseDouble.self, forKey: .amount).wrappedValue
         self.startDate = try container.decodeIfPresent(String.self, forKey: .startDate)
         self.createDate = try container.decodeIfPresent(String.self, forKey: .createDate)
         self.status = try container.decodeIfPresent(ScheduleStatus.self, forKey: .status)
@@ -172,7 +172,7 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
     public var categoryName: String
     public var title: String
     public var payType: String
-    public var amount: Int
+    public var amount: Double
     /// "YYYY-MM-DD". `nil` 이면 **명시적 null 로 직렬화**된다.
     ///
     /// 날짜를 "미정" 으로 되돌리려면 `PATCH` 에서 키를 빼면 안 되고 `null` 을 보내야 한다.
@@ -200,7 +200,7 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
         categoryName: String,
         title: String,
         payType: String = PayType.other.rawValue,
-        amount: Int = 0,
+        amount: Double = 0,
         startDate: String?,
         location: String = "",
         locationLat: Double = 0,
@@ -287,14 +287,14 @@ public struct ScheduleWriteRequest: Codable, Hashable, Sendable {
 public struct PlanSettingRequest: Codable, Hashable, Sendable {
     /// "YYYY-MM-DD"
     public var weddingDate: String
-    public var budget: Int
+    public var budget: Double
     public var name: String
     public var requiredAgreementDate: String?
     public var adAgreementDate: String?
 
     public init(
         weddingDate: String,
-        budget: Int,
+        budget: Double,
         name: String,
         requiredAgreementDate: String? = nil,
         adAgreementDate: String? = nil
@@ -305,4 +305,17 @@ public struct PlanSettingRequest: Codable, Hashable, Sendable {
         self.requiredAgreementDate = requiredAgreementDate
         self.adAgreementDate = adAgreementDate
     }
+    private enum CodingKeys: String, CodingKey { case weddingDate, budget, name, requiredAgreementDate, adAgreementDate }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(weddingDate, forKey: .weddingDate)
+        try c.encode(budget, forKey: .budget)
+        try c.encode(name, forKey: .name)
+        if let requiredAgreementDate {
+            try c.encode(requiredAgreementDate, forKey: .requiredAgreementDate)
+            // Onboarding explicitly records marketing refusal; profile requests omit both keys.
+            try c.encode(adAgreementDate, forKey: .adAgreementDate)
+        }
+    }
+
 }

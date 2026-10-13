@@ -72,11 +72,24 @@ public struct ChatRoom: Codable, Hashable, Sendable, Identifiable {
     public var id: Int
     public var name: String
     public var memberList: [Member]?
+    public var isCouple: Bool
+    public var memberCount: Int?
 
-    public init(id: Int, name: String, memberList: [Member]? = nil) {
+    public init(id: Int, name: String, memberList: [Member]? = nil, isCouple: Bool = false, memberCount: Int? = nil) {
         self.id = id
         self.name = name
         self.memberList = memberList
+        self.isCouple = isCouple
+        self.memberCount = memberCount
+    }
+    private enum CodingKeys: String, CodingKey { case id, name, memberList, isCouple, memberCount }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        memberList = try c.decodeIfPresent([Member].self, forKey: .memberList)
+        isCouple = try c.decodeIfPresent(Bool.self, forKey: .isCouple) ?? false
+        memberCount = try c.decodeIfPresent(Int.self, forKey: .memberCount)
     }
 }
 
@@ -89,14 +102,14 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
     /// API typo maintained — 백엔드 계약이 `onwerName` 이다.
     public var onwerName: String
     public var weddingDate: String
-    public var budget: Int
-    public var remainingBudget: Int
+    public var budget: Double
+    public var remainingBudget: Double
     /// 아직 안 쓴 예정 몫(만원).
     ///
     /// 카드의 막대에서 **회색 구간**이다. `remainingBudget = budget - (예정 + 사용)`
     /// 이므로 실제 지출은 `budget - remainingBudget - plannedUseAmount` 로 낸다 —
     /// 분홍을 "남은 비율" 로 쓰면 아무것도 안 썼을 때 막대가 꽉 차 보인다.
-    public var plannedUseAmount: Int
+    public var plannedUseAmount: Double
     public var planCount: Int
     public var chatRooms: [ChatRoom]
     public var members: [Member]
@@ -110,9 +123,9 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
         roomId: Int,
         onwerName: String,
         weddingDate: String,
-        budget: Int,
-        remainingBudget: Int,
-        plannedUseAmount: Int = 0,
+        budget: Double,
+        remainingBudget: Double,
+        plannedUseAmount: Double = 0,
         planCount: Int,
         chatRooms: [ChatRoom] = [],
         members: [Member] = []
@@ -133,9 +146,9 @@ public struct Plan: Codable, Hashable, Sendable, Identifiable {
         self.roomId = try container.decode(Int.self, forKey: .roomId)
         self.onwerName = try container.decodeIfPresent(String.self, forKey: .onwerName) ?? ""
         self.weddingDate = try container.decodeIfPresent(String.self, forKey: .weddingDate) ?? ""
-        self.budget = try container.decodeIfPresent(Int.self, forKey: .budget) ?? 0
-        self.remainingBudget = try container.decodeIfPresent(Int.self, forKey: .remainingBudget) ?? 0
-        self.plannedUseAmount = try container.decode(LooseInt.self, forKey: .plannedUseAmount).wrappedValue ?? 0
+        self.budget = try container.decode(LooseDouble.self, forKey: .budget).wrappedValue ?? 0
+        self.remainingBudget = try container.decode(LooseDouble.self, forKey: .remainingBudget).wrappedValue ?? 0
+        self.plannedUseAmount = try container.decode(LooseDouble.self, forKey: .plannedUseAmount).wrappedValue ?? 0
         self.planCount = try container.decodeIfPresent(Int.self, forKey: .planCount) ?? 0
         self.chatRooms = try container.decodeIfPresent([ChatRoom].self, forKey: .chatRooms) ?? []
         self.members = try container.decodeIfPresent([Member].self, forKey: .members) ?? []
@@ -164,13 +177,16 @@ public struct RoomList: Codable, Hashable, Sendable {
 /// 웹 `SharePlanModal` 이 모달을 열 때 미리 받아 `{siteUrl}/share/{code}` 링크를 만든다.
 public struct ShareCode: Codable, Hashable, Sendable {
     public var shareCode: String
+    public var canInvite: Bool
 
-    public init(shareCode: String = "") {
+    public init(shareCode: String = "", canInvite: Bool = true) {
         self.shareCode = shareCode
+        self.canInvite = canInvite
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.shareCode = try container.decodeIfPresent(String.self, forKey: .shareCode) ?? ""
+        self.canInvite = try container.decodeIfPresent(Bool.self, forKey: .canInvite) ?? true
     }
 }

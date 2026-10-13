@@ -1,5 +1,7 @@
 import AuthenticationServices
 import Foundation
+import GoogleSignIn
+import UIKit
 import KakaoSDKAuth
 import KakaoSDKCommon
 import KakaoSDKUser
@@ -41,6 +43,30 @@ final class SocialLoginService {
     static func handleKakaoOpenURL(_ url: URL) -> Bool {
         guard isKakaoConfigured, AuthApi.isKakaoTalkLoginUrl(url) else { return false }
         return AuthController.handleOpenUrl(url: url)
+    }
+
+    static func handleGoogleOpenURL(_ url: URL) -> Bool { GIDSignIn.sharedInstance.handle(url) }
+
+    func signInWithGoogle(env: AppEnvironment) async throws {
+        guard let clientId = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
+              !clientId.isEmpty, !clientId.contains("$(") else {
+            throw APIError.backend(message: "Google 로그인 설정을 확인해 주세요.")
+        }
+        let server = Bundle.main.object(forInfoDictionaryKey: "GIDServerClientID") as? String
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientId, serverClientID: server)
+        guard var presenter = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+            .flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController else { throw SocialLoginError.failed }
+        while let presented = presenter.presentedViewController { presenter = presented }
+        do {
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+            guard let idToken = result.user.idToken?.tokenString else { throw SocialLoginError.failed }
+            let response: AuthTokenResult = try await env.api.send(Endpoint.googleLogin(idToken: idToken))
+            guard let token = response.value else { throw SocialLoginError.failed }
+            await env.tokenStore.save(token)
+            await env.refreshAuthState()
+        } catch let error as NSError where error.domain == kGIDSignInErrorDomain && error.code == -5 /* kGIDSignInErrorCodeCanceled */ {
+            throw SocialLoginError.cancelled
+        }
     }
 
     // MARK: - 카카오

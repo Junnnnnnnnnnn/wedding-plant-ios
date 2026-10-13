@@ -66,7 +66,7 @@ struct BudgetDonutView: View {
     private var arcs: [Arc] {
         var out: [Arc] = []
         var cursor: Double = 0
-        func push(_ key: String, _ value: Int, _ color: Color) {
+        func push(_ key: String, _ value: Double, _ color: Color) {
             let len = segments.ratio(value)
             guard len > 0 else { return }
             out.append(Arc(key: key, from: cursor, len: len, color: color))

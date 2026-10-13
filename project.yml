@@ -30,6 +30,10 @@ packages:
     url: https://github.com/kakao/kakao-ios-sdk
     from: "2.22.0"
 
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: "9.0.0"
+
 settings:
   base:
     # App 타깃은 Windows 에서 컴파일 검증이 불가능하므로, 블라인드 작성 코드가
@@ -58,6 +62,8 @@ targets:
       - path: App/Resources/Fonts
         buildPhase: resources
       - path: App/Resources/Images
+        buildPhase: resources
+      - path: App/Resources/Pass
         buildPhase: resources
       # Firebase 설정(FCM). 커밋하지 않으므로 보통 비어 있다.
       # `GoogleService-Info.plist` 를 이 폴더에 두고 xcodegen generate 를 다시 돌리면
@@ -106,6 +112,8 @@ targets:
         product: WPNetworking
       - package: WeddingPlantCore
         product: WPDomain
+      - package: GoogleSignIn
+        product: GoogleSignIn
       - package: Firebase
         product: FirebaseMessaging
       - package: KakaoOpenSDK
@@ -115,7 +123,7 @@ targets:
     info:
       path: App/Resources/Info.plist
       properties:
-        CFBundleDisplayName: 웨딩플랜
+        CFBundleDisplayName: 웨딩 플랜트
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # 한국 사용자 전용 앱. 이걸 지정하지 않으면 DatePicker 등 시스템 컴포넌트가
@@ -129,7 +137,13 @@ targets:
           - HakgyoansimDunggeunmisoB.ttf
           - TmoneyRoundWindRegular.ttf
           - TmoneyRoundWindExtraBold.ttf
+          - wp_pixel_11.ttf
+          - kakao_regular.ttf
+          - kakao_bold.ttf
+          - kakao_light.ttf
         # xcconfig 에서 주입된다. AppEnvironment.baseURL() 이 이 키를 읽는다.
+        GIDClientID: $(GOOGLE_IOS_CLIENT_ID)
+        GIDServerClientID: $(GOOGLE_SERVER_CLIENT_ID)
         API_BASE_URL: $(API_BASE_URL)
         WEB_BASE_URL: $(WEB_BASE_URL)
         # 공유 링크. 웹과 같은 주소(`/share/{code}`)는 Universal Link 로 받는 게 정석이지만
@@ -137,6 +151,8 @@ targets:
         # (도메인은 공개 저장소에 넣지 않는다). 그때까지는 커스텀 스킴으로 열어 확인한다:
         #   xcrun simctl openurl booted "weddingplant://share/ABC123"
         CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - $(GOOGLE_REVERSED_CLIENT_ID)
           - CFBundleURLName: com.zipshowkorea.weddingplant.share
             CFBundleURLSchemes:
               - weddingplant
@@ -165,6 +181,22 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
 
+  WeddingPlantTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: App/Tests
+    dependencies:
+      - target: WeddingPlant
+      - package: WeddingPlantCore
+        product: WPModels
+      - package: WeddingPlantCore
+        product: WPDomain
+      - package: WeddingPlantCore
+        product: WPUtils
+      - package: WeddingPlantCore
+        product: WPNetworking
+
   WeddingPlantUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -190,6 +222,7 @@ schemes:
       gatherCoverageData: false
       targets:
         - WeddingPlantUITests
+        - WeddingPlantTests
 
   # 백엔드 없이 채워진 화면을 보는 스킴.
   #

@@ -7,7 +7,7 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
     public var categoryName: String
     public var payType: String?
     /// 만원 단위. 소수로 올 수 있어 관대하게 받는다.
-    @LooseInt public var amount: Int?
+    @LooseDouble public var amount: Double?
     public var startDate: String?
     public var location: String?
     public var locationLat: Double?
@@ -63,7 +63,7 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         title: String = "",
         categoryName: String = "",
         payType: String? = nil,
-        amount: Int? = nil,
+        amount: Double? = nil,
         startDate: String? = nil,
         location: String? = nil,
         locationLat: Double? = nil,
@@ -78,7 +78,7 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         self.title = title
         self.categoryName = categoryName
         self.payType = payType
-        self._amount = LooseInt(wrappedValue: amount)
+        self._amount = LooseDouble(wrappedValue: amount)
         self.startDate = startDate
         self.location = location
         self.locationLat = locationLat
@@ -96,7 +96,7 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         self.categoryName = try container.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
         self.payType = try container.decodeIfPresent(String.self, forKey: .payType)
-        self._amount = try container.decode(LooseInt.self, forKey: .amount)
+        self._amount = try container.decode(LooseDouble.self, forKey: .amount)
         self.startDate = try container.decodeIfPresent(String.self, forKey: .startDate)
         self.location = try container.decodeIfPresent(String.self, forKey: .location)
         self.locationLat = try container.decodeIfPresent(Double.self, forKey: .locationLat)

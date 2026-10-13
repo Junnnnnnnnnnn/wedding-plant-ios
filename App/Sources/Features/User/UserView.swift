@@ -16,6 +16,7 @@ struct UserView: View {
     @StateObject private var model = UserViewModel()
 
     @State private var showDatePicker = false
+    @State private var showPass = false
     @State private var confirmSignOut = false
     @State private var confirmWithdraw = false
 
@@ -37,6 +38,7 @@ struct UserView: View {
             .padding(.vertical, 16)
         }
         .task { await model.load(env: env, guest: guest) }
+        .fullScreenCover(isPresented: $showPass) { PassView(roomId: env.boundRoomId) }
         .task(id: model.saved) {
             guard model.saved else { return }
             await model.startSavedResetTimer()
@@ -47,6 +49,9 @@ struct UserView: View {
         VStack(alignment: .leading, spacing: 0) {
             ProfileHeader(name: model.name, dDayLabel: model.dDayLabel)
 
+            Button { showPass = true } label: {
+                HStack { Image("pass_card_logo").resizable().scaledToFit().frame(width: 60, height: 48); VStack(alignment: .leading, spacing: 4) { Text("준비 패스").font(WPFont.hak(18, .bold)); Text("서류 보관 · 엑셀 · 결제일 알림 · 청첩장").font(WPFont.hak(11)) }; Spacer(); Image(systemName: "chevron.right") }.padding(18).background(Color(hex: 0xFFF4F7), in: RoundedRectangle(cornerRadius: 20))
+            }.buttonStyle(.plain).padding(.top, 20).accessibilityIdentifier("user.pass")
             Spacer().frame(height: 28)
 
             SettingsSectionHeader(symbol: "person.fill", label: "기본 정보")
@@ -62,8 +67,15 @@ struct UserView: View {
 
             Spacer().frame(height: 16)
 
+            if env.boundRoomId == nil {
+                LabeledField(label: "예식장") {
+                    BareInput(text: $model.weddingVenue, placeholder: "예식장을 적어 주세요")
+                }
+                Spacer().frame(height: 16)
+            }
             // 칸 자체가 눌린다 — 옆에 있던 보라색 캘린더 버튼은 하는 일이 같았고
             // **이 앱에 없는 색**이었다.
+            if env.boundRoomId == nil {
             LabeledField(label: "결혼식 날짜") {
                 Text(model.date.weddingDateText)
                     .font(WPFont.hak(16, .medium))
@@ -96,6 +108,8 @@ struct UserView: View {
                 .accessibilityIdentifier("user.budget")
             }
 
+            }
+
             Spacer().frame(height: 24)
 
             if let message = model.errorMessage {
@@ -117,6 +131,8 @@ struct UserView: View {
             // 경로가 있는지를 심사에서 본다. 문의는 쓰다가 막힌 사람이 닿는
             // 유일한 자리다. 모양과 문구는 `SupportLinks` 에 있고 웹·안드로이드와
             // 같은 시안(B안)이다.
+            NavigationLink("차단 관리") { BlockListView() }.font(WPFont.hak(14)).padding(.vertical, 14)
+            NavigationLink("결제일 알림 설정") { ReminderSettingsView() }.font(WPFont.hak(14)).padding(.vertical, 14)
             SupportLinks()
 
             Spacer().frame(height: 16)
@@ -303,7 +319,7 @@ private struct BareInput: View {
         TextField("", text: $text, prompt: promptText)
             .font(WPFont.hak(16, .medium))
             .foregroundStyle(WPColor.fgNeutral)
-            .keyboardType(numeric ? .numberPad : .default)
+            .keyboardType(numeric ? .decimalPad : .default)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .tint(WPColor.primary)

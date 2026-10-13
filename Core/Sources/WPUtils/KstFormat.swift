@@ -224,7 +224,14 @@ public func withThousands(_ value: Int) -> String {
     return negative ? "-" + out : out
 }
 
-/// 소수로 내려온 금액을 반올림해 천 단위로 끊는다.
+/// Android Intl-style display keeps up to three fractional digits.
 public func withThousands(_ value: Double) -> String {
-    withThousands(Int(value.rounded()))
+    guard value.isFinite else { return "0" }
+    let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.numberStyle = .decimal
+    formatter.maximumFractionDigits = 3
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
 }
+
+public func wpThousands(_ value: Double) -> String { withThousands(value) }

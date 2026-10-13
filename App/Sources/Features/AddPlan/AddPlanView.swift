@@ -66,6 +66,11 @@ struct AddPlanView: View {
                             loadingSkeleton
                         } else {
                             sheet
+                            if let id = model.editId, id > 0 {
+                                PassDocumentsView(scheduleId: id, canAdd: true).padding(.horizontal, 16).padding(.top, 16)
+                            } else if model.canSave {
+                                Text("계약서·영수증은 플랜을 저장한 뒤 수정하기에서 첨부할 수 있어요.").font(WPFont.hak(12)).foregroundStyle(.secondary).padding(16)
+                            }
                         }
 
                         if let message = model.errorMessage {
@@ -90,19 +95,16 @@ struct AddPlanView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden()
         .task { await model.load(env: env, guest: guest) }
-        .onChange(of: model.saved) { _, saved in
-            if saved {
-                onSaved()
-                dismiss()
+        .fullScreenCover(isPresented: $model.saved) {
+            PlanBloomSuccess(title: model.title, amount: Double(model.amount) ?? 0, remaining: model.remainingBudget, action: model.isEditMode ? .update : .create) {
+                model.saved = false; onSaved(); dismiss()
             }
         }
         .sheet(isPresented: $showCategoryModal) {
-            CategoryModal(
-                categories: model.categories,
-                added: model.addedCategories,
-                onSelect: { model.category = $0; showCategoryModal = false },
-                onAdd: { model.addCategory($0); showCategoryModal = false }
-            )
+            WeddingCategoryPicker(categories: model.categories, added: model.addedCategories, selected: model.category) { category, added in
+                for name in added { model.addCategory(name) }
+                model.category = category; showCategoryModal = false
+            }
         }
         .sheet(isPresented: $showDatePicker) {
             DatePickerSheet(date: $model.date) { model.setDate($0) }
@@ -130,6 +132,7 @@ struct AddPlanView: View {
                     dismiss()
                 }
                 .offset(x: -8)
+                .accessibilityIdentifier("addplan.back")
 
                 Text(model.isEditMode ? "플랜 수정" : "플랜 추가")
                     .font(WPFont.hak(18, .bold))
@@ -242,7 +245,7 @@ struct AddPlanView: View {
                 .foregroundStyle(WPColor.fgNeutral)
                 .multilineTextAlignment(.trailing)
                 // `type="number"` 를 쓰지 않는 것과 같은 이유로 숫자 키패드 + 문자열이다.
-                .keyboardType(.numberPad)
+                .keyboardType(.decimalPad)
                 .accessibilityIdentifier("addplan.amount")
 
                 Text("만원")
@@ -281,10 +284,10 @@ struct AddPlanView: View {
                 .frame(width: 18, height: 18)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("이미 결제했어요")
+                    Text(model.completed ? "완료한 일정이에요" : "이미 결제했어요")
                         .font(WPFont.hak(13.5, .bold))
                         .foregroundStyle(model.isPaid ? WPColor.positive : WPColor.fgMuted)
-                    Text("일정이 남아 있어도 쓴 돈으로 잡혀요")
+                    Text(model.completed ? "완료한 일정은 쓴 돈으로 잡혀요" : "일정이 남아 있어도 쓴 돈으로 잡혀요")
                         .font(WPFont.hak(11.5))
                         .foregroundStyle(WPColor.fgSubtle)
                 }
@@ -299,6 +302,7 @@ struct AddPlanView: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(model.completed)
         .accessibilityIdentifier("addplan.paid")
     }
 
@@ -704,114 +708,6 @@ private struct CategorySuggestions: View {
                 .buttonStyle(.plain)
             }
         }
-    }
-}
-
-/// 웹의 카테고리 선택 모달
-private struct CategoryModal: View {
-    var categories: [PlanCategory]
-    var added: [String]
-    var onSelect: (PlanCategory) -> Void
-    var onAdd: (String) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var newName = ""
-
-    var body: some View {
-        VStack(spacing: 0) {
-            LinearGradient(
-                colors: [WPColor.primary, Color(hex: 0xFF94A1)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(height: 6)
-
-            VStack(alignment: .leading, spacing: 0) {
-                Spacer().frame(height: 24)
-
-                HStack {
-                    Text("카테고리")
-                        .font(WPFont.hak(20, .black))
-                        .foregroundStyle(WPColor.textPrimary)
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(WPColor.gray400)
-                            .frame(width: 36, height: 36)
-                            .background(WPColor.gray50, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Spacer().frame(height: 16)
-
-                HStack(spacing: 8) {
-                    TextField("새 카테고리", text: $newName)
-                        .font(WPFont.hak(15))
-                        .padding(.horizontal, 14)
-                        .frame(height: 48)
-                        .background(WPColor.stone50, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    Button {
-                        onAdd(newName)
-                        newName = ""
-                    } label: {
-                        Text("추가")
-                            .font(WPFont.hak(15, .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .frame(height: 48)
-                            .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-
-                Spacer().frame(height: 20)
-
-                ScrollView {
-                    FlowRow(spacing: 8, lineSpacing: 8) {
-                        ForEach(allNames, id: \.self) { name in
-                            Button {
-                                onSelect(categories.first { $0.name == name } ?? PlanCategory(name: name, type: "USER"))
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text(name)
-                                        .font(WPFont.hak(14, .semibold))
-                                        .foregroundStyle(WPColor.textPrimary)
-                                    if isUserMade(name) {
-                                        Text("my")
-                                            .font(WPFont.hak(9, .black))
-                                            .foregroundStyle(WPColor.primary)
-                                    }
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(Color(hex: PlanRules.categoryPastelHex(name)), in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 24)
-        }
-        .background(Color.white)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(32)
-    }
-
-    private var allNames: [String] {
-        (categories.map(\.name) + added).reduce(into: [String]()) { result, name in
-            if !result.contains(name) { result.append(name) }
-        }
-    }
-
-    private func isUserMade(_ name: String) -> Bool {
-        added.contains(name) || categories.first { $0.name == name }?.isUserMade == true
     }
 }
 

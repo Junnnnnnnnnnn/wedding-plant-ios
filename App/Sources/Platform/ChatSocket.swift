@@ -85,6 +85,7 @@ final class ChatSocket: NSObject, ObservableObject {
     /// 방을 벗어날 때. 더 이상 재연결하지 않는다.
     func release() {
         closed = true
+        acknowledgements.removeAll()
         leaveRoom()
         teardown()
         connected = false
@@ -92,8 +93,20 @@ final class ChatSocket: NSObject, ObservableObject {
 
     // MARK: - 보내기
 
+    private var nextAck = 0
+    private var acknowledgements: [Int: () -> Void] = [:]
+    @discardableResult
+    func sendSchedule(_ scheduleId: Int, onAck: @escaping () -> Void) -> Bool {
+        guard connected, let roomId else { return false }
+        nextAck += 1; let id = nextAck
+        acknowledgements[id] = onAck
+        write(SocketIOPacket.event(namespace: Self.namespace, name: "message", argumentsJSON: "{\"room\":\(roomId),\"message\":\(scheduleId),\"messageType\":\"schedule\"}", acknowledgement: id))
+        Task { [weak self] in try? await Task.sleep(for: .seconds(10)); self?.acknowledgements.removeValue(forKey: id) }
+        return true
+    }
+
     func send(text: String) {
-        guard let roomId else { return }
+        guard connected, let roomId else { return }
         let body = "{\"room\":\(roomId),"
             + "\"message\":\(SocketIOPacket.jsonString(text)),"
             + "\"messageType\":\"text\"}"
@@ -203,7 +216,7 @@ final class ChatSocket: NSObject, ObservableObject {
     private func handle(frame: String) {
         // 무엇이든 받았다면 연결은 살아 있다.
         restartWatchdog()
-        Self.log.debug("← \(frame.prefix(400), privacy: .public)")
+        Self.log.debug("소켓 프레임 수신")
 
         switch SocketIOPacket.decode(frame) {
         case let .open(_, pingInterval, pingTimeout):
@@ -243,6 +256,11 @@ final class ChatSocket: NSObject, ObservableObject {
             onEvent?(.serverError(message))
             scheduleReconnect()
 
+        case let .acknowledgement(namespace, id, payload):
+            guard namespace == Self.namespace,
+                  let values = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [[String: Any]],
+                  values.first?["ok"] as? Bool == true else { break }
+            acknowledgements.removeValue(forKey: id)?()
         case .pong, .unknown:
             break
         }

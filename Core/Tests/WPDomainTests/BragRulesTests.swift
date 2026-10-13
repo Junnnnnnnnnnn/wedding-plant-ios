@@ -11,7 +11,7 @@ final class BragRulesTests: XCTestCase {
     private func item(
         _ id: Int,
         _ category: String,
-        _ amount: Int?,
+        _ amount: Double?,
         location: String? = nil,
         lat: Double? = nil,
         lng: Double? = nil

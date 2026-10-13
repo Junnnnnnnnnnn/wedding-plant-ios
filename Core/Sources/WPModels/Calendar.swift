@@ -29,7 +29,7 @@ public struct CalendarPlanItem: Codable, Hashable, Sendable, Identifiable {
     public var id: Int
     public var title: String
     public var categoryName: String
-    @LooseInt public var amount: Int?
+    @LooseDouble public var amount: Double?
     public var status: ScheduleStatus?
 
     public var isCompleted: Bool { status?.isCompleted ?? false }
@@ -38,13 +38,13 @@ public struct CalendarPlanItem: Codable, Hashable, Sendable, Identifiable {
         id: Int = 0,
         title: String = "",
         categoryName: String = "",
-        amount: Int? = nil,
+        amount: Double? = nil,
         status: ScheduleStatus? = nil
     ) {
         self.id = id
         self.title = title
         self.categoryName = categoryName
-        self._amount = LooseInt(wrappedValue: amount)
+        self._amount = LooseDouble(wrappedValue: amount)
         self.status = status
     }
 
@@ -53,8 +53,8 @@ public struct CalendarPlanItem: Codable, Hashable, Sendable, Identifiable {
         self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         self.categoryName = try container.decodeIfPresent(String.self, forKey: .categoryName) ?? ""
-        self._amount = try container.decodeIfPresent(LooseInt.self, forKey: .amount)
-            ?? LooseInt(wrappedValue: nil)
+        self._amount = try container.decodeIfPresent(LooseDouble.self, forKey: .amount)
+            ?? LooseDouble(wrappedValue: nil)
         self.status = try container.decodeIfPresent(ScheduleStatus.self, forKey: .status)
     }
 }

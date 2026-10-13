@@ -25,13 +25,22 @@ struct ChatView: View {
     @State private var openSchedule: ScheduleRef?
     @FocusState private var inputFocused: Bool
 
-    init(chatRoomId: Int) {
-        _model = StateObject(wrappedValue: ChatViewModel(chatRoomId: chatRoomId))
+    var standalone = false
+    var planRoomId: Int?
+    var weddingDate: String?
+    var partnerName: String?
+    @State private var showCouple = false
+    @State private var showPlanPicker = false
+    @State private var reportMessage: Int?
+
+    init(chatRoomId: Int, standalone: Bool = false, planRoomId: Int? = nil, weddingDate: String? = nil, partnerName: String? = nil) {
+        self.standalone = standalone; self.planRoomId = planRoomId; self.weddingDate = weddingDate; self.partnerName = partnerName
+        _model = StateObject(wrappedValue: ChatViewModel(chatRoomId: chatRoomId, planRoomId: planRoomId))
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            if standalone { coupleHeader } else { header }
 
             if model.loading {
                 LoadingBody()
@@ -42,6 +51,11 @@ struct ChatView: View {
             inputBar
         }
         .background(Color.white)
+        .sheet(isPresented: $showCouple) { SpouseInviteSheet() }
+        .sheet(isPresented: $showPlanPicker) { PickPlanSheet(roomId: model.planRoomId, model: model) }
+        .sheet(isPresented: Binding(get: { reportMessage != nil }, set: { if !$0 { reportMessage = nil } })) {
+            if let id = reportMessage { ReportContentSheet(targetType: "CHAT_MESSAGE", targetId: id, onHidden: {}) }
+        }
         .task { await model.start(env: env) }
         .onAppear {
             // 이 방을 보고 있는 동안에는 이 방 알림을 띄우지 않는다 (소켓으로 이미 화면에 뜬다).
@@ -55,11 +69,11 @@ struct ChatView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             // 백그라운드에 오래 있다 돌아오면 소켓이 죽어 있을 수 있다.
-            if phase == .active { model.onForeground() }
+            if phase == .active { model.onForeground(); Task { await model.loadActivities(env: env) } }
         }
         // 웹은 `/schedule-detail?id=...` 로 이동한다. 채팅은 전체 화면이라 커버로 띄운다.
         .fullScreenCover(item: $openSchedule) { schedule in
-            ScheduleDetailView(scheduleId: schedule.id)
+            ScheduleDetailView(scheduleId: schedule.id, roomId: model.planRoomId)
                 .environmentObject(env)
         }
         .sheet(isPresented: $showRenameSheet) {
@@ -84,6 +98,23 @@ struct ChatView: View {
     }
 
     // MARK: - 헤더
+
+    private var coupleHeader: some View {
+        BrandHead(corner: 22, horizontal: 16, top: 6, bottom: 6) {
+            HStack(spacing: 12) {
+                HStack(spacing: -8) {
+                    Text("나").foregroundStyle(WPColor.primary).frame(width: 32, height: 32).background(.white, in: Circle())
+                    Text(String((partnerName ?? "?").prefix(1))).foregroundStyle(.white).frame(width: 32, height: 32).background(Color(hex: 0xA78BFA), in: Circle())
+                }.font(.custom("KakaoSmallSans-Bold", size: 12))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(partnerName ?? "우리 둘의 대화").font(.custom("KakaoSmallSans-Bold", size: 18))
+                    Text(CoupleChatRules.describeWeddingDay(weddingDate) ?? "우리 둘의 대화").font(.custom("KakaoSmallSans-Regular", size: 12.5)).opacity(0.85)
+                }.foregroundStyle(.white)
+                Spacer()
+                Button { showCouple = true } label: { Image(systemName: "ellipsis").rotationEffect(.degrees(90)).foregroundStyle(.white).frame(width: 36, height: 36) }.accessibilityLabel("신랑 · 신부 관리")
+            }.frame(minHeight: 52)
+        }.ignoresSafeArea(edges: .top)
+    }
 
     private var header: some View {
         HStack(spacing: 12) {
@@ -152,19 +183,30 @@ struct ChatView: View {
                             .onAppear { Task { await model.loadMore(env: env) } }
                     }
 
-                    ForEach(Array(model.lines.enumerated()), id: \.element.id) { index, line in
+                    let items = ChatActivityRules.merge(messages: model.lines, activities: model.activities, hasMore: model.hasMore)
+                    ForEach(Array(items.enumerated()), id: \.element.id) { offset, item in
                         VStack(spacing: 24) {
-                            if ChatTimeline.showsDateHeader(model.lines, at: index) {
-                                DateDivider(text: ChatTimeline.dateHeaderText(line.dayKey))
+                            if offset == 0 || items[offset - 1].dayKey != item.dayKey {
+                                DateDivider(text: ChatTimeline.dateHeaderText(item.dayKey))
                             }
-                            MessageRow(
-                                line: line,
-                                showsSenderName: ChatTimeline.showsSenderName(model.lines, at: index)
-                            ) { scheduleId in
-                                openSchedule = ScheduleRef(id: scheduleId)
+                            switch item {
+                            case .message(let line, let index):
+                                MessageRow(line: line, showsSenderName: ChatTimeline.showsSenderName(model.lines, at: index)) { scheduleId in
+                                    openSchedule = ScheduleRef(id: scheduleId)
+                                }.contextMenu {
+                                    if !line.isMine, let id = Int(line.id) { Button("신고하기", role: .destructive) { reportMessage = id } }
+                                    if let text = line.text { Button("복사") { UIPasteboard.general.string = text } }
+                                }
+                            case .activity(let activity):
+                                HStack(spacing: 6) {
+                                    Image(systemName: activity.type == "SCHEDULE_COMPLETED" ? "checkmark.circle" : "plus.circle").foregroundStyle(WPColor.primary)
+                                    Text(ChatActivityRules.sentence(activity)).foregroundStyle(Color(hex: 0x7C7580))
+                                    if activity.targetType == "SCHEDULE", let id = activity.targetId {
+                                        Button("보기") { openSchedule = ScheduleRef(id: id) }.foregroundStyle(WPColor.primary)
+                                    }
+                                }.font(.custom("KakaoSmallSans-Regular", size: 11)).frame(maxWidth: .infinity).padding(.vertical, 6)
                             }
-                        }
-                        .id(line.id)
+                        }.id(item.id)
                     }
 
                     // 항상 아래로 붙이기 위한 표식
@@ -202,12 +244,9 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 8) {
-            // 사진 첨부는 웹도 아직 동작하지 않는다. 자리만 맞춰 둔다.
-            Image(systemName: "photo")
-                .font(.system(size: 18))
-                .foregroundStyle(WPColor.stone400)
-                .frame(width: 44, height: 44)
-                .background(WPColor.gray50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Button { showPlanPicker = true } label: {
+                Image(systemName: "plus").font(.system(size: 20)).frame(width: 44, height: 44).background(WPColor.gray50, in: RoundedRectangle(cornerRadius: 16))
+            }.disabled(!model.connected).accessibilityLabel("플랜 올리기")
 
             TextField("메시지를 입력하세요...", text: $model.input, axis: .vertical)
                 .font(WPFont.tmoney(16))

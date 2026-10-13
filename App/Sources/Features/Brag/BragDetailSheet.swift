@@ -42,6 +42,9 @@ struct BragDetailSheet: View {
             .navigationTitle(model.detail?.nickname ?? "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    if model.detail?.isMine == false { ModerationMenu(targetType: "BRAG", targetId: bragId) { dismiss() } }
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("닫기") { dismiss() }
                 }

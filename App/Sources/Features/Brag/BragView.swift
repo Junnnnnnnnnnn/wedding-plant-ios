@@ -16,6 +16,7 @@ import WPUtils
 /// 카드 높이가 달라도 톱니가 생기지 않는다. 넓은 화면 전용 배치는 앱에 옮기지
 /// 않는다.
 struct BragView: View {
+    var titleSlot: AnyView? = nil
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var model = BragViewModel()
     @State private var openedId: Int?
@@ -65,6 +66,7 @@ struct BragView: View {
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load(env: env, replace: true) }
+        .onChange(of: env.moderationRevision) { _, _ in Task { await model.load(env: env, replace: true) } }
         // 상세는 **페이지가 아니라 모달**이다(시안 M5-C).
         .sheet(item: Binding(
             get: { openedId.map(BragSheetTarget.init) },
@@ -76,18 +78,17 @@ struct BragView: View {
     }
 
     private var head: some View {
-        BrandHead {
-            Text("자랑하기")
-                .font(WPFont.hak(18, .bold))
-                .tracking(-0.02 * 18)
-                .foregroundStyle(.white)
-
-            Spacer().frame(height: 10)
-
-            Text("남의 웨딩 플랜을 그대로 들여다봅니다")
-                .font(WPFont.hak(14))
-                .foregroundStyle(.white.opacity(0.8))
+        ExploreHead(switcher: titleSlot ?? AnyView(Text("자랑하기").font(WPFont.hak(18, .bold)).foregroundStyle(.white)),
+                    headline: "다른 커플은 어떻게 준비했을까", stats: headerStats,
+                    loading: model.loading && model.posts.isEmpty) { EmptyView() }
+    }
+    private var headerStats: [(String, String)] {
+        var stats = [("올라온 플랜", "\(model.total)장")]
+        if let my = model.myStatus {
+            stats.append(("내 플랜", my.published ? "공개 중" : "비공개"))
+            if my.published { stats.append(("받은 좋아요", String(my.likeCount))) }
         }
+        return stats
     }
 
     private var emptyState: some View {

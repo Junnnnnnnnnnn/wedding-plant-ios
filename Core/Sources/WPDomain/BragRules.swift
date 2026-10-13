@@ -12,7 +12,7 @@ public enum BragRules {
         public var categoryName: String
         public var items: [BragPlanItem]
         /// **지출과 예정을 함께 센다** (완료 185 + 예정 35 = 220).
-        public var subtotal: Int
+        public var subtotal: Double
         /// 왼쪽 범례와 같은 색을 쓰기 위한 자리. `nil` 이면 무채색이다.
         public var colorIndex: Int?
 

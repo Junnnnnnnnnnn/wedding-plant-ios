@@ -13,6 +13,7 @@ final class UserViewModel: ObservableObject {
     @Published var loading = true
     @Published var loggedIn = false
     @Published var name = ""
+    @Published var weddingVenue = ""
     @Published var date: KstDate = KstDate.today()
     /// 만 원 단위. 문자열로 들고 있다 저장 시 숫자로 바꾼다.
     @Published var budget = ""
@@ -35,7 +36,7 @@ final class UserViewModel: ObservableObject {
             loggedIn = false
             name = guest.name
             date = guest.weddingDate ?? KstDate.today()
-            budget = guest.budget.map(String.init) ?? ""
+            budget = guest.budget.map(MoneyInput.text) ?? ""
             return
         }
 
@@ -46,14 +47,15 @@ final class UserViewModel: ObservableObject {
         // 화면이 스피너를 직접 그리므로 전역 오버레이는 띄우지 않는다.
         let user = try? await env.api.send(Endpoint.user(), decoding: PlanUser.self)
 
+        weddingVenue = user?.weddingVenue ?? ""
         let serverName = user?.name?.trimmingCharacters(in: .whitespaces) ?? ""
         name = serverName.isEmpty ? guest.name : serverName
         date = user?.weddingDate.flatMap { KstDate(dateString: $0) } ?? guest.weddingDate ?? KstDate.today()
         // 예산은 0도 유효한 값이라 `?? 기본값` 으로 뭉개면 안 된다.
         if let value = user?.budget {
-            budget = String(value)
+            budget = MoneyInput.text(value)
         } else {
-            budget = guest.budget.map(String.init) ?? ""
+            budget = guest.budget.map(MoneyInput.text) ?? ""
         }
     }
 
@@ -65,8 +67,8 @@ final class UserViewModel: ObservableObject {
     }
 
     func setBudget(_ value: String) {
-        // 숫자만. 음수·소수는 애초에 들어올 수 없다.
-        budget = String(value.filter(\.isNumber).prefix(9))
+        // 서버에서 가져온 소수 금액도 편집 중 유지한다.
+        budget = MoneyInput.accept(value, previous: budget)
         errorMessage = nil
     }
 
@@ -92,7 +94,7 @@ final class UserViewModel: ObservableObject {
         let token = await env.tokenStore.currentToken()
         guard let token, !token.isEmpty else {
             // 게스트는 로컬 저장으로 끝낸다.
-            guest.save(name: trimmedName, budget: Int(budget), weddingDate: date)
+            guest.save(name: trimmedName, budget: Double(budget), weddingDate: date)
             saved = true
             errorMessage = nil
             return
@@ -102,20 +104,17 @@ final class UserViewModel: ObservableObject {
         errorMessage = nil
         defer { saving = false }
 
-        let request = PlanSettingRequest(
-            weddingDate: date.dateString,
-            budget: Int(budget) ?? 0,
-            name: trimmedName,
-            // GET 응답에 동의 일자가 없어 오늘 날짜로 보낸다 (웹·안드로이드와 동일).
-            requiredAgreementDate: KstDate.todayString(),
-            // 마케팅 동의는 여기서 바꾸지 않는다. 생략하면 기존 값이 유지된다.
-            adAgreementDate: nil
-        )
-
         do {
-            try await env.api.sendIgnoringData(Endpoint.createSetting(request))
+            let request: HTTPRequest
+            if env.boundRoomId != nil {
+                request = try .json(.post, "/plan/setting", body: ["name": trimmedName])
+            } else {
+                struct Profile: Encodable { let weddingDate: String; let budget: Double; let name: String; let weddingVenue: String }
+                request = try .json(.post, "/plan/setting", body: Profile(weddingDate: date.dateString, budget: Double(budget) ?? 0, name: trimmedName, weddingVenue: weddingVenue))
+            }
+            try await env.api.sendIgnoringData(request)
             // 로컬 사본도 맞춰 둔다 (게스트 → 로그인 이관 로직이 이 값을 본다)
-            guest.save(name: trimmedName, budget: Int(budget), weddingDate: date)
+            guest.save(name: trimmedName, budget: Double(budget), weddingDate: date)
             saved = true
         } catch {
             errorMessage = "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."

@@ -19,6 +19,7 @@ final class AppEnvironment: ObservableObject {
     let isDemo: Bool
 
     /// 로그인 여부. 화면 전환 판단에 쓴다.
+    @Published var moderationRevision = 0
     @Published var isAuthenticated: Bool = false
 
     /// 공유 링크로 들어왔을 때의 코드. 값이 있으면 참여 화면을 덮어 띄운다.
@@ -40,6 +41,8 @@ final class AppEnvironment: ObservableObject {
     /// 앱에는 주소가 없으므로 **여기 한 곳**에 두고 화면들이 읽는다 — 목록을
     /// 화면마다 복사할 일이 없다.
     @Published var boundRoom: BoundRoom.Cache = .unknown
+    @Published var boundRoomError: String?
+    @Published var roomsRevision = 0
 
     /// 귀속된 방 그 자체. `/plan/room/list` 가 이름·날짜·멤버를 다 주므로 방 상세
     /// 엔드포인트를 따로 부르지 않는다.
@@ -167,9 +170,11 @@ final class AppEnvironment: ObservableObject {
         let planUserId = JWTDecoder.planUserId(from: token)
         guard let list = try? await api.send(Endpoint.roomList(), decoding: RoomList.self) else {
             // 못 물어봤다고 귀속을 지우지 않는다 — 아는 값이 있으면 그대로 둔다.
-            if boundRoom == .unknown { boundRoom = .notBound }
+            boundRoomError = "플랜을 불러오지 못했어요. 다시 시도해 주세요."
             return
         }
+        guard await tokenStore.currentToken().flatMap({ JWTDecoder.planUserId(from: $0) }) == planUserId else { return }
+        boundRoomError = nil
         if let room = BoundRoom.find(in: list.list, planUserId: planUserId) {
             boundRoom = .bound(roomId: room.roomId)
             boundRoomPlan = room

@@ -173,15 +173,17 @@ final class APIClientTests: XCTestCase {
 
     // MARK: - 401 처리
 
-    func test_401이면_unauthorized를_던지고_토큰을_지운다() async throws {
-        let transport = MockTransport(always: HTTPResponse(status: 401))
-        let (client, store) = makeClient(transport: transport, token: try validToken())
-
-        await assertThrows(.unauthorized) {
-            _ = try await client.send(Endpoint.user(), decoding: PlanUser.self)
+    func test_rejectedRequestsPreserveSessionAndStatus() async throws {
+        for status in [401, 403] {
+            let token = try validToken()
+            let transport = MockTransport(always: HTTPResponse(status: status))
+            let (client, store) = makeClient(transport: transport, token: token)
+            await assertThrows(.http(status: status, body: "")) {
+                _ = try await client.send(Endpoint.user(), decoding: PlanUser.self)
+            }
+            let remaining = await store.currentToken()
+            XCTAssertEqual(remaining, token)
         }
-        let remaining = await store.currentToken()
-        XCTAssertNil(remaining, "401 이후에도 만료 토큰이 남아 있으면 무한 재시도가 발생한다")
     }
 
     func test_토큰이_없으면_네트워크를_타지_않고_unauthorized다() async throws {
@@ -195,19 +197,15 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
-    func test_만료된_토큰이면_네트워크를_타지_않고_unauthorized다() async throws {
-        // 만료가 확실한 토큰은 왕복 비용을 쓰지 않고 클라이언트에서 바로 걸러낸다.
-        let expired = try makeToken(["exp": Date().timeIntervalSince1970 - 600])
-        let transport = MockTransport()
+    func test_expiredTokenReachesServerAndRenewalIsStored() async throws {
+        let expired = try makeToken(["exp": 1])
+        let transport = MockTransport(always: HTTPResponse(status: 204, headers: ["x-ReNeWeD-ToKeN": "renewed"]))
         let (client, store) = makeClient(transport: transport, token: expired)
-
-        await assertThrows(.unauthorized) {
-            _ = try await client.send(Endpoint.user(), decoding: PlanUser.self)
-        }
+        try await client.sendIgnoringData(Endpoint.user())
         let count = await transport.recordedRequests.count
-        XCTAssertEqual(count, 0)
+        XCTAssertEqual(count, 1)
         let remaining = await store.currentToken()
-        XCTAssertNil(remaining)
+        XCTAssertEqual(remaining, "renewed")
     }
 
     // MARK: - 봉투/에러 처리

@@ -31,6 +31,7 @@ public enum SocketIOPacket {
         /// `["이벤트이름", 인자...]` — 인자는 원본 JSON 문자열로 넘긴다.
         case event(namespace: String, name: String, payload: String)
         case connectError(namespace: String, message: String)
+        case acknowledgement(namespace: String, id: Int, payload: String)
         /// 해석하지 못한 프레임. 무시해도 되지만 로그용으로 남긴다.
         case unknown(raw: String)
     }
@@ -52,8 +53,8 @@ public enum SocketIOPacket {
     }
 
     /// 이벤트 발신. `argumentsJSON` 은 **인자 하나**를 나타내는 JSON 문자열이다.
-    public static func event(namespace: String, name: String, argumentsJSON: String) -> String {
-        "42" + normalized(namespace) + ",[" + jsonString(name) + "," + argumentsJSON + "]"
+    public static func event(namespace: String, name: String, argumentsJSON: String, acknowledgement: Int? = nil) -> String {
+        "42" + normalized(namespace) + "," + (acknowledgement.map(String.init) ?? "") + "[" + jsonString(name) + "," + argumentsJSON + "]"
     }
 
     /// 인자가 없는 이벤트.
@@ -105,6 +106,10 @@ public enum SocketIOPacket {
         case "2":
             guard let (name, argument) = splitEvent(payload) else { return .unknown(raw: raw) }
             return .event(namespace: namespace, name: name, payload: argument)
+        case "3":
+            let digits = payload.prefix { $0.isASCII && $0.isNumber }
+            guard let id = Int(digits) else { return .unknown(raw: raw) }
+            return .acknowledgement(namespace: namespace, id: id, payload: String(payload.dropFirst(digits.count)))
         case "4":
             // 문자열 하나로 올 때도, `{ "message": ... }` 로 올 때도 있다.
             let object = jsonDictionary(payload)

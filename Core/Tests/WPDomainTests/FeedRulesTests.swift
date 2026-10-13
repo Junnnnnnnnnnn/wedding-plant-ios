@@ -12,7 +12,7 @@ final class FeedRulesTests: XCTestCase {
     private func post(
         role: String = "UNKNOWN",
         dday: Int? = nil,
-        amount: Int? = nil,
+        amount: Double? = nil,
         lat: Double? = nil,
         lng: Double? = nil,
         title: String = "SG웨딩홀"

@@ -1,115 +1,53 @@
 import SwiftUI
 
-/// 웹 `BottomTabBar` 의 TabType. 라벨 문구도 웹 그대로다.
-///
-/// - Note: `settings` 라벨이 "Settings" 로 영문인 것은 웹이 그렇기 때문이다. 임의로 한글화하지 말 것.
 enum WPTab: String, CaseIterable, Identifiable {
-    case home
-    case feed
-    case rooms
-    case settings
-
+    case home, schedule, add, explore, rooms
     var id: String { rawValue }
-
     var label: String {
-        switch self {
-        case .home: return "홈"
-        case .feed: return "피드"
-        case .rooms: return "참여 플랜"
-        case .settings: return "Settings"
-        }
+        switch self { case .home: "홈"; case .schedule: "일정"; case .add: "플랜 추가"; case .explore: "둘러보기"; case .rooms: "채팅" }
     }
-
-    /// 웹 `tabs.ts` 의 `TAB_ITEMS` · 안드로이드 `BottomTabBar` 와 **같은 그림**의 SF Symbol.
-    ///
-    /// 웹이 아이콘을 고른 이유를 코드에 적어 두었고 안드로이드가 그대로 따랐는데,
-    /// 여기만 달랐다.
-    ///
-    /// - **피드는 돋보기가 아니라 글 목록이다.** 이 화면은 검색하는 곳이 아니라
-    ///   남이 올린 후기를 훑는 곳이라, 돋보기는 **없는 기능을 약속한다.**
-    /// - **참여 플랜은 격자가 아니라 사람이다.** 격자는 무엇이 모여 있는지를
-    ///   말하지 않는다.
-    ///
-    /// 채움(`.fill`)이 아니라 선 그림인 것도 웹(lucide)·안드로이드(Outlined)와
-    /// 맞춘 것이다. iOS 관습은 채움이지만 세 앱이 같아야 한다는 쪽이 앞선다.
     var symbol: String {
-        switch self {
-        case .home: return "house"
-        case .feed: return "note.text"
-        case .rooms: return "person.2"
-        case .settings: return "gearshape"
-        }
+        switch self { case .home: "house"; case .schedule: "calendar"; case .add: "plus"; case .explore: "magnifyingglass"; case .rooms: "bubble" }
     }
 }
 
-/// 웹 `BottomTabBar` 포팅.
-///
-/// iOS 기본 `TabView` 를 쓰지 않는 이유: 웹·안드로이드가 흰 배경에 4칸 균등 배치인
-/// 커스텀 바를 쓰고 있어서, `TabView` 로는 같은 모양이 나오지 않는다.
-///
-/// **피드는 이제 실제 화면으로 간다.** 예전의 "서비스 준비중" 알림은 웹·안드로이드
-/// 양쪽에서 이미 지웠다 — 눌러도 아무 일이 없는 탭은 앱 심사(애플 2.1)에도 걸린다.
 struct BottomTabBar: View {
     @Binding var active: WPTab
     var unreadCount: Int = 0
-
+    var onAdd: () -> Void = {}
+    var onSelect: () -> Void = {}
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(WPTab.allCases) { tab in
-                TabItem(
-                    tab: tab,
-                    active: active == tab,
-                    badgeCount: tab == .rooms ? unreadCount : 0
-                ) {
-                    active = tab
+        VStack(spacing: 0) {
+            Rectangle().fill(Color.black.opacity(0.06)).frame(height: 0.5)
+            HStack(spacing: 0) {
+                ForEach(WPTab.allCases) { tab in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if tab == .add { onAdd() } else { active = tab; onSelect() }
+                    } label: {
+                        VStack(spacing: 3) {
+                            ZStack(alignment: .topTrailing) {
+                                if tab == .add {
+                                    Image("tab_add").resizable().scaledToFit().frame(width: 22, height: 22).foregroundStyle(.white)
+                                        .frame(width: 42, height: 42).background(WPColor.primary, in: Circle())
+                                        .shadow(color: WPColor.primary.opacity(0.4), radius: 6, y: 4)
+                                        .offset(y: -7).frame(width: 22, height: 28)
+                                } else {
+                                    Image("tab_" + tab.rawValue).resizable().scaledToFit().frame(width: 22, height: 22)
+                                    if tab == .rooms && unreadCount > 0 {
+                                        Text(verbatim: unreadCount > 9 ? "9+" : "\(unreadCount)")
+                                            .font(WPFont.hak(9, .bold)).foregroundStyle(.white).padding(3)
+                                            .background(WPColor.primary, in: Circle()).offset(x: 8, y: -5)
+                                    }
+                                }
+                            }
+                            Text(tab.label).font(WPFont.hak(10, .bold))
+                        }.foregroundStyle(active == tab ? WPColor.primary : Color(hex: 0x868B94))
+                            .frame(maxWidth: .infinity).frame(height: 42).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityIdentifier("tab.\(tab.rawValue)")
+                        .accessibilityAddTraits(active == tab ? .isSelected : [])
                 }
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.white)
-        // 가이드의 마지막 스텝이 이 앵커를 짚는다. **이름을 바꾸지 말 것.**
-        .guideAnchor("main-bottom-nav")
-    }
-}
-
-private struct TabItem: View {
-    var tab: WPTab
-    var active: Bool
-    var badgeCount: Int
-    var action: () -> Void
-
-    var body: some View {
-        // 웹 BottomTabBar: 활성 #ffaab8, 비활성 #99a1af
-        let tint = active ? WPColor.accent : WPColor.tabInactive
-
-        Button(action: action) {
-            VStack(spacing: 2) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: tab.symbol)
-                        .font(.system(size: 20))
-                        .frame(width: 24, height: 24)
-                        .foregroundStyle(tint)
-
-                    if badgeCount > 0 {
-                        Text(verbatim: badgeCount > 9 ? "9+" : "\(badgeCount)")
-                            .font(WPFont.hak(9, .black))
-                            .foregroundStyle(.white)
-                            .frame(width: 16, height: 16)
-                            .background(WPColor.primary, in: Circle())
-                            .offset(x: 12, y: -6)
-                    }
-                }
-                Text(tab.label)
-                    .font(WPFont.hak(10))
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-            }
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("tab.\(tab.rawValue)")
+            }.padding(.top, 8).padding(.bottom, 16)
+        }.background(.white)
     }
 }

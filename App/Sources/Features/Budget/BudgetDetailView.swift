@@ -334,7 +334,7 @@ private struct CategoryTable: View {
         }
     }
 
-    private func numberCell(_ value: Int, color: Color, bold: Bool = false) -> some View {
+    private func numberCell(_ value: Double, color: Color, bold: Bool = false) -> some View {
         Text(withThousands(value))
             .font(WPFont.tmoney(13, bold ? .bold : .regular))
             .tracking(-0.02 * 13)

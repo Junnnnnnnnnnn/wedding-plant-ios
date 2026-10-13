@@ -46,3 +46,46 @@ extension KeyedDecodingContainer {
         try decodeIfPresent(LooseInt.self, forKey: key) ?? LooseInt(wrappedValue: nil)
     }
 }
+
+// Monetary values must preserve fractional ten-thousand-won units.
+@propertyWrapper
+public struct LooseDouble: Codable, Hashable, Sendable {
+    public var wrappedValue: Double?
+
+    public init(wrappedValue: Double?) {
+        self.wrappedValue = wrappedValue
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self.wrappedValue = nil
+        } else if let intValue = try? container.decode(Int.self) {
+            self.wrappedValue = Double(intValue)
+        } else if let doubleValue = try? container.decode(Double.self) {
+            self.wrappedValue = doubleValue.isFinite ? doubleValue : nil
+        } else if let stringValue = try? container.decode(String.self) {
+            let trimmed = stringValue.trimmingCharacters(in: .whitespaces)
+            self.wrappedValue = Double(trimmed).flatMap { $0.isFinite ? $0 : nil }
+        } else {
+            self.wrappedValue = nil
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let wrappedValue {
+            try container.encode(wrappedValue)
+        } else {
+            try container.encodeNil()
+        }
+    }
+}
+
+extension KeyedDecodingContainer {
+    /// 키 자체가 없을 때도 `nil` 로 처리되도록 하는 오버로드.
+    /// (`@LooseDouble` 프로퍼티는 optional 이므로 키 누락을 허용해야 한다.)
+    public func decode(_ type: LooseDouble.Type, forKey key: Key) throws -> LooseDouble {
+        try decodeIfPresent(LooseDouble.self, forKey: key) ?? LooseDouble(wrappedValue: nil)
+    }
+}

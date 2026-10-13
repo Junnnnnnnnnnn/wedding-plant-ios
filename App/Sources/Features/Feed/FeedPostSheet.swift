@@ -18,6 +18,7 @@ import WPUtils
 /// 안 보내면 서버가 장소 없는 후기로 받는다 — 청첩장·예물·신혼여행처럼 지도에
 /// 없는 게 정상인 카테고리가 있고, 막으면 공급이 죽는다.
 struct FeedPostSheet: View {
+    var initialScheduleId: Int? = nil
     var onPosted: () -> Void
 
     @EnvironmentObject private var env: AppEnvironment
@@ -280,6 +281,7 @@ struct FeedPostSheet: View {
             return
         }
         postables = page.list
+        if let initialScheduleId { selected = page.list.first { $0.scheduleId == initialScheduleId } }
     }
 
     private func submit() async {

@@ -63,11 +63,13 @@ struct MainView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
     @StateObject private var model = MainViewModel()
+    @StateObject private var invitation = InvitationStore()
     @State private var path = NavigationPath()
     @State private var showAddPlan = false
     /// `/plan/brag/my` 를 홈이 다시 그릴 때마다 또 부르지 않도록 하나로 들고 있는다.
     @StateObject private var bragToggle = BragToggleViewModel()
     @State private var showInvite = false
+    @State private var showPass = false
     @EnvironmentObject private var guide: GuideController
 
     /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
@@ -84,12 +86,18 @@ struct MainView: View {
 
         return VStack(spacing: 0) {
             ScrollView {
-                // **`id` 를 loading 에 묶는다.** 없으면 데이터가 온 뒤에도 이미
-                // 그려진 앞자리가 뼈대인 채로 남는다 — LazyVStack 이 realized 된
-                // 행을 위치로 재사용해서, 새로 온 카드는 뒷자리에만 들어갔다.
-                // (실제로 "이번 달에 할 일 3" 인데 앞 두 장이 뼈대로 남았다.)
-                LazyVStack(alignment: .leading, spacing: 0) {
+                // 높이가 비동기로 바뀌는 정원·결제 카드와 가이드 좌표를 함께 배치한다.
+                // LazyVStack은 작은 화면의 스크롤 중 배치 계산이 반복될 수 있어 전체 높이를 확정한다.
+                VStack(alignment: .leading, spacing: 0) {
                     head
+                    HomeInvitationEntry(model: invitation).padding(.horizontal, 16).padding(.top, 16)
+                    if !model.planLoading && model.errorMessage == nil && !model.isGuest {
+                        PayThisWeekView(schedules: model.planned + model.completed, today: today,
+                            roomId: model.roomIdValue,
+                            showReminder: !model.isRoomView || ["OWNER", "SPOUSE"].contains(model.myPermission?.rawValue.uppercased() ?? ""),
+                            onSelect: { path.append($0) })
+                    }
+
 
                     SectionHeader(
                         title: "이번 달에 할 일",
@@ -152,8 +160,12 @@ struct MainView: View {
         // 숫자가 비친다.
         .overlay {
             if env.boundRoom.needsCover {
-                Color.white.ignoresSafeArea()
-                    .accessibilityIdentifier("main.boundCover")
+                ZStack {
+                    Color.white.ignoresSafeArea()
+                    if let error = env.boundRoomError {
+                        VStack(spacing: 16) { Text(error); Button("다시 시도") { Task { await env.refreshBoundRoom(); if !env.boundRoom.needsCover { await model.load(env: env, guest: guest) } } } }
+                    } else { ProgressView() }
+                }.accessibilityIdentifier("main.boundCover")
             }
         }
         .task {
@@ -161,10 +173,12 @@ struct MainView: View {
             // 방을 먼저 정하고 목록을 받는다. 순서를 뒤집으면 개인 플랜을 한 번
             // 그린 뒤 방 플랜으로 바뀐다.
             await env.refreshBoundRoom()
+            guard !env.boundRoom.needsCover else { return }
             await model.load(env: env, guest: guest)
+            await invitation.load(env)
         }
         .navigationDestination(for: Int.self) { scheduleId in
-            ScheduleDetailView(scheduleId: scheduleId)
+            ScheduleDetailView(scheduleId: scheduleId, roomId: model.roomIdValue)
         }
         .navigationDestination(for: BudgetRoute.self) { route in
             BudgetDetailView(roomId: route.roomId.map(String.init))
@@ -175,6 +189,7 @@ struct MainView: View {
         .navigationDestination(for: BragRoute.self) { _ in
             BragView()
         }
+        .fullScreenCover(isPresented: $showPass) { PassView(roomId: model.roomIdValue) }
         .sheet(isPresented: $showInvite) {
             SpouseInviteSheet()
                 .environmentObject(env)
@@ -191,25 +206,20 @@ struct MainView: View {
     // MARK: - 머리 면
 
     private var head: some View {
-        BrandHead {
+        BrandHead(bottom: 0, overhang: 72) {
             HStack(spacing: 8) {
                 if model.planLoading {
                     SkeletonBox(width: 110, height: 22, onBrand: true)
                 } else {
-                    // 이름은 "누구의 플랜인지" 확인시키는 라벨이라 18pt 로 낮춘다(예전 30pt).
-                    Text(model.displayName.isEmpty ? "이름" : model.displayName)
-                        .font(WPFont.tmoney(18, .bold))
-                        .tracking(-0.02 * 18)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    HeadAvatars(initials: model.headerInitials)
+                    NavigationLink { UserView() } label: {
+                        HStack(spacing: 8) {
+                            Text(model.displayName.isEmpty ? "이름" : model.displayName).font(WPFont.tmoney(18, .bold)).tracking(-0.36).lineLimit(1)
+                            HeadAvatars(initials: model.headerInitials)
+                            Image(systemName: "chevron.right").font(.system(size: 14, weight: .medium))
+                        }.foregroundStyle(.white).frame(minHeight: 44)
+                    }.accessibilityLabel("내 정보").accessibilityIdentifier("main.profile")
                 }
                 Spacer(minLength: 0)
-
-                HeadIconButton(systemName: "questionmark.circle", label: "가이드 보기") {
-                    guide.show(mainGuideSteps)
-                }
-                .accessibilityIdentifier("main.guide")
             }
             .guideAnchor("main-header-info")
 
@@ -243,36 +253,30 @@ struct MainView: View {
 
             Spacer().frame(height: 16)
 
-            if model.planLoading {
-                // 아래 실제 요약 상자와 **같은 크기** — 받는 순간 목록이 튀지 않게.
-                VStack(alignment: .leading, spacing: 4) {
-                    SkeletonBox(width: 160, height: 18, onBrand: true)
-                    SkeletonBox(width: 208, height: 15, onBrand: true)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            } else {
-                // 면이 이미 분홍이라 여기서는 한 줄 요약 + 부연만 낸다.
-                // 큰 숫자·막대는 예산 상세가 맡는다.
-                HeadInset(action: { path.append(BudgetRoute(roomId: model.roomIdValue)) }) {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("남은 예산 \(withThousands(model.remainingBudget))만 원")
-                                .font(WPFont.hak(14, .bold))
-                                .foregroundStyle(.white)
-                            Text("\(withThousands(model.totalBudget))만 원 중 \(withThousands(model.usedBudget))만 원 지출·예정")
-                                .font(WPFont.hak(12))
-                                .foregroundStyle(.white.opacity(0.75))
+            VStack(spacing: 0) {
+                Button { path.append(BudgetRoute(roomId: model.roomIdValue)) } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if !model.amountsLoaded {
+                                SkeletonBox(width: 64, height: 18); SkeletonBox(width: 144, height: 32)
+                                SkeletonBox(width: 208, height: 18).padding(.top, 4)
+                            } else {
+                                Text(model.remainingBudget < 0 ? "예산 초과" : "남은 예산").font(WPFont.hak(13, .bold)).foregroundStyle(Color(hex: 0x847880))
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(withThousands(abs(model.remainingBudget))).font(WPFont.tmoney(32, .bold)).tracking(-1.44)
+                                    Text("만 원").font(WPFont.tmoney(15, .bold))
+                                }.foregroundStyle(model.remainingBudget < 0 ? Color.red : WPColor.textPrimary)
+                                Text("\(withThousands(model.totalBudget))만 원 중 \(withThousands(model.usedBudget))만 원 지출·예정").font(WPFont.hak(12.5)).foregroundStyle(Color(hex: 0x847880)).padding(.top, 4)
+                            }
                         }
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .accessibilityIdentifier("main.budget")
-                .guideAnchor("main-budget-card")
-            }
+                        Spacer()
+                        if model.amountsLoaded { Image(systemName: "chevron.right").font(.system(size: 20)).foregroundStyle(WPColor.gray400) }
+                    }.padding(.horizontal, 20).padding(.vertical, 16)
+                }.buttonStyle(.plain).disabled(!model.amountsLoaded).accessibilityIdentifier("main.budget")
+                HomeInvitationEntry(model: invitation, rowOnly: true)
+            }.background(.white, in: RoundedRectangle(cornerRadius: 20)).clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: Color(hex: 0x1B0D14).opacity(0.08), radius: 10, y: 6)
+
         }
     }
 

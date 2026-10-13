@@ -30,9 +30,10 @@ final class MainViewModel: ObservableObject {
     @Published var members: [Member] = []
     /// 이 방에서 내가 읽기 전용인지. 캘린더의 플랜 추가 버튼을 감출지 판단에 쓴다.
     @Published var readOnly = false
-    @Published var totalBudget = 0
-    @Published var usedBudget = 0
-    @Published var remainingBudget = 0
+    @Published var amountsLoaded = false
+    @Published var totalBudget: Double = 0
+    @Published var usedBudget: Double = 0
+    @Published var remainingBudget: Double = 0
     @Published var tab: Tab = .planned
     /// 정렬. 바꾸면 서버에서 다시 받아온다 (정렬은 백엔드가 한다).
     /// **다가오는 순**이 기본이다(웹 main C안에서 `date_desc` → `date_asc`).
@@ -189,6 +190,7 @@ final class MainViewModel: ObservableObject {
             isGuest = true
             name = guest.name
             weddingDate = guest.weddingDate
+            amountsLoaded = true
             totalBudget = guest.budget ?? 0
             usedBudget = 0
             remainingBudget = guest.budget ?? 0
@@ -268,6 +270,7 @@ final class MainViewModel: ObservableObject {
         let completedPage = try? await completedTask
 
         if let amount {
+            amountsLoaded = true
             totalBudget = amount.totalAmount ?? 0
             usedBudget = amount.usedAmount ?? 0
             remainingBudget = amount.remainingAmount ?? ((amount.totalAmount ?? 0) - (amount.usedAmount ?? 0))

@@ -18,6 +18,7 @@ final class ShareJoinViewModel: ObservableObject {
         case loginRequired
         /// 배우자 초대 — **수락 전에 반드시 묻는다.**
         case askingSpouse(myScheduleCount: Int)
+        case askingMove
         case failed(String)
     }
 
@@ -39,10 +40,14 @@ final class ShareJoinViewModel: ObservableObject {
             return
         }
 
+        guard asSpouse else {
+            state = .failed("예전 초대 링크예요. 상대에게 새 신랑·신부 초대 링크를 받아 주세요.")
+            return
+        }
         let token = await env.tokenStore.currentToken()
         guard let token, !token.isEmpty else {
             // 로그인 후 이어서 참여할 수 있게 코드를 남겨 둔다 (웹 `setShareAfterLogin`).
-            guest.shareAfterLogin = code
+            guest.shareAfterLogin = code + (asSpouse ? "?as=spouse" : "")
             state = .loginRequired
             return
         }
@@ -75,23 +80,33 @@ final class ShareJoinViewModel: ObservableObject {
         )
     }
 
-    private func performJoin(code: String, env: AppEnvironment, guest: GuestStore) async {
+    func confirmMove(env: AppEnvironment, guest: GuestStore) async {
+        await performJoin(code: shareCode, env: env, guest: guest, moveSeat: true)
+    }
+
+    private func performJoin(code: String, env: AppEnvironment, guest: GuestStore, moveSeat: Bool = false) async {
         state = .joining
         do {
             try await env.api.sendIgnoringData(
-                Endpoint.joinRoom(shareCode: code, asSpouse: asSpouse)
+                Endpoint.joinRoom(shareCode: code, asSpouse: asSpouse, moveSeat: moveSeat)
             )
             guest.shareAfterLogin = nil
             // **귀속 캐시를 비운다.** 안 비우면 방금 배우자가 된 사람이 다음 진입에서
             // 여전히 "귀속 아님" 으로 읽혀 자기 개인 플랜(빈 화면)을 본다.
             env.boundRoom = .unknown
             env.boundRoomPlan = nil
+            await env.refreshBoundRoom()
+            env.roomsRevision += 1
             state = .joined
         } catch let error as APIError {
+            if case .http(let status, let body) = error, status == 409, body?.contains("SPOUSE_IN_OTHER_ROOM") == true {
+                state = .askingMove
+                return
+            }
             // 401 은 여기서 직접 처리한다. 공통 처리는 토큰만 지우고 끝나서
             // 재로그인 뒤에 참여가 이어지지 않는다.
             if error.requiresReauthentication {
-                guest.shareAfterLogin = code
+                guest.shareAfterLogin = code + (asSpouse ? "?as=spouse" : "")
                 state = .loginRequired
                 return
             }
@@ -167,6 +182,13 @@ struct ShareJoinView: View {
                     onClose()
                 }
 
+            case .askingMove:
+                VStack(spacing: 20) {
+                    Text("지금 함께하는 플랜을 떠날까요?").font(WPFont.hak(20, .bold))
+                    Text("기존 신랑·신부 자리에서 나와 새 플랜에 함께하게 됩니다. 기존 대화와 일정은 남아요.").font(WPFont.hak(14))
+                    Button("기존 플랜을 떠나 참여하기") { Task { await model.confirmMove(env: env, guest: guest) } }
+                    Button("취소", action: onClose)
+                }.padding(24).background(.white, in: RoundedRectangle(cornerRadius: 24)).padding(24)
             case .joining, .joined:
                 VStack(spacing: 16) {
                     ProgressView()

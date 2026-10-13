@@ -33,6 +33,7 @@ import SwiftUI
 /// 분기는 앱에 아직 없다.
 struct LandingView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @State private var showEmail = false
     @State private var isLoading = false
     @State private var errorMessage: String?
     @StateObject private var login = LoginCoordinator()
@@ -62,6 +63,7 @@ struct LandingView: View {
         }
         // 분홍 면 위라 상태바 글자가 흰색이어야 한다.
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showEmail) { EmailAuthSheet().environmentObject(env) }
         #if DEBUG
         .sheet(isPresented: $showDevLogin) {
             DevTokenLoginSheet().environmentObject(env)
@@ -93,7 +95,7 @@ struct LandingView: View {
 
             Spacer().frame(height: 12) // mt-3
 
-            Text("카카오로 시작하면\n일정과 예산이 한곳에 모여요.")
+            Text("한 번 시작하면\n일정과 예산이 한곳에 모여요.")
                 .font(WPFont.hak(16, .bold))
                 .lineSpacing(22 - 16)    // leading-snug (1.375)
                 .foregroundStyle(.white.opacity(0.8))
@@ -132,6 +134,18 @@ struct LandingView: View {
                 Task { await signIn() }
             }
 
+            Button {
+                Task {
+                    isLoading = true
+                    defer { isLoading = false }
+                    do { try await login.service.signInWithGoogle(env: env) } catch { show(error) }
+                }
+            } label: {
+                Text("Google로 시작하기").font(WPFont.hak(16, .bold))
+                    .frame(maxWidth: .infinity).frame(height: 48)
+                    .foregroundStyle(WPColor.textPrimary).background(.white, in: RoundedRectangle(cornerRadius: 12))
+            }.disabled(isLoading).accessibilityIdentifier("auth.google")
+
             // **Sign in with Apple 은 같은 위치·크기여야 한다**(심사 지침 4.8).
             // 카카오보다 작거나 아래로 밀어 두면 "동등하게 제공" 으로 안 본다.
             SignInWithAppleButton(.signIn) { request in
@@ -147,6 +161,12 @@ struct LandingView: View {
             .disabled(isLoading)
             .opacity(isLoading ? 0.7 : 1)
             .accessibilityIdentifier("auth.apple")
+
+            Button { showEmail = true } label: {
+                Label("이메일로 시작하기", systemImage: "envelope")
+                    .font(WPFont.hak(16, .bold)).frame(maxWidth: .infinity).frame(height: 48)
+                    .foregroundStyle(WPColor.textPrimary).background(.white, in: RoundedRectangle(cornerRadius: 12))
+            }.disabled(isLoading).accessibilityIdentifier("auth.email")
 
             #if DEBUG
             // 카카오 SDK 연동 전, 실기기에서 백엔드 붙은 화면을 보기 위한 통로.

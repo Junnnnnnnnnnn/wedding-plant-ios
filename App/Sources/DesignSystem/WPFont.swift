@@ -21,16 +21,15 @@ enum WPFont {
     private static let hakBold = "HakgyoansimDunggeunmisoTTF-B"
 
     private static let tmoneyRegular = "TmoneyRoundWind-Regular"
-    private static let tmoneyExtraBold = "TmoneyRoundWind-ExtraBold"
 
     /// 앱 전체 기본 글꼴 (덩근미소).
     static func hak(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         Font.custom(isHeavy(weight) ? hakBold : hakRegular, fixedSize: size)
     }
 
-    /// 사용자 입력 값에 쓰는 글꼴 (Tmoney RoundWind).
+    /// Android Tmoney와 같은 Regular 파일. SwiftUI weight를 추가하면 번들 ExtraBold로 바뀌므로 고정한다.
     static func tmoney(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Font.custom(isHeavy(weight) ? tmoneyExtraBold : tmoneyRegular, fixedSize: size)
+        Font.custom(tmoneyRegular, fixedSize: size)
     }
 
     private static func isHeavy(_ weight: Font.Weight) -> Bool {

@@ -11,7 +11,7 @@ public enum GuestMigration {
     /// 약관 동의일이 없으면 웹과 동일하게 **KST 오늘 날짜**로 채운다.
     public static func settingRequest(
         weddingDate: KstDate,
-        budget: Int?,
+        budget: Double?,
         name: String,
         agreement: AgreementData?,
         now: Date = Date()

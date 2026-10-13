@@ -17,6 +17,7 @@ final class BragViewModel: ObservableObject {
     @Published var loadingMore = false
     @Published var posts: [BragPost] = []
     @Published var total = 0
+    @Published var myStatus: BragMyStatus?
     @Published var page = 1
     @Published var likePendingId: Int?
     @Published var errorMessage: String?
@@ -36,6 +37,7 @@ final class BragViewModel: ObservableObject {
             loadingMore = false
         }
 
+        if replace { myStatus = try? await env.api.send(Endpoint.bragMy(), decoding: BragMyStatus.self) }
         let nextPage = replace ? 1 : page + 1
         do {
             let result = try await env.api.send(

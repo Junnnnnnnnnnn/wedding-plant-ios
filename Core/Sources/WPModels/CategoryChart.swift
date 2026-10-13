@@ -4,14 +4,14 @@ import Foundation
 public struct CategoryChartItem: Codable, Hashable, Sendable, Identifiable {
     public var categoryName: String
     /// 이 카테고리에 잡힌 전체 금액(예정 + 사용)
-    @LooseInt public var totalAmount: Int?
+    @LooseDouble public var totalAmount: Double?
     /// 그중 이미 쓴 금액
-    @LooseInt public var usedAmount: Int?
+    @LooseDouble public var usedAmount: Double?
 
     public var id: String { categoryName }
 
-    public var total: Int { totalAmount ?? 0 }
-    public var used: Int { usedAmount ?? 0 }
+    public var total: Double { totalAmount ?? 0 }
+    public var used: Double { usedAmount ?? 0 }
 
     /// 막대 채움 비율. **계획이 없는데 쓴 돈이 있으면 100%**, 둘 다 없으면 0% (웹과 동일).
     public var ratio: Double {
@@ -19,10 +19,10 @@ public struct CategoryChartItem: Codable, Hashable, Sendable, Identifiable {
         return used > 0 ? 1 : 0
     }
 
-    public init(categoryName: String = "", totalAmount: Int? = nil, usedAmount: Int? = nil) {
+    public init(categoryName: String = "", totalAmount: Double? = nil, usedAmount: Double? = nil) {
         self.categoryName = categoryName
-        self._totalAmount = LooseInt(wrappedValue: totalAmount)
-        self._usedAmount = LooseInt(wrappedValue: usedAmount)
+        self._totalAmount = LooseDouble(wrappedValue: totalAmount)
+        self._usedAmount = LooseDouble(wrappedValue: usedAmount)
     }
 }
 
