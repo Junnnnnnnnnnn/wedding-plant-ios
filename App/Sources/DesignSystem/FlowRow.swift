@@ -10,6 +10,8 @@ struct FlowRow: Layout {
     /// 줄 안에서의 가로 정렬. 예산 도넛의 범례처럼 가운데로 모아야 하는 곳이 있다
     /// (웹 `justify-center`). 기본은 예전과 같은 왼쪽이다.
     var alignment: HorizontalAlignment = .leading
+    var verticalAlignment: VerticalAlignment = .top
+    var wrapLongItems = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
@@ -40,9 +42,9 @@ struct FlowRow: Layout {
                 x += max(0, bounds.width - row.width)
             }
             for index in row.indices {
-                let size = subviews[index].sizeThatFits(.unspecified)
+                let size = measure(subviews[index], maxWidth: bounds.width)
                 subviews[index].place(
-                    at: CGPoint(x: x, y: y),
+                    at: CGPoint(x: x, y: y + (verticalAlignment == .center ? (row.height - size.height) / 2 : 0)),
                     anchor: .topLeading,
                     proposal: ProposedViewSize(size)
                 )
@@ -50,6 +52,11 @@ struct FlowRow: Layout {
             }
             y += row.height + lineSpacing
         }
+    }
+
+    private func measure(_ view: LayoutSubview, maxWidth: CGFloat) -> CGSize {
+        let natural = view.sizeThatFits(.unspecified)
+        return wrapLongItems && natural.width > maxWidth ? view.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil)) : natural
     }
 
     private struct Row {
@@ -63,7 +70,7 @@ struct FlowRow: Layout {
         var current = Row()
 
         for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
+            let size = measure(subviews[index], maxWidth: maxWidth)
             let needed = current.indices.isEmpty ? size.width : current.width + spacing + size.width
 
             if needed > maxWidth, !current.indices.isEmpty {

@@ -5,6 +5,7 @@ struct ModerationMenu: View {
     let targetType: String
     let targetId: Int
     var onHidden: () -> Void = {}
+    var compact = false
     @EnvironmentObject private var env: AppEnvironment
     @State private var report = false
     @State private var block = false
@@ -14,7 +15,7 @@ struct ModerationMenu: View {
         Menu {
             Button("신고하기", role: .destructive) { report = true }
             if targetType != "CHAT_MESSAGE" { Button("이 작성자 차단", role: .destructive) { block = true } }
-        } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+        } label: { Image(systemName: "ellipsis").font(.system(size: compact ? 12 : 17)).frame(width: compact ? 28 : 44, height: compact ? 28 : 44) }
             .accessibilityLabel("신고·차단").disabled(busy)
             .sheet(isPresented: $report) { ReportContentSheet(targetType: targetType, targetId: targetId) { if targetType != "CHAT_MESSAGE" { onHidden() } } }
             .confirmationDialog("이 작성자를 차단할까요?", isPresented: $block, titleVisibility: .visible) {

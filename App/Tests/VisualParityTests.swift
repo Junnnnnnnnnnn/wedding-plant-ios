@@ -1,6 +1,7 @@
 import XCTest
 import SwiftUI
 import WPModels
+import WPNetworking
 import WPUtils
 @testable import WeddingPlant
 
@@ -8,7 +9,7 @@ import WPUtils
 /// These are review artifacts, not a claim of pixel equality across different font rasterizers.
 final class VisualParityTests: XCTestCase {
     @MainActor func testGardenDropCrossesHeaderAndClearsAfterLanding() async throws {
-        let width = 1080.0 / 2.625, size = CGSize(width: 1080.0 / 2.625, height: 2400.0 / 2.625)
+        let width = 390.0, size = CGSize(width: 390, height: 844)
         let controller = UIViewController(); controller.view.backgroundColor = .white
         let header = UIView(frame: CGRect(x: 0, y: 0, width: width, height: 170)); header.backgroundColor = UIColor(WPColor.primary)
         controller.view.addSubview(header)
@@ -18,7 +19,7 @@ final class VisualParityTests: XCTestCase {
         let window = UIWindow(frame: CGRect(origin: .zero, size: size)); window.rootViewController = controller; window.isHidden = false
         controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
         defer { garden.stop(); window.isHidden = true }
-        let format = UIGraphicsImageRendererFormat(); format.scale = 2.625; format.opaque = true; format.preferredRange = .standard
+        let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true; format.preferredRange = .standard
         func shot(_ name: String) -> UIImage {
             let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true) }
             let attachment = XCTAttachment(image: image); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
@@ -60,10 +61,59 @@ final class VisualParityTests: XCTestCase {
         XCTAssertGreaterThan(peak, 40, "A flying guest must actually render over the header")
         XCTAssertLessThanOrEqual(differentHeaderPixels(shot("matched-garden-landed")), 10)
     }
+    @MainActor func testGuestBubbleTextAndControls() {
+        let bubble = GardenSpeechBubble()
+        bubble.update(speaker: "축하의 별의 축하", text: "두 사람의 모든 계절을 응원해요. 오래오래 지금처럼 다정하게 함께 걸어요.")
+        let size = bubble.sizeThatFits(CGSize(width: 196, height: 1000))
+        XCTAssertLessThanOrEqual(size.height, 115)
+        bubble.frame = CGRect(origin: CGPoint(x: 4, y: 4), size: size); bubble.tailX = 59
+        let host = UIView(frame: CGRect(x: 0, y: 0, width: size.width + 8, height: size.height + 18))
+        host.backgroundColor = .white; host.addSubview(bubble); host.layoutIfNeeded(); bubble.layoutIfNeeded()
+        let format = UIGraphicsImageRendererFormat(); format.scale = 3
+        let image = UIGraphicsImageRenderer(size: host.bounds.size, format: format).image { context in host.layer.render(in: context.cgContext) }
+        let attachment = XCTAttachment(image: image); attachment.name = "matched-garden-bubble"; attachment.lifetime = .keepAlways; add(attachment)
+        var closes = 0; bubble.onClose = { closes += 1 }
+        bubble.subviews.compactMap { $0 as? UIButton }.first?.sendActions(for: .touchUpInside)
+        XCTAssertEqual(closes, 1)
+    }
+    @MainActor func testGardenEmptyReferenceFrame() async {
+        await snapshot(VStack(spacing: 0) {
+            WPColor.primary.frame(height: 170)
+            Color.white.frame(height: 12)
+            StaticGardenFixture().frame(height: 390 * 440 / 320)
+            Spacer(minLength: 0)
+        }.background(.white), name: "matched-garden-empty", statusInset: 0)
+    }
+    @MainActor func testExploreReferenceFrame() async {
+        let base = URL(string: "https://example.test")!, store = InMemoryTokenStore(token: DemoData.token)
+        let env = AppEnvironment(api: APIClient(baseURL: base, transport: ExploreReferenceTransport(), tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)
+        env.isAuthenticated = true
+        await snapshot(VStack(spacing: 0) {
+            ExploreView()
+            BottomTabBar(active: .constant(.explore))
+        }.environmentObject(env), name: "matched-explore-feed", statusInset: 48, bottomInset: 24)
+    }
+    @MainActor func testAddPlanReferenceFrame() async {
+        let base = URL(string: "https://example.test")!, store = InMemoryTokenStore(token: DemoData.token)
+        let env = AppEnvironment(api: APIClient(baseURL: base, transport: DemoTransport(), tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)
+        let suite = "visual-addplan-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let guest = GuestStore(defaults: defaults)
+        let model = AddPlanViewModel(roomId: 7, initialDate: "2026-10-13", prefill: .init(title: "드레스 투어", categoryName: "드레스"))
+        model.payType = .credit
+        await model.searchPlaces(env: env)
+        XCTAssertTrue(model.locationError)
+        await snapshot(AddPlanView(model: model).environmentObject(env).environmentObject(guest), name: "matched-addplan-form", width: 390, statusInset: 48, bottomInset: 24)
+    }
+    @MainActor func testSoloChatReferenceFrames() async {
+        await snapshot(CoupleChatInviteBody(name: "지수"), name: "matched-chat-solo", width: 390, statusInset: 48)
+        await snapshot(CoupleChatInviteBody(name: "지수", unavailable: true), name: "matched-chat-unavailable", width: 390, statusInset: 48)
+    }
     @MainActor func testBloomReferenceFrames() async {
         XCTAssertNotNil(UIImage(named: "heart_sprout.png"), "The Android brand asset must load in the completion card")
         for (name, action) in [("create", BloomAction.create), ("update", .update), ("delete", .delete)] {
-            await snapshot(PlanBloomSuccess(title: "스튜디오 촬영", amount: 185, remaining: 1965, action: action, motionEnabled: false, showsBackdrop: false, onClose: {}), name: "matched-bloom-\(name)", width: 1080 / 2.625)
+            await snapshot(PlanBloomSuccess(title: "스튜디오 촬영", amount: 185, remaining: 1965, action: action, motionEnabled: false, showsBackdrop: false, onClose: {}), name: "matched-bloom-\(name)", width: 390)
         }
     }
     @MainActor func testReminderDefaultAndBlockedReferenceFrames() async throws {
@@ -76,19 +126,36 @@ final class VisualParityTests: XCTestCase {
         await snapshot(ReminderSettingsBody(setting: .init(leadDays: [], hour: 18), payments: [],
             showPassBanner: true, phonePermitted: false, today: today, nowHour: 10), name: "matched-reminders-blocked")
     }
-    @MainActor private func snapshot<V: View>(_ view: V, name: String, width: CGFloat = 390) async {
-        let size = CGSize(width: width, height: 2400 / 2.625)
-        let controller = UIHostingController(rootView: view.environment(\.brandStatusInset, 52).environment(\.locale, Locale(identifier: "ko_KR")))
+    @MainActor private func snapshot<V: View>(_ view: V, name: String, width: CGFloat = 390, statusInset: CGFloat = 48, bottomInset: CGFloat = 0) async {
+        let size = CGSize(width: width, height: 844)
+        let controller = UIHostingController(rootView: view.padding(.bottom, bottomInset).background(.white).environment(\.brandStatusInset, statusInset).environment(\.locale, Locale(identifier: "ko_KR")))
         controller.safeAreaRegions = []
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = controller
         window.isHidden = false
         controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
         try? await Task.sleep(for: .milliseconds(350))
-        let format = UIGraphicsImageRendererFormat(); format.scale = 2.625; format.opaque = true
+        let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
         let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true) }
-        XCTAssertEqual(image.cgImage?.width, Int((width * 2.625).rounded()))
+        XCTAssertEqual(image.cgImage?.width, Int((width * 3).rounded()))
         let attachment = XCTAttachment(image: image); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
         window.isHidden = true
+    }
+}
+
+private struct StaticGardenFixture: UIViewRepresentable {
+    func makeUIView(context: Context) -> GardenCanvas { GardenCanvas(wishes: [], demo: false, empty: true, peek: false, groom: "정우진", bride: "한채원", motionEnabled: false) }
+    func updateUIView(_ uiView: GardenCanvas, context: Context) {}
+}
+
+private struct ExploreReferenceTransport: HTTPTransport {
+    func send(_ request: PreparedRequest) async throws -> HTTPResponse {
+        let value: String
+        switch request.url.path {
+        case "/plan/feed/list": value = #"{"total":128,"list":[{"id":1,"categoryName":"드레스","title":"라움 아트","amount":280,"isAmountPublic":true,"region":"서울 강남구"},{"id":2,"categoryName":"웨딩홀","title":"더채플앳청담","amount":3200,"isAmountPublic":true,"region":"서울 강남구"}]}"#
+        case "/plan/feed/my/status": value = #"{"postCount":2,"receivedHelpfulCount":5,"postableScheduleCount":1}"#
+        default: value = #"{"total":0,"list":[]}"#
+        }
+        return HTTPResponse(status: 200, body: Data(("{\"result\":true,\"data\":" + value + "}").utf8))
     }
 }

@@ -16,9 +16,9 @@ struct ExploreView: View {
         HStack(spacing: 0) {
             ForEach(ExploreSection.allCases, id: \.self) { section in
                 Button { selection = section } label: {
-                    Text(section.rawValue).font(WPFont.hak(14.5, .bold))
+                    Text(section.rawValue).wpTypography(14.5, .bold)
                         .foregroundStyle(selection == section ? WPColor.primary : .white.opacity(0.9))
-                        .padding(.horizontal, 16).frame(height: 36)
+                        .padding(.horizontal, 16).frame(height: 38)
                         .background(selection == section ? Color.white : .clear, in: Capsule())
                 }.accessibilityIdentifier("explore.\(section)")
             }

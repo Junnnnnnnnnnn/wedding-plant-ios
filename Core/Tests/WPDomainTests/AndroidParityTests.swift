@@ -85,6 +85,27 @@ final class AndroidParityTests: XCTestCase {
         e.showSpeech(e.actors[8], manual: true); advance(e, 12); XCTAssertNotNil(e.speech)
         e.closeSpeech(); XCTAssertNil(e.speech)
     }
+    func testReadingAutomaticSpeechKeepsItOpen() {
+        let engine = SeasideEngine(quietCouple: true)
+        engine.showSpeech(engine.actors[8], manual: false)
+        engine.holdSpeech()
+        XCTAssertTrue(engine.manualSpeech)
+        let serial = engine.speechSerial
+        engine.holdSpeech()
+        XCTAssertEqual(engine.speechSerial, serial)
+        advance(engine, 15)
+        XCTAssertNotNil(engine.speech)
+        engine.closeSpeech()
+        XCTAssertNil(engine.speech)
+    }
+    func testGardenUnknownGuestCountDoesNotLookLikeZero() {
+        XCTAssertFalse(InvitationRules.mineEmptySeats(published: true, guestbookOn: true, guests: nil))
+        XCTAssertTrue(InvitationRules.mineEmptySeats(published: true, guestbookOn: true, guests: 0))
+        XCTAssertEqual(InvitationRules.mineLabelNote(published: true, guests: nil), "공개 중")
+        XCTAssertEqual(InvitationRules.mineLabelNote(published: false, guests: 2), "공개 전")
+        XCTAssertTrue(InvitationRules.mineLines(published: true, guestbookOn: true, guests: 3)[0].contains("3명"))
+        XCTAssertFalse(InvitationRules.mineLines(published: true, guestbookOn: true, guests: nil).joined().contains("0명"))
+    }
     func testClockClampsResumeGap() {
         let e = SeasideEngine(); e.update(100)
         XCTAssertEqual(e.time, 0.05, accuracy: 0.0001)

@@ -43,6 +43,8 @@ struct InvitationStudioView: View {
     @State private var preview = false
     @State private var pass = false
     @State private var confirmPublish = false
+    private var published: Bool { model.result?.invitation?.published == true }
+    private var guestbookOn: Bool { model.result?.invitation.map { InvitationRules.normalize($0.design).sections.contains { $0.type == "guestbook" && $0.visible } } ?? false }
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -65,7 +67,10 @@ struct InvitationStudioView: View {
                         }.padding(32)
                     case .landing, .empty, .mine:
                         SeasideGardenView(wishes: model.wishes, demo: model.state == .landing, empty: model.state == .empty,
-                            groom: model.result?.invitation?.groom ?? "정우진", bride: model.result?.invitation?.bride ?? "한채원")
+                            groom: model.result?.invitation?.groom ?? "정우진", bride: model.result?.invitation?.bride ?? "한채원",
+                            script: model.state == .mine ? InvitationRules.mineLines(published: published, guestbookOn: guestbookOn, guests: model.total) : nil,
+                            labelNote: model.state == .mine ? InvitationRules.mineLabelNote(published: published, guests: model.total) : nil,
+                            emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total))
                             .frame(height: min(geometry.size.width * 440 / 320, max(360, geometry.size.height - wpStatusBarHeight - 142)))
                             .id(model.state == .landing ? "landing" : model.state == .empty ? "empty" : "mine")
                         details.padding(24)

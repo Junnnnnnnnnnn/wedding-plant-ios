@@ -76,6 +76,15 @@ public enum InvitationRules {
         }
         return rows
     }
+    public static func mineLines(published: Bool, guestbookOn: Bool, guests: Int?) -> [String] {
+        if !published { return ["청첩장이 완성됐어요. 아직 우리 둘만 볼 수 있어요.", "공개하면 링크를 받은 누구나 로그인 없이 볼 수 있어요.", "축하를 남긴 사람이 하나씩 이 자리를 채워요."] }
+        if !guestbookOn { return ["청첩장이 열렸어요. 링크를 받은 누구나 볼 수 있어요.", "댓글 관리 칸을 꺼 둬서 하객이 축하를 남길 수 없어요.", "청첩장 고치기에서 칸을 다시 켤 수 있어요."] }
+        if let guests, guests > 0 { return ["축하를 남긴 하객 \(guests)명이 정원에 와 있어요.", "하객을 누르면 남긴 축하 글을 읽을 수 있어요.", "링크를 더 보내면 정원이 더 북적여요."] }
+        if guests == 0 { return ["청첩장이 열렸어요. 아직 아무도 오지 않았어요.", "링크를 받은 사람이 축하를 남기면, 이 자리에 와서 서요.", "링크나 QR 코드로 청첩장을 전해 보세요."] }
+        return ["청첩장이 열렸어요. 링크를 받은 누구나 볼 수 있어요.", "링크를 받은 사람이 축하를 남기면, 이 자리에 와서 서요.", "하객을 누르면 남긴 축하 글을 읽을 수 있어요."]
+    }
+    public static func mineEmptySeats(published: Bool, guestbookOn: Bool, guests: Int?) -> Bool { !published || !guestbookOn || guests == 0 }
+    public static func mineLabelNote(published: Bool, guests: Int?) -> String { !published ? "공개 전" : guests.map { "하객 \($0)명" } ?? "공개 중" }
     public enum StudioState { case loading, error, landing, empty, mine }
     public static func studioState(loaded: Bool, failed: Bool, hasInvitation: Bool, canEdit: Bool) -> StudioState {
         if failed { return .error }; if !loaded { return .loading }

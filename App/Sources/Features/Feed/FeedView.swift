@@ -101,7 +101,7 @@ struct FeedView: View {
     // MARK: - 머리 면
 
     private var head: some View {
-        ExploreHead(switcher: titleSlot ?? AnyView(Text("견적 후기").font(WPFont.hak(18, .bold)).foregroundStyle(.white)),
+        ExploreHead(switcher: titleSlot ?? AnyView(Text("견적 후기").wpTypography(18, .bold).foregroundStyle(.white)),
                     headline: "다른 커플은 얼마 썼을까",
                     stats: [("후기", "\(model.total)개")] + (env.isAuthenticated ? [("내 후기", "\(model.myStatus?.postCount ?? 0)개"), ("받은 도움", "\(model.myStatus?.receivedHelpfulCount ?? 0)")] : []),
                     loading: model.loading && model.posts.isEmpty, action: { showPostSheet = true }) {
@@ -109,11 +109,11 @@ struct FeedView: View {
                 Button { showPostSheet = true } label: {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("완료한 일정 \(status.postableScheduleCount)개를 아직 안 올렸어요").font(WPFont.hak(14, .bold))
-                            Text("올리면 다른 커플의 후기도 더 잘 보입니다").font(WPFont.hak(12)).opacity(0.75)
+                            Text("완료한 일정 \(status.postableScheduleCount)개를 아직 안 올렸어요").wpTypography(14, .bold)
+                            Text("올리면 다른 커플의 후기도 더 잘 보입니다").wpTypography(12).opacity(0.75)
                         }
-                        Spacer(minLength: 0); Image(systemName: "chevron.right").font(.system(size: 16))
-                    }.foregroundStyle(.white).padding(14).background(.white.opacity(0.2), in: RoundedRectangle(cornerRadius: 14))
+                        Spacer(minLength: 0); WPMaterialIcon(kind: .right).frame(width: 18, height: 18)
+                    }.foregroundStyle(.white).padding(.horizontal, 16).padding(.vertical, 12).background(.white.opacity(0.2), in: RoundedRectangle(cornerRadius: 12))
                 }.buttonStyle(.plain).padding(.top, 12).accessibilityIdentifier("feed.write")
             }
         }
@@ -122,7 +122,7 @@ struct FeedView: View {
         HStack(spacing: 12) {
             ForEach(FeedViewModel.Sort.allCases) { option in
                 Button { Task { await model.setSort(option, env: env) } } label: {
-                    Text(option.label).font(WPFont.hak(13, model.sort == option ? .bold : .regular)).foregroundStyle(model.sort == option ? WPColor.fgNeutral : WPColor.fgSubtle)
+                    Text(option.label).wpTypography(13, model.sort == option ? .bold : .regular).foregroundStyle(model.sort == option ? WPColor.fgNeutral : WPColor.fgSubtle)
                 }.buttonStyle(.plain)
             }
             Spacer()
@@ -144,7 +144,7 @@ struct FeedView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.top, 16).padding(.bottom, 12)
         }
         .scrollIndicators(.hidden)
     }
@@ -153,7 +153,7 @@ struct FeedView: View {
     private func chip(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(WPFont.hak(13, selected ? .bold : .regular))
+                .wpTypography(13, selected ? .bold : .regular)
                 .foregroundStyle(selected ? .white : WPColor.fgMuted)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -167,10 +167,10 @@ struct FeedView: View {
     private var emptyState: some View {
         VStack(spacing: 8) {
             Text("아직 후기가 없어요")
-                .font(WPFont.hak(16, .bold))
+                .wpTypography(16, .bold)
                 .foregroundStyle(WPColor.fgNeutral)
             Text("완료한 일정에 별점과 한 줄만 얹으면 후기가 됩니다")
-                .font(WPFont.hak(13))
+                .wpTypography(13)
                 .foregroundStyle(WPColor.fgSubtle)
                 .multilineTextAlignment(.center)
         }
@@ -184,7 +184,7 @@ struct FeedView: View {
             Task { await model.load(env: env, replace: false) }
         } label: {
             Text(model.loadingMore ? "불러오는 중..." : "더 보기")
-                .font(WPFont.hak(14, .bold))
+                .wpTypography(14, .bold)
                 .foregroundStyle(WPColor.fgMuted)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -215,18 +215,20 @@ struct FeedCard: View {
                 amountLine
                 Spacer().frame(height: 6)
                 Text(post.categoryName)
-                    .font(WPFont.hak(12))
+                    .wpTypography(12)
                     .foregroundStyle(WPColor.gray400)
 
                 Spacer().frame(height: 12)
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
+                    FlowRow(spacing: 8, lineSpacing: 4, verticalAlignment: .center, wrapLongItems: true) {
                     Text(post.title)
-                        .font(WPFont.hak(14.5, .bold))
+                        .wpTypography(14.5, .bold)
                         .foregroundStyle(WPColor.textPrimary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                     Stars(rating: post.rating)
+                    }
                     Spacer(minLength: 0)
-                    if !post.isMine { ModerationMenu(targetType: "FEED", targetId: post.id).foregroundStyle(WPColor.fgMuted) }
+                    if !post.isMine { ModerationMenu(targetType: "FEED", targetId: post.id, compact: true).offset(x: 6, y: -4).foregroundStyle(WPColor.fgMuted) }
                 }
 
                 placeLine
@@ -235,8 +237,7 @@ struct FeedCard: View {
                    !body.isEmpty {
                     Spacer().frame(height: 8)
                     Text(body)
-                        .font(WPFont.hak(12.5))
-                        .lineSpacing(20 - 12.5)
+                        .wpTypography(12.5, lineHeight: 20)
                         .foregroundStyle(Self.warmMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -244,7 +245,7 @@ struct FeedCard: View {
                 Spacer().frame(height: 12)
                 authorLine
 
-                Spacer().frame(height: 12)
+                Spacer().frame(height: 8)
                 actionRow
             }
             .padding(.horizontal, 4)
@@ -264,9 +265,7 @@ struct FeedCard: View {
     @ViewBuilder
     private var amountLine: some View {
         if let amount = post.amount {
-            Text("\(withThousands(amount))만원")
-                .font(WPFont.tmoney(23, .bold))
-                .tracking(-0.03 * 23)
+            WPTmoneyText(text: "\(withThousands(amount))만원", size: 23, bold: true, color: UIColor(WPColor.textPrimary), lineHeight: 23, tracking: -0.69)
                 .foregroundStyle(WPColor.textPrimary)
         } else {
             Text("금액 비공개")
@@ -287,11 +286,10 @@ struct FeedCard: View {
         if let place {
             Spacer().frame(height: 6)
             HStack(spacing: 4) {
-                Image(systemName: "mappin.circle")
-                    .font(.system(size: 11))
+                WPMaterialIcon(kind: .pin).frame(width: 12, height: 12)
                     .foregroundStyle(WPColor.primary)
                 Text(place)
-                    .font(WPFont.hak(12))
+                    .wpTypography(12)
                     .foregroundStyle(Self.warmMuted)
                     .lineLimit(1)
 
@@ -300,7 +298,7 @@ struct FeedCard: View {
                         openURL(link)
                     } label: {
                         Text("카카오맵")
-                            .font(WPFont.hak(12, .bold))
+                            .wpTypography(12, .bold)
                             .foregroundStyle(WPColor.primary)
                             .padding(.leading, 4)
                     }
@@ -314,11 +312,11 @@ struct FeedCard: View {
     private var authorLine: some View {
         HStack(spacing: 6) {
             Text(authorText)
-                .font(WPFont.hak(12))
+                .wpTypography(12)
                 .foregroundStyle(WPColor.gray400)
             if post.isMine {
                 Text("내 후기")
-                    .font(WPFont.hak(11, .bold))
+                    .wpTypography(11, .bold)
                     .foregroundStyle(WPColor.primary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
@@ -337,17 +335,18 @@ struct FeedCard: View {
     /// **"도움이 안 돼요" 수는 절대 공개하지 않는다.** 정직하게 올린 후기에
     /// "안 돼요 12" 가 박히면 다음 사람이 안 올린다 — 아이콘만 둔다.
     private var actionRow: some View {
-        HStack(spacing: 8) {
+        FlowRow(spacing: 8, lineSpacing: 8, verticalAlignment: .center) {
             helpfulButton
             notHelpfulButton
             Button(action: onCopy) {
-                Label("내 플랜에 담기", systemImage: "plus")
-                    .font(WPFont.hak(12.5, .bold))
-                    .foregroundStyle(WPColor.primary)
+                HStack(spacing: 4) {
+                    WPMaterialIcon(kind: .plus).frame(width: 14, height: 14)
+                    Text("내 플랜에 담기").wpTypography(12.5, .bold)
+                }.foregroundStyle(WPColor.primary)
                     .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Color(hex: 0xFFF2F6), in: Capsule())
+                    .background(Color.white, in: Capsule())
+                    .overlay(Capsule().strokeBorder(WPColor.primary.opacity(0.2), lineWidth: 1))
             }.buttonStyle(.plain).accessibilityIdentifier("feed.copy.\(post.id)")
-            Spacer(minLength: 0)
         }
     }
 
@@ -356,10 +355,9 @@ struct FeedCard: View {
         let tint = on ? WPColor.primary : Self.warmMuted
         return Button { onVote(.helpful) } label: {
             HStack(spacing: 6) {
-                Image(systemName: on ? "hand.thumbsup.fill" : "hand.thumbsup")
-                    .font(.system(size: 12, weight: .semibold))
+                WPMaterialIcon(kind: on ? .thumbUpFill : .thumbUp).frame(width: 14, height: 14)
                 Text("도움이 돼요")
-                    .font(WPFont.hak(12.5, .bold))
+                    .wpTypography(12.5, .bold)
                 if post.helpfulCount > 0 {
                     Text("\(post.helpfulCount)")
                         .font(WPFont.tmoney(12.5, .bold))
@@ -384,8 +382,7 @@ struct FeedCard: View {
     private var notHelpfulButton: some View {
         let on = post.myVote == FeedRules.Vote.notHelpful.rawValue
         return Button { onVote(.notHelpful) } label: {
-            Image(systemName: on ? "hand.thumbsdown.fill" : "hand.thumbsdown")
-                .font(.system(size: 12, weight: .semibold))
+            WPMaterialIcon(kind: on ? .thumbDownFill : .thumbDown).frame(width: 14, height: 14)
                 .foregroundStyle(on ? Color(hex: 0x4A3F45) : Color(hex: 0xC8BFC4))
                 .frame(width: 30, height: 30)
                 .background(on ? Color(hex: 0xF4EFF2) : Color.white, in: Circle())
@@ -415,8 +412,7 @@ struct Stars: View {
     var body: some View {
         HStack(spacing: 1) {
             ForEach(1...5, id: \.self) { n in
-                Image(systemName: "star.fill")
-                    .font(.system(size: size))
+                WPMaterialIcon(kind: .star).frame(width: size, height: size)
                     .foregroundStyle(n <= rating ? Color(hex: 0xFFB020) : Color(hex: 0xE9E1E5))
             }
         }

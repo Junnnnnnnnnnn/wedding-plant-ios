@@ -61,7 +61,7 @@ struct BrandHead<Content: View>: View {
         .background {
             GeometryReader { geometry in
                 brandGradient.frame(height: max(0, geometry.size.height - overhang))
-                    .clipShape(.rect(bottomLeadingRadius: corner, bottomTrailingRadius: corner, style: .continuous))
+                    .clipShape(.rect(bottomLeadingRadius: corner, bottomTrailingRadius: corner, style: .circular))
             }
         }
     }

@@ -144,6 +144,42 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
 .card-title .card-name{font-family:Round,sans-serif;font-weight:800}.card-logo{mix-blend-mode:normal;mask-image:none}.orbit,.floor{display:none}.rays{width:300vmax;mask-image:none;animation-duration:90s;background:repeating-conic-gradient(from 0deg,transparent 0deg 27deg,rgba(255,220,239,.3) 27deg 30deg);opacity:.16}.ambient:after{background:radial-gradient(ellipse at 50% 40%,rgba(86,33,62,.3),rgba(22,13,24,.55) 58%,#0b090f)}
 .intro-copy h1 span{color:#fbf5fa;background:none}.intro-copy h1{line-height:48px;letter-spacing:-.06em;margin:0}.intro-copy>p{font-size:13px!important;line-height:19.5px;margin-top:8px;color:#f1cce1}.scroll-hint{font-size:13px;font-weight:700;min-height:46px;background:rgba(255,255,255,.07);gap:16px}.scroll-hint:after{content:'→';font-size:18px}.story-nav{transition:opacity .2s}.stage[data-active-scene="0"] .story-nav{opacity:0;pointer-events:none}
 
+
+/* Native v35 benefits: all typography and preview geometry scale from one 340×271 panel. */
+.scene-word,.chapter-corner,.timeline,.end-caption{display:none!important}
+.feature .motion-demo{padding:0;border:0;border-radius:14px;box-shadow:none;overflow:hidden;min-height:0;background:transparent}
+.feature .demo-caption{margin-top:8px;min-height:48px;display:flex;align-items:center;gap:0;font-size:10px;line-height:15px}
+.feature .sample-caption{flex:1;margin:0;font-size:10px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#89788f}
+.feature .demo-replay,.feature .demo-sample-link{font-size:10px;line-height:15px;min-height:48px;padding:0 6px;border:0;background:none;display:flex;align-items:center;gap:4px}
+.feature .demo-replay .icon,.feature .demo-sample-link .icon{width:11px;height:11px}
+.feature .description{word-break:keep-all}
+
+
+:root{--safe-top:env(safe-area-inset-top);--safe-bottom:env(safe-area-inset-bottom)}
+.topbar{top:var(--safe-top);background:none}.brand{font-size:12px}.brand em{font-size:12px;margin-left:0}.header-cta{font-size:11px;padding:8px 12px}.header-cta .icon{width:16px;height:16px}
+.feature h2{margin-top:0}.feature .sample-caption:before,.nav-scroll{display:none}
+.feature .demo-sample-link{color:#efa4c7}
+.story-nav{inset:auto 20px calc(14px + var(--safe-bottom));display:flex;flex-direction:column;align-items:stretch;gap:8px;transition:none}
+.nav-status{position:static;order:0;padding-left:4px;gap:7px;font-size:9px;line-height:15px}.nav-status b{font-size:10px;line-height:15px}.nav-status i{width:15px;background:#8e7f9999}
+.benefit-nav{order:1;width:100%;display:flex;gap:0;padding:4px;background:#140f1bdb;backdrop-filter:none;box-shadow:none}
+.benefit-nav button{flex:1;min-width:0;min-height:48px;padding:9px 4px;gap:4px;justify-content:center;font-size:10px;line-height:15px;transition:none}
+.benefit-nav button .icon{width:12px;height:12px}.benefit-nav button[aria-current=step]{font-weight:700;background:#eed2e3;color:#4f354c}
+.ambient:after,.aura,.rays,.floor,.orbit{display:none}.particles{opacity:1}
+
+
+.card-perspective{perspective:none}.card-face.front{background:none;border:0;box-shadow:none;overflow:hidden}.card-face.front>:not(canvas){display:none}.card-face.front:before,.card-face.front:after{display:none}
+.stage[data-active-scene="5"] .story-nav{visibility:hidden;pointer-events:none}
+.scroll-hint{padding:12px 22px;line-height:19.5px;gap:16px;min-height:46px}.scroll-hint:after{display:none}.scroll-hint .icon{width:16px;height:16px}
+.final-copy{left:24px!important;right:24px!important;width:auto!important;text-align:center}.final-copy .eyebrow{justify-content:center;gap:8px;font-size:9px;line-height:13.5px;letter-spacing:.12em}.final-copy .eyebrow:before,.final-copy .eyebrow:after{content:'';display:block;width:18px;height:1px;background:#efa4c799}
+.final-copy h2{font-size:28px;line-height:36px;letter-spacing:-.06em;margin-top:10px}.final-copy h2 br{display:none}.final-copy h2 span:before{content:' '}
+.final-copy>p{font-size:12px;line-height:19px;margin-top:10px}.pass-promise{justify-content:center;gap:6px;margin-top:14px}.pass-promise span{font-size:10px;line-height:15px;padding:6px 10px}
+.final-copy .primary{font-size:14px;line-height:21px;gap:20px;padding:14px 24px;min-height:48px;margin-top:18px}.final-copy .fine{font-size:10px;line-height:16px;margin-top:12px}
+
+.pack-stage{background:none;padding:0}.pack-stage>.pack-halo,.pack-stage>.pack-rays,.pack-stage>.pack-ring,.pack-stage>.pack-motes,.pack-stage>.pack-flash{display:none}
+.native-opening-back,.native-opening-burst{position:absolute;left:0;top:0;pointer-events:none}.native-opening-back{z-index:0}.native-opening-burst{z-index:4}.sealed-pack>:not(canvas){display:none}.sealed-pack:before{display:none}
+.is-opening .card-anchor{top:auto!important}.pack-caption h2{line-height:48px;margin:0}.pack-caption p{font-size:13px;line-height:19.5px;margin-top:8px;color:#f1cce1}
+.pack-continue{margin-top:18px;font-size:13px;line-height:19.5px;font-weight:700;padding:12px 22px;gap:16px;min-height:46px}.pack-skip{min-height:36px;line-height:16.5px;font-size:11px;font-weight:700;padding:8px 12px}
+.is-opening.opening-controls-ready .header-cta{display:flex}.is-opening.opening-controls-ready .pack-skip{display:none}
 </style>
 </head>
 <body class="is-opening">
@@ -182,7 +218,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
       <div class="scene-word" aria-hidden="true"></div>
       <section class="intro-copy" aria-labelledby="page-title"><div class="eyebrow">A LITTLE PASS, A BIG BEGINNING</div><h1 id="page-title"><span>준비 패스</span></h1><p>두 사람의 준비가 빛나는, 하나의 패스.</p></section>
       <div class="card-anchor">
-        <div class="card-perspective"><div class="card-entry"><div class="card-floating"><button class="pass-card" id="pass-card" aria-label="준비 패스 카드. 눌러서 뒤집기">
+        <div class="card-perspective"><div class="card-entry"><div class="card-floating"><button class="pass-card" id="pass-card" aria-label="준비 패스 카드">
           <span class="card-tilt"><span class="card-rotor">
             <span class="card-edge" style="--z:-2px" aria-hidden="true"></span><span class="card-edge" style="--z:0px" aria-hidden="true"></span><span class="card-edge" style="--z:2px" aria-hidden="true"></span>
             <span class="card-face front" aria-hidden="true"><span class="card-frame"></span><span class="engraving"></span><span class="card-copy"><span class="card-brand"><span>웨딩플랜트</span><span>준비 패스</span></span><img class="card-logo" src="pass_card_logo.png" width="96" height="96" alt=""><span class="card-title"><small>OUR NEXT CHAPTER</small><span class="card-name">준비 패스</span><span class="card-description">두 사람의 준비가<br>빛나는 하나의 패스.</span></span><span class="card-bottom"><span>weddingplant.app</span><img src="app_logo.png" width="18" height="18" alt=""></span></span><span class="foil"></span><span class="glitter"></span><span class="glare"></span></span>
@@ -191,7 +227,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         </button></div></div></div>
       </div>
       <span class="card-caption" aria-hidden="true"><svg class="icon"><use href="#flip"/></svg>카드를 눌러 뒷면도 살펴보세요</span>
-      <div class="intro-bottom"><p>작은 카드 한 장에 담긴, 더 여유로운 결혼 준비.</p><button class="scroll-hint" aria-label="혜택 살펴보기" data-go="1"><span class="mouse" aria-hidden="true"></span>혜택 살펴보기</button></div>
+      <div class="intro-bottom"><p>작은 카드 한 장에 담긴, 더 여유로운 결혼 준비.</p><button class="scroll-hint" aria-label="혜택 살펴보기" data-go="1">혜택 살펴보기<svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></button></div>
       <article class="feature right" id="benefit-1" data-scene="1" aria-labelledby="benefit-title-1" aria-hidden="true" inert>
         <h2 id="benefit-title-1">계약서·영수증·사진,<br><em>약 3,000장 보관.</em></h2><p class="description">플랜을 등록할 때 계약서·영수증·사진도 함께.<br> 저장한 서류는 두 사람이 같은 플랜에서 확인해요.</p>
         <div class="preview motion-demo demo-documents" data-demo="documents" aria-hidden="true">
@@ -239,7 +275,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
           <div class="demo-invitation-workspace"><div class="demo-editor"><b>우리의 청첩장</b><span class="demo-field-label">대표 사진</span><span class="demo-photo-upload"><img src="pass_invite_portrait.png" alt=""><svg class="icon"><use href="#photo"/></svg><small>사진 넣기</small></span><span class="demo-field-label">청첩장 제목</span><span class="demo-title-field"><span class="demo-typed-title"></span><i></i></span><span class="demo-button demo-publish">청첩장 만들기<svg class="icon"><use href="#arrow"/></svg></span></div>
             <div class="demo-invite-preview"><div class="demo-invite-photo"><img src="pass_invite_portrait.png" alt=""><svg class="icon"><use href="#sprout"/></svg></div><small>우리, 결혼합니다</small><strong class="demo-preview-title">우진 &amp; 채원</strong><span>2027. 05. 22</span><i class="demo-keepsake"><svg class="icon"><use href="#heart"/></svg>평생 소장</i></div>
           </div><div class="demo-toast"><svg class="icon"><use href="#check"/></svg>우리의 청첩장이 완성됐어요</div>
-        </div><div class="demo-caption"><p class="sample-caption">첫 패스 구매 시 1회 · 사진 최대 20장</p><a class="demo-sample-link" href="/concepts/invitation-studio.html?member=monthly">예시 청첩장 보기<svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></a><button class="demo-replay" aria-label="청첩장 만들기 시연 다시 보기"><svg class="icon" aria-hidden="true"><use href="#restart"/></svg>다시 보기</button></div>
+        </div><div class="demo-caption"><p class="sample-caption">첫 패스 구매 시 1회 · 사진 최대 20장</p><a class="demo-sample-link" href="/concepts/invitation-studio.html?member=monthly">청첩장 시안 보기<svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></a><button class="demo-replay" aria-label="청첩장 만들기 시연 다시 보기"><svg class="icon" aria-hidden="true"><use href="#restart"/></svg>다시 보기</button></div>
       </article>
       <section class="final-copy" id="pass-finish" data-scene="5" aria-labelledby="finish-title" aria-hidden="true" inert><div class="eyebrow">OUR NEXT CHAPTER STARTS HERE</div><h2 id="finish-title">둘의 준비를,<br><span>하나의 패스로.</span></h2><p>기록은 모으고, 일정은 챙기고.<br>두 사람이 함께, 더 여유롭게 준비해요.</p><div class="pass-promise"><span>두 사람 함께 이용</span><span>자동 갱신 없음</span></div><a class="primary" href="/#preparation-pass">준비 패스 알아보기<svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></a><p class="fine">서류는 패스 만료 후 앱에서 열 수 없으며,<br>90일 동안 전체 내려받기가 가능해요.</p></section>
       <span class="end-caption" aria-hidden="true">두 사람의 다음 장을 함께해요.</span>
@@ -248,6 +284,8 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
       <span class="sr-only" id="scene-announcement" aria-live="polite"></span>
     </div>
   </main>
+  <script src="pass-demos.js"></script>
+<script src="pass-opening.js"></script>
   <script>
     // Native page scroll controls the transitions between reading intervals.
     // Within each benefit, the card keeps a slow, independent orbit.
@@ -347,7 +385,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         const run=()=>{
           if(!openingActive || generation!==openingGeneration) return;
           entry.style.animation='';void opening.offsetWidth;
-          document.body.classList.add('pack-running');stage.dataset.opening='running';
+          openingStarted=performance.now();document.body.classList.add('pack-running');stage.dataset.opening='running';
           openingTimers.push(setTimeout(()=>{
             if(!openingActive || generation!==openingGeneration) return;
             openingReady=true;entry.style.animation='none';document.body.classList.add('pack-ready');
@@ -365,7 +403,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         const focusInsideOpening=opening.contains(document.activeElement) || document.activeElement===$('.pack-skip');
         openingActive=false;openingReady=false;closingStarted=performance.now();pointer=null;
         entry.style.animation='none';card.disabled=false;packContinue.disabled=true;
-        document.body.classList.remove('is-opening','pack-ready');
+        document.body.classList.remove('is-opening','pack-ready','opening-controls-ready'); entry.style.opacity='';entry.style.transform='';anchor.style.removeProperty('top');
         document.documentElement.style.overflow=savedRootOverflow;
         opening.classList.add('is-leaving');opening.inert=true;opening.setAttribute('aria-hidden','true');
         setOpeningAccess(false);measure();render(closingStarted,16);stage.dataset.opening='handoff';
@@ -400,7 +438,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         if (flow && scene > 0) {
           const panel = panels.find(node => Number(node.dataset.scene) === scene);
           if (panel) scrollTo({top: panel.getBoundingClientRect().top + scrollY - 90, behavior});
-        } else scrollTo({top: storyTop + (scene === 0 ? 0 : scene - .1) * unit, behavior});
+        } else scrollTo({top: storyTop + scene * unit, behavior});
       }
       $$('[data-go]').forEach(button => button.addEventListener('click', () => goToScene(Number(button.dataset.go))));
       $('.skip-link').addEventListener('click', event => {
@@ -411,7 +449,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
       function setPanel(node, opacity, offset, active) {
         node.style.opacity = opacity.toFixed(3);
         node.style.visibility = opacity > .002 || flow ? 'visible' : 'hidden';
-        if (mobile && !flow) node.style.transform = node.classList.contains("feature") ? `translateY(${offset}px)` : `translate(-50%,${offset}px)`;
+        if (mobile && !flow) node.style.transform = `translateY(${offset}px)`;
         else node.style.transform = `translate(${offset * (node.classList.contains('left') ? -1 : 1)}px,-50%)`;
         node.inert = openingActive || (!active && !flow);
         node.setAttribute('aria-hidden', String(openingActive || (!active && !flow)));
@@ -487,7 +525,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         anchor.style.visibility = current > .3 && current < 4.7 ? 'hidden' : 'visible';
         if(mobile && !flow){
           const safeTop=parseFloat(getComputedStyle($('.topbar')).top)||0;
-          const safeBottom=Math.max(0,parseFloat(getComputedStyle($('.story-nav')).bottom)-16)||0;
+          const safeBottom=Math.max(0,parseFloat(getComputedStyle($('.story-nav')).bottom)-14)||0;
           const usable=viewportHeight-safeTop-safeBottom;
           const width=Math.min(innerWidth*.5,usable*.4/(280/190),220);
           const height=width*280/190, center=safeTop+usable*.4;
@@ -503,8 +541,18 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         anchor.style.top = flow ? '' : `${normalTop+(openingTop-normalTop)*openingPresence}%`;
         anchor.style.left = flow ? '' : `${cardLeft+(50-cardLeft)*openingPresence}%`;
         anchor.style.transform = `scale(${scale/cardRenderScale}) translateY(${-spinning*12*cardRenderScale}px)`;
-        const drift = spacePresence*(mobile ? (shortMobile ? .6 : 2) : 9);
-        floating.style.transform = `translate3d(${Math.sin(time/2300)*drift*.55}px,${Math.sin(time/1600)*drift}px,${Math.cos(time/2100)*drift*1.5}px) rotateX(${Math.sin(time/2700)*spacePresence*2}deg) rotateZ(${Math.sin(time/2600)*spacePresence*1.6}deg)`;
+        if(mobile&&!flow&&!openingActive){
+          const safeTop=parseFloat(getComputedStyle($('.topbar')).top)||0,safeBottom=Math.max(0,parseFloat(getComputedStyle($('.story-nav')).bottom)-14)||0,usable=viewportHeight-safeTop-safeBottom;
+          const atOpening=current<=1,w=atOpening?Math.min(innerWidth*.5,usable*.4/(280/190),220):Math.min(innerWidth*.4,usable*.3/(280/190),190),h=w*280/190;
+          const cy=atOpening?safeTop+usable*.4:safeTop+68+h/2,follow=atOpening?-Math.max(0,current)*viewportHeight:(5-Math.max(4,current))*viewportHeight;
+          anchor.style.setProperty('width',w+'px','important');anchor.style.setProperty('height',h+'px','important');anchor.style.top=(cy+follow)+'px';anchor.style.left='50%';anchor.style.transform='none';
+          perspective.style.width=w+'px';perspective.style.height=h+'px';
+          const d=referenceFrame?0:time/9000*Math.PI*2;
+          rotor.style.transform='none';tilt.style.transform='none';floating.style.transform=`translateY(${3*Math.sin(d)}px) rotate(${1.2*Math.sin(d*1.3)}deg)`;
+          const final=$('.final-copy'),finalW=Math.min(innerWidth*.4,usable*.3/(280/190),190),finalBottom=safeTop+68+finalW*280/190;
+          final.style.setProperty('top',((finalBottom+18+viewportHeight-safeBottom-20-final.offsetHeight)/2)+'px','important');
+        }
+        PassDemos.card($('.card-face.front'),referenceFrame?0:time);
         atmosphere.forEach(node=>{node.style.left=`${cardLeft}%`;});
         $('.chapter-corner').style.opacity = mobile ? 1 : 1-spacePresence;
         $('.card-caption').style.opacity = 0;
@@ -515,7 +563,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         if (scene !== lastScene) {
           lastScene = scene;
           $('#step-count').textContent = String(scene).padStart(2,'0');
-          $('#step-label').textContent = names[scene]; $('#chapter-name').textContent = names[scene];
+          $('#step-label').textContent = ['','서류 보관','엑셀 정리','결제일 알림','청첩장',''][scene]; $('#chapter-name').textContent = names[scene];
           $('.scene-word').textContent = words[scene];
           stage.style.setProperty('--accent', accents[scene]);
           stage.dataset.activeScene = String(scene);
@@ -528,8 +576,13 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         }
         renderDemos(time,scene);
         drawParticles(time);
+        if(openingActive&&document.body.classList.contains('pack-running')){
+          const safeTop=parseFloat(getComputedStyle($('.topbar')).top)||0,safeBottom=Math.max(0,parseFloat(getComputedStyle($('.story-nav')).bottom)-14)||0;
+          PassOpening.render(referenceFrame?referenceFrame.milliseconds:Math.max(0,time-openingStarted),safeTop,safeBottom);
+        }
       }
       function frame(time) {
+        if(referenceFrame) return;
         const delta = lastTime ? Math.min(64,time - lastTime) : 16; lastTime = time;
         render(time,delta); raf = requestAnimationFrame(frame);
       }
@@ -551,7 +604,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         manualFlip = manualFlip ? 0 : 180;
       });
       function resizeParticles() {
-        const canvas = $('.particles'), dpr = Math.min(devicePixelRatio || 1,1.5);
+        const canvas = $('.particles'), dpr = devicePixelRatio || 1;
         canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(viewportHeight * dpr);
         canvasContext = canvas.getContext('2d');
         if(canvasContext)canvasContext.setTransform(dpr,0,0,dpr,0,0);
@@ -559,101 +612,65 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
       }
       function drawParticles(time) {
         if(!canvasContext)return;
-        const ctx=canvasContext;ctx.clearRect(0,0,innerWidth,viewportHeight);
-        particles.forEach(p=>{
-          const x=p.x+Math.sin(time/8000+p.phase)*18*p.depth+(pointer ? (pointer.x-.5)*14*p.depth : 0);
-          const y=((p.y-time/1000*p.speed+current*35*p.depth)%viewportHeight+viewportHeight)%viewportHeight;
-          const alpha=.16+(Math.sin(time/2100+p.phase)+1)*.2;
-          ctx.beginPath();ctx.arc(x,y,p.r,0,Math.PI*2);
-          ctx.fillStyle=`rgba(244,215,236,${alpha})`;ctx.fill();
-          if(p.r>1.5){ctx.beginPath();ctx.moveTo(x-3.5,y);ctx.lineTo(x+3.5,y);ctx.moveTo(x,y-3.5);ctx.lineTo(x,y+3.5);ctx.strokeStyle=`rgba(244,215,236,${alpha*.5})`;ctx.lineWidth=.6;ctx.stroke();}
-        });
+        const ctx=canvasContext,w=innerWidth,h=viewportHeight;
+        const top=parseFloat(getComputedStyle($('.topbar')).top)||0;
+        const bottom=Math.max(0,parseFloat(getComputedStyle($('.story-nav')).bottom)-14)||0,usable=h-top-bottom;
+        const big=top+usable*.4,light=top+62+Math.min(190,Math.max(104,usable*.2))/2;
+        const finalWidth=Math.min(w*.4,usable*.3/(280/190),190),finalCenter=top+68+finalWidth*(280/190)/2;
+        const k=current<=1?smooth(Math.max(0,current)):smooth(Math.min(1,current-4));
+        const cy=current<=1?big+(light-big)*k:current<=4?light:light+(finalCenter-light)*k;
+        const long=Math.max(w,h),radius=long*.75;
+        ctx.clearRect(0,0,w,h);ctx.save();ctx.translate(w/2,cy);
+        const glow=ctx.createRadialGradient(0,0,0,0,0,radius);
+        glow.addColorStop(0,'#56213e');glow.addColorStop(.58,'#160d18');glow.addColorStop(1,'#160d1800');
+        ctx.globalAlpha=.55;ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();
+        const ray=ctx.createRadialGradient(0,0,0,0,0,long);
+        ray.addColorStop(0,'#fff0d700');ray.addColorStop(.08,'#fff0d71a');ray.addColorStop(.6,'#fff0d700');ray.addColorStop(1,'#fff0d700');
+        ctx.globalAlpha=1;ctx.fillStyle=ray;const backgroundTime=referenceFrame ? (referenceFrame.milliseconds<6600 ? referenceFrame.milliseconds : 0) : time;
+        ctx.rotate(backgroundTime/90000*Math.PI*2);
+        ctx.beginPath();for(let i=0;i<18;i++){const a=i*20*Math.PI/180,b=a+1.8*Math.PI/180;ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*long,Math.sin(a)*long);ctx.lineTo(Math.cos(b)*long,Math.sin(b)*long);ctx.closePath();}ctx.fill();ctx.restore();
+        const d=backgroundTime/9000*Math.PI*2;
+        for(let i=0;i<14;i++){ctx.globalAlpha=.35*Math.pow(.5+.5*Math.sin(d*2+i),3);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(w*((i*.618)%1),h*((i*.377+.07)%1),1+i%2,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
       }
-      // Cursor demo timelines: decorative UI only, never dispatch live actions.
-      const demoDefinitions = {
-        documents: {
-          states:[[0,'idle'],[.9,'typing'],[1.7,'ready'],[2.6,'picker'],[3.8,'selected'],[4.9,'uploading'],[6.15,'attached'],[6.9,'saving'],[7.7,'done']],
-          clicks:[.9,2.6,3.8,4.9,6.9],
-          path:[[0,[.84,.84]],[.3,[.84,.84]],[.7,'.demo-plan-title-field'],[1.8,'.demo-plan-title-field'],[2.35,'.demo-upload'],[2.8,'.demo-upload'],[3.55,'.demo-file-choice'],[4,'.demo-file-choice'],[4.65,'.demo-confirm'],[5.1,'.demo-confirm'],[6.65,'.demo-register'],[7.1,'.demo-register'],[8.1,'.demo-saved-attachment'],[8.8,'.demo-saved-attachment'],[9.2,[.84,.84]],[10,[.84,.84]]]
-        },
-        excel: {
-          states:[[0,'idle'],[1.7,'schedule'],[3.6,'exporting'],[5.1,'done']],
-          clicks:[1.7,3.6],
-          path:[[0,[.85,.83]],[.6,[.85,.83]],[1.45,'.demo-schedule-tab'],[1.9,'.demo-schedule-tab'],[3.35,'.demo-download'],[3.8,'.demo-download'],[5.3,'.demo-download-file'],[6.5,'.demo-download-file'],[7.5,[.85,.83]],[10,[.85,.83]]]
-        },
-        reminders: {
-          states:[[0,'idle'],[1.7,'settings'],[3.25,'selected'],[4.7,'enabled'],[6.3,'notified']],
-          clicks:[1.7,3.25,4.7],
-          path:[[0,[.8,.82]],[.6,[.8,.82]],[1.45,'.demo-toggle'],[1.85,'.demo-toggle'],[3,'.demo-alert-option'],[3.5,'.demo-alert-option'],[4.45,'.demo-alert-save'],[4.9,'.demo-alert-save'],[6.5,'.demo-notification'],[7.5,'.demo-notification'],[8.5,[.83,.82]],[10,[.83,.82]]]
-        },
-        invitation: {
-          states:[[0,'idle'],[1.7,'photo'],[3,'typing'],[4.3,'ready'],[5.1,'published']],
-          clicks:[1.7,3,5.1],
-          path:[[0,[.87,.8]],[.6,[.87,.8]],[1.45,'.demo-photo-upload'],[1.85,'.demo-photo-upload'],[2.75,'.demo-title-field'],[4.3,'.demo-title-field'],[4.85,'.demo-publish'],[5.35,'.demo-publish'],[6.4,'.demo-invite-preview'],[7.5,'.demo-invite-preview'],[8.5,[.87,.8]],[10,[.87,.8]]]
-        }
-      };
-      const demos = $$('.motion-demo').map(node=>{
-        node.insertAdjacentHTML('beforeend','<i class="demo-click"></i><span class="demo-pointer"><svg viewBox="0 0 24 28"><path d="M3 2v21l6-6 5 9 4-2-5-9h8z" fill="currentColor" stroke="#51364c" stroke-width="1.3" stroke-linejoin="round"/></svg></span>');
+      const demos = $$('.motion-demo').map(node => {
         const panel=node.closest('[data-scene]');
-        const demo={node,panel,scene:Number(panel.dataset.scene),definition:demoDefinitions[node.dataset.demo],pointer:node.querySelector('.demo-pointer'),ring:node.querySelector('.demo-click'),started:null,step:null};
-        panel.querySelector('.demo-replay').addEventListener('click',()=>{demo.started=performance.now();demo.step=null;});
+        const demo={node,panel,scene:Number(panel.dataset.scene),renderer:PassDemos.mount(node),started:null};
+        panel.querySelector('.demo-replay').addEventListener('click',()=>{demo.started=performance.now();});
         return demo;
       });
+      let referenceFrame=null;
+      let openingStarted=0;
       function renderDemos(time,scene) {
         demos.forEach(demo=>{
-          const {node,panel,definition,pointer,ring}=demo;
-          const panelRect=flow ? panel.getBoundingClientRect() : null;
-          const active=!openingActive && (flow ? panelRect.bottom>100 && panelRect.top<viewportHeight-30 : demo.scene===scene && Number(panel.style.opacity)>.1);
-          if(!active) {
-            demo.started=null;pointer.style.opacity=0;ring.style.opacity=0;
-            return;
-          }
+          const active=!openingActive && demo.scene===scene && Number(demo.panel.style.opacity)>.1;
+          if(!active) { demo.started=null; return; }
           if(demo.started===null) demo.started=time;
-          const seconds=((time-demo.started)/1000)%10;
-          let step='idle';
-          definition.states.forEach(([at,name])=>{if(seconds>=at)step=name;});
-          if(step!==demo.step) {
-            demo.step=step;node.dataset.step=step;
-            if(node.dataset.demo==='reminders') node.querySelector('.demo-reminder-status').textContent=['enabled','notified'].includes(step)?'7일 전':'꺼짐';
-            if(node.dataset.demo==='excel') node.querySelector('.demo-download-file small').textContent=step==='exporting'?'엑셀 파일을 만들고 있어요…':'다운로드 완료';
-            if(node.dataset.demo==='documents') {
-              node.querySelector('.demo-upload-label').textContent=['attached','saving','done'].includes(step)?'플랜과 함께 저장할 서류':'첨부 중…';
-              node.querySelector('.demo-register-label').textContent=step==='saving'?'저장 중…':'플랜 저장하기';
-            }
-          }
-          if(node.dataset.demo==='documents') {
-            node.style.setProperty('--upload-progress',clamp((seconds-4.9)/1.25));
-            node.querySelector('.demo-plan-typed').textContent='웨딩홀 계약'.slice(0,Math.floor(clamp((seconds-.9)/.8)*'웨딩홀 계약'.length));
-          }
-          if(node.dataset.demo==='invitation') {
-            const title='우진 & 채원'.slice(0,Math.floor(clamp((seconds-3)/1.3)*'우진 & 채원'.length));
-            node.querySelector('.demo-typed-title').textContent=title;
-            node.querySelector('.demo-preview-title').textContent=title || '우리의 이름';
-          }
-          const bounds=node.getBoundingClientRect();
-          const point=target=>{
-            if(Array.isArray(target))return{x:target[0]*node.clientWidth,y:target[1]*node.clientHeight};
-            const rect=node.querySelector(target).getBoundingClientRect();
-            return{x:rect.left+rect.width/2-bounds.left-node.clientLeft,y:rect.top+rect.height/2-bounds.top-node.clientTop};
-          };
-          let index=0;
-          while(index<definition.path.length-2 && seconds>definition.path[index+1][0])index++;
-          const [start,from]=definition.path[index], [end,to]=definition.path[index+1];
-          const progress=smooth(clamp((seconds-start)/(end-start))), a=point(from), b=point(to);
-          const x=a.x+(b.x-a.x)*progress, y=a.y+(b.y-a.y)*progress;
-          const click=definition.clicks.find(at=>Math.abs(seconds-at)<.13);
-          pointer.style.opacity=String(clamp(seconds/.5)*(1-clamp((seconds-9.2)/.6)));
-          pointer.style.transform=`translate(${x-3}px,${y-2}px) scale(${click!==undefined ? .82 : 1})`;
-          const lastClick=definition.clicks.filter(at=>seconds>=at).at(-1);
-          const ripple=lastClick===undefined ? 1 : (seconds-lastClick)/.55;
-          if(ripple>=0 && ripple<1) {
-            const hold=definition.path.find(([at])=>at>lastClick), hit=point(hold[1]);
-            ring.style.left=`${hit.x}px`;ring.style.top=`${hit.y}px`;
-            ring.style.opacity=String(1-ripple);ring.style.transform=`translate(-50%,-50%) scale(${.45+ripple*1.8})`;
-          } else ring.style.opacity=0;
-          node.dataset.demoTime=seconds.toFixed(2);
+          demo.renderer.render(referenceFrame ? referenceFrame.milliseconds : Math.min(PassDemos.total,time-demo.started));
         });
       }
+      // A fixed clock also supports frame-by-frame comparison against the native Android renderer.
+      window.weddingPassCapture=async(scene,milliseconds=6600)=>{
+        await document.fonts.ready;
+        finishOpening(); clearOpeningTimers(); cancelAnimationFrame(raf);
+        openingActive=false; openingReady=true; referenceFrame={scene,milliseconds};
+        document.body.classList.remove('is-opening','pack-running','pack-ready'); opening.hidden=true;
+        document.getAnimations().forEach(a=>{try{a.finish()}catch{a.pause()}});
+        scrollTo({top:storyTop+scene*unit,behavior:'instant'});
+        current=target=scene; render(milliseconds,0);
+        current=target=scene; render(milliseconds,0);
+        return {scene,milliseconds,width:innerWidth,height:viewportHeight};
+      };
+      window.weddingPassCaptureOpening=async(milliseconds)=>{
+        referenceFrame=null;startOpening();await document.fonts.ready;
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        clearOpeningTimers();cancelAnimationFrame(raf);
+        referenceFrame={scene:0,milliseconds};current=target=0;
+        openingReady=milliseconds>=3900;packContinue.disabled=!openingReady;
+        document.body.classList.toggle('pack-ready',openingReady);
+        render(milliseconds,0);
+        document.getAnimations().forEach(a=>{a.pause();a.currentTime=milliseconds;});
+        return true;
+      };
       addEventListener('scroll',readScroll,{passive:true});
       let resizeTimer;
       addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(measure,100);});

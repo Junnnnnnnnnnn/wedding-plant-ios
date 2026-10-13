@@ -165,6 +165,10 @@ public final class SeasideEngine {
         speech = actor; manualSpeech = manual; selected = actor; speechSerial += 1
         speechUntil = time + min(9, max(5.5, Double(wish.message.utf16.count) * 0.09 + 3))
     }
+    public func holdSpeech() {
+        guard let actor = speech, !manualSpeech else { return }
+        showSpeech(actor, manual: true)
+    }
     public func closeSpeech() { speech = nil; manualSpeech = false; nextSpeech = time + 2.5 }
     public func hit(x: Double, y: Double) -> Actor? {
         actors.filter {

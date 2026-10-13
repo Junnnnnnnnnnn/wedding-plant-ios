@@ -1,0 +1,233 @@
+[
+  {
+    "id": "reminders-default",
+    "android": "reminders-default.png",
+    "ios": "matched-reminders-default",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·상단 인셋48. 같은 날짜·결제 목록·권한·패스 상태. 원본 Material 아이콘, 줄바꿈과 행 높이를 사용한다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "reminders-blocked",
+    "android": "reminders-blocked.png",
+    "ios": "matched-reminders-blocked",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·상단 인셋48. 같은 날짜·결제 목록·권한·패스 상태. 원본 Material 아이콘, 줄바꿈과 행 높이를 사용한다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "bloom-create",
+    "android": "bloom-create-amount.png",
+    "ios": "matched-bloom-create",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율. 스튜디오 촬영·185만 원·남은 예산1965만 원. Android 캡처의 OS 상태/내비게이션 바는 앱 본문 비교에서 제외한다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "bloom-update",
+    "android": "bloom-update-amount.png",
+    "ios": "matched-bloom-update",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율. 스튜디오 촬영·185만 원·남은 예산1965만 원. Android 캡처의 OS 상태/내비게이션 바는 앱 본문 비교에서 제외한다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "bloom-delete",
+    "android": "bloom-delete-amount.png",
+    "ios": "matched-bloom-delete",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율. 스튜디오 촬영·185만 원·남은 예산1965만 원. Android 캡처의 OS 상태/내비게이션 바는 앱 본문 비교에서 제외한다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-opening",
+    "android": "intro-page-0.png",
+    "ios": "matched-intro-page-0",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·동일 안전 영역. 시연은6600ms 정지 상태. 원본340×271 패널, 글꼴·벡터·사진·카드·광택·배경 좌표를 이식했다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-documents",
+    "android": "intro-page-1.png",
+    "ios": "matched-intro-page-1",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·동일 안전 영역. 시연은6600ms 정지 상태. 원본340×271 패널, 글꼴·벡터·사진·카드·광택·배경 좌표를 이식했다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-excel",
+    "android": "intro-page-2.png",
+    "ios": "matched-intro-page-2",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·동일 안전 영역. 시연은6600ms 정지 상태. 원본340×271 패널, 글꼴·벡터·사진·카드·광택·배경 좌표를 이식했다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-reminders",
+    "android": "intro-page-3.png",
+    "ios": "matched-intro-page-3",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·동일 안전 영역. 시연은6600ms 정지 상태. 원본340×271 패널, 글꼴·벡터·사진·카드·광택·배경 좌표를 이식했다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-invitation",
+    "android": "intro-page-4.png",
+    "ios": "matched-intro-page-4",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·동일 안전 영역. 시연은6600ms 정지 상태. 원본340×271 패널, 글꼴·벡터·사진·카드·광택·배경 좌표를 이식했다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-final",
+    "android": "intro-page-5.png",
+    "ios": "matched-intro-page-5",
+    "fixture": "same",
+    "note": "390dp/pt·3배 배율·동일 안전 영역. 시연은6600ms 정지 상태. 원본340×271 패널, 글꼴·벡터·사진·카드·광택·배경 좌표를 이식했다. iOS는 광고가 없어 광고 제거 혜택 칩을 표시하지 않는다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-demo-1-midway",
+    "android": "intro-demo-1-2600.png",
+    "ios": "matched-intro-demo-1-2600",
+    "fixture": "same",
+    "note": "같은 시연의 2600ms. 서류 선택·행 등장·설정 선택·타이핑·리플을 실제 렌더러로 캡처. Compose 프레임 단위와 브라우저 시계의 수ms 차이는 남을 수 있다.",
+    "review": "같은 타임라인의 중간 상태·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-demo-2-midway",
+    "android": "intro-demo-2-2800.png",
+    "ios": "matched-intro-demo-2-2800",
+    "fixture": "same",
+    "note": "같은 시연의 2800ms. 서류 선택·행 등장·설정 선택·타이핑·리플을 실제 렌더러로 캡처. Compose 프레임 단위와 브라우저 시계의 수ms 차이는 남을 수 있다.",
+    "review": "같은 타임라인의 중간 상태·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-demo-3-midway",
+    "android": "intro-demo-3-2300.png",
+    "ios": "matched-intro-demo-3-2300",
+    "fixture": "same",
+    "note": "같은 시연의 2300ms. 서류 선택·행 등장·설정 선택·타이핑·리플을 실제 렌더러로 캡처. Compose 프레임 단위와 브라우저 시계의 수ms 차이는 남을 수 있다.",
+    "review": "같은 타임라인의 중간 상태·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-demo-4-midway",
+    "android": "intro-demo-4-2225.png",
+    "ios": "matched-intro-demo-4-2225",
+    "fixture": "same",
+    "note": "같은 시연의 2225ms. 서류 선택·행 등장·설정 선택·타이핑·리플을 실제 렌더러로 캡처. Compose 프레임 단위와 브라우저 시계의 수ms 차이는 남을 수 있다.",
+    "review": "같은 타임라인의 중간 상태·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-opening-1200",
+    "android": "intro-open-1200.png",
+    "ios": "matched-intro-open-1200",
+    "fixture": "same",
+    "note": "오프닝 1200ms. Android 테스트의 누적16ms 반올림을 제거하고 시작 시계를 고정. 봉투·이음매·카드·후광·광선·고리·가루·문구의 원본 키프레임 대조.",
+    "review": "시간별 원본 상태·크기·위치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-opening-2450",
+    "android": "intro-open-2450.png",
+    "ios": "matched-intro-open-2450",
+    "fixture": "same",
+    "note": "오프닝 2450ms. Android 테스트의 누적16ms 반올림을 제거하고 시작 시계를 고정. 봉투·이음매·카드·후광·광선·고리·가루·문구의 원본 키프레임 대조.",
+    "review": "시간별 원본 상태·크기·위치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "pass-opening-4000",
+    "android": "intro-open-4000.png",
+    "ios": "matched-intro-open-4000",
+    "fixture": "same",
+    "note": "오프닝 4000ms. Android 테스트의 누적16ms 반올림을 제거하고 시작 시계를 고정. 봉투·이음매·카드·후광·광선·고리·가루·문구의 원본 키프레임 대조.",
+    "review": "시간별 원본 상태·크기·위치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "chat-solo",
+    "android": "port-chat-solo.png",
+    "ios": "matched-chat-solo",
+    "fixture": "same",
+    "note": "동일한 독립 채팅 본문·390dp/pt·상단 인셋48. 초대 가능/불가능 상태, 원본 카카오 글꼴·행간·아이콘·여백.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "chat-unavailable",
+    "android": "port-chat-unavailable.png",
+    "ios": "matched-chat-unavailable",
+    "fixture": "same",
+    "note": "동일한 독립 채팅 본문·390dp/pt·상단 인셋48. 초대 가능/불가능 상태, 원본 카카오 글꼴·행간·아이콘·여백.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "add-plan",
+    "android": "port-addplan-form.png",
+    "ios": "matched-addplan-form",
+    "fixture": "same",
+    "note": "드레스 투어·드레스·카드·금액0·2026-10-13·빈 장소 검색 오류. Android 스크롤 위치0을 명시적으로 검사한다. 상단48/하단24의 동일 인셋.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "explore-feed",
+    "android": "explore-feed.png",
+    "ios": "matched-explore-feed",
+    "fixture": "same",
+    "note": "같은 API 응답: 후기128개·내 후기2개·도움5, 라움 아트280만 원/더채플앳청담3200만 원. 같은 통계·본문·신고 버튼·하단 탭과 인셋.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "garden-empty",
+    "android": "port-garden-empty.png",
+    "ios": "matched-garden-empty",
+    "fixture": "same",
+    "note": "실제 정원 렌더러의 정지 화면. 이름표·비어 있는 좌석·정원지기 대화문·18px 행간·14px 기준선·진행 점 표시.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "garden-bubble",
+    "android": "port-garden-bubble.png",
+    "ios": "matched-garden-bubble",
+    "fixture": "same",
+    "note": "같은196pt 말풍선·같은 축하 글·같은 꼬리 좌표59. Android는 실제 정원에서 말풍선을 잘라내고 iOS는 같은 실제 UIView를 캡처해 외부 배경만 다르다.",
+    "review": "동일 데이터의 문구·행간·배치 대조 완료",
+    "verdict": "reviewed"
+  },
+  {
+    "id": "garden-flight",
+    "android": "garden-landing-drop-08.png",
+    "ios": "matched-garden-flight-08",
+    "fixture": "layout",
+    "note": "같은390dp/pt·3배 배율의 실제 낙하 캡처. 시작 시각·난수가 다른 이 이미지는 궤적 일치 판정용이 아니다. Core의 원본133프레임 좌표 대조와 양쪽 헤더 통과/착지 복구 검사로 검증한다.",
+    "review": "양쪽 실제 헤더 통과·착지 후 복구 검사 통과",
+    "verdict": "reviewed",
+    "motion": {
+      "androidPattern": "garden-landing-drop-*.png",
+      "iosPrefix": "matched-garden-flight-",
+      "androidFrameMs": 170,
+      "iosFrameMs": 120
+    }
+  }
+]

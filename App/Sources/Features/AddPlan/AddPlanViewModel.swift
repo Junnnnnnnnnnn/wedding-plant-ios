@@ -50,6 +50,7 @@ final class AddPlanViewModel: ObservableObject {
 
     // MARK: 장소 검색
 
+    @Published var locationError = false
     @Published var searching = false
     @Published var searchResults: [PlaceSearchResult] = []
     @Published var hasSearched = false
@@ -291,6 +292,7 @@ final class AddPlanViewModel: ObservableObject {
     }
 
     func setLocation(_ value: String) {
+        locationError = false
         if value.trimmingCharacters(in: .whitespaces).isEmpty {
             // 웹과 동일: 입력을 비우면 검색 결과와 좌표도 초기화
             selectedPlaceName = ""
@@ -326,7 +328,9 @@ final class AddPlanViewModel: ObservableObject {
     /// 웹 `handleSearchLocation()` — 키워드로 장소 검색 (최대 10개)
     func searchPlaces(env: AppEnvironment) async {
         let query = location.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty, !searching else { return }
+        guard !searching else { return }
+        guard !query.isEmpty else { locationError = true; return }
+        locationError = false
 
         // 이전 결과를 남겨두면 새 결과가 오기 전에 옛 항목을 눌러
         // 엉뚱한 좌표가 저장될 수 있다.

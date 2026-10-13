@@ -19,15 +19,14 @@ import WPUtils
 /// - **단계형 흐름은 그대로** — 결제 유형을 고르기 전에는 금액·장소 칸이 나오지
 ///   않는다.
 ///
-/// 웹의 **카카오맵 임베드와 키워드 검색은 아직 없다.** 백엔드 프록시
-/// (`/plan/place/search`)가 없어 404 라, 장소를 자유 입력으로 받고 좌표는 0 으로
-/// 보낸다(백엔드가 허용하는 형태).
+/// 장소 검색 결과에서 주소와 좌표를 선택하고, 검색 실패 시 입력을 유지합니다.
 struct AddPlanView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var model: AddPlanViewModel
+    @State private var locationRejection = 0
     @State private var showCategoryModal = false
     @State private var showDatePicker = false
     @State private var showTimePicker = false
@@ -53,6 +52,10 @@ struct AddPlanView: View {
         self.onSaved = onSaved
     }
 
+    init(model: AddPlanViewModel, onSaved: @escaping () -> Void = {}) {
+        _model = StateObject(wrappedValue: model); self.onSaved = onSaved
+    }
+
     var body: some View {
         ZStack {
             Color.white
@@ -68,8 +71,6 @@ struct AddPlanView: View {
                             sheet
                             if let id = model.editId, id > 0 {
                                 PassDocumentsView(scheduleId: id, canAdd: true).padding(.horizontal, 16).padding(.top, 16)
-                            } else if model.canSave {
-                                Text("계약서·영수증은 플랜을 저장한 뒤 수정하기에서 첨부할 수 있어요.").font(WPFont.hak(12)).foregroundStyle(.secondary).padding(16)
                             }
                         }
 
@@ -128,14 +129,14 @@ struct AddPlanView: View {
     private var head: some View {
         BrandHead(corner: 24) {
             HStack(spacing: 0) {
-                HeadIconButton(systemName: "arrow.left", label: "뒤로가기", size: 32, iconSize: 20) {
-                    dismiss()
-                }
+                Button { dismiss() } label: {
+                    WPMaterialIcon(kind: .back).frame(width: 20, height: 20).foregroundStyle(.white).frame(width: 32, height: 32)
+                }.buttonStyle(.plain).accessibilityLabel("뒤로가기")
                 .offset(x: -8)
                 .accessibilityIdentifier("addplan.back")
 
                 Text(model.isEditMode ? "플랜 수정" : "플랜 추가")
-                    .font(WPFont.hak(18, .bold))
+                    .wpTypography(18, .bold)
                     .tracking(-0.02 * 18)
                     .foregroundStyle(.white)
 
@@ -145,17 +146,10 @@ struct AddPlanView: View {
             Spacer().frame(height: 12)
 
             // 같은 칸을 시트에 또 두지 않는다 — 제목은 여기 하나뿐이다.
-            TextField(
-                "",
-                text: Binding(get: { model.title }, set: { model.title = $0 }),
-                prompt: Text("어떤 지출인가요?").foregroundColor(.white.opacity(0.5))
-            )
-            .font(WPFont.tmoney(24, .bold))
-            .tracking(-0.03 * 24)
-            .foregroundStyle(.white)
-            .tint(.white)
-            .textFieldStyle(.plain)
-            .accessibilityIdentifier("addplan.title")
+            WPTmoneyInput(text: $model.title, placeholder: "어떤 지출인가요?", size: 24, bold: true,
+                color: .white, placeholderColor: .white.withAlphaComponent(0.5), tracking: -0.72, identifier: "addplan.title")
+            Spacer().frame(height: 4)
+            Text("제목을 누르면 입력할 수 있어요").wpTypography(14).foregroundStyle(.white.opacity(0.8))
         }
     }
 
@@ -168,7 +162,7 @@ struct AddPlanView: View {
                 LabelGrid("카테고리") {
                     Button { showCategoryModal = true } label: {
                         Text(model.category?.name ?? "카테고리 선택")
-                            .font(WPFont.hak(16))
+                            .wpTypography(16)
                             .foregroundStyle(
                                 model.category != nil ? WPColor.fgNeutral : Self.placeholderGray
                             )
@@ -218,10 +212,10 @@ struct AddPlanView: View {
         let selected = model.payType == type
         return Button { model.payType = type } label: {
             Text(type.label)
-                .font(WPFont.hak(14, .bold))
+                .wpTypography(14, selected ? .bold : .regular)
                 .foregroundStyle(selected ? .white : WPColor.fgMuted)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 11)
+                .padding(.vertical, 12)
                 .background(
                     selected ? Self.invertedFill : WPColor.fill,
                     in: RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -234,31 +228,19 @@ struct AddPlanView: View {
 
     private var amountRow: some View {
         SheetRow {
-            StackLabel("금액")
-            HStack(spacing: 8) {
-                TextField(
-                    "",
-                    text: Binding(get: { model.amount }, set: { model.setAmount($0) }),
-                    prompt: Text("0").foregroundColor(Self.placeholderGray)
-                )
-                .font(WPFont.tmoney(16, .bold))
-                .foregroundStyle(WPColor.fgNeutral)
-                .multilineTextAlignment(.trailing)
-                // `type="number"` 를 쓰지 않는 것과 같은 이유로 숫자 키패드 + 문자열이다.
-                .keyboardType(.decimalPad)
-                .accessibilityIdentifier("addplan.amount")
-
-                Text("만원")
-                    .font(WPFont.hak(14))
-                    .foregroundStyle(WPColor.fgSubtle)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-            // **돈 이야기라 금액 옆이 맞다.** 완료 토글(보드·상세)과는 다른 축이라
-            // 거기 섞지 않는다.
-            Spacer().frame(height: 8)
+            HStack {
+                Text("금액").wpTypography(13, .bold).foregroundStyle(WPColor.fgMuted)
+                Spacer(minLength: 12)
+                Text("천원 단위는 반올림·반내림 해주세요").wpTypography(11).foregroundStyle(WPColor.fgSubtle)
+            }.padding(.bottom, 8)
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                WPTmoneyInput(text: Binding(get: { model.amount }, set: { model.setAmount($0) }),
+                    placeholder: "0", size: 24, bold: true, placeholderColor: UIColor(Self.placeholderGray),
+                    alignment: .right, keyboard: .decimalPad, identifier: "addplan.amount")
+                Text("만 원").wpTypography(14).foregroundStyle(WPColor.fgMuted)
+            }.padding(.horizontal, 16).padding(.vertical, 12)
+                .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
+            Spacer().frame(height: 10)
             paidToggle
         }
     }
@@ -284,11 +266,11 @@ struct AddPlanView: View {
                 .frame(width: 18, height: 18)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(model.completed ? "완료한 일정이에요" : "이미 결제했어요")
-                        .font(WPFont.hak(13.5, .bold))
+                    Text("이미 결제했어요")
+                        .wpTypography(13.5, .bold)
                         .foregroundStyle(model.isPaid ? WPColor.positive : WPColor.fgMuted)
-                    Text(model.completed ? "완료한 일정은 쓴 돈으로 잡혀요" : "일정이 남아 있어도 쓴 돈으로 잡혀요")
-                        .font(WPFont.hak(11.5))
+                    Text(model.completed ? "완료한 플랜은 결제한 것으로 잡혀요" : "일정이 남아 있어도 쓴 돈으로 잡혀요")
+                        .wpTypography(12)
                         .foregroundStyle(WPColor.fgSubtle)
                 }
 
@@ -315,8 +297,8 @@ struct AddPlanView: View {
                     Button { showDatePicker = true } label: {
                         // **보이는 날짜와 저장하는 날짜는 다른 포맷이다.**
                         // 여기는 `2026년 9월 12일 (토)`, 저장은 `YYYY-MM-DD`.
-                        Text(model.dateUndecided ? "날짜 미정" : model.date.weddingDateText)
-                            .font(WPFont.hak(16))
+                        Text((model.dateUndecided ? "미정" : model.date.weddingDateText).wpKeepAll)
+                            .wpTypography(16)
                             .foregroundStyle(
                                 model.dateUndecided ? Self.placeholderGray : WPColor.fgNeutral
                             )
@@ -330,10 +312,10 @@ struct AddPlanView: View {
 
                     Button { model.toggleDateUndecided() } label: {
                         Text("미정")
-                            .font(WPFont.hak(13, .bold))
+                            .wpTypography(12, .bold)
                             .foregroundStyle(model.dateUndecided ? .white : WPColor.fgMuted)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
+                            .padding(.vertical, 4)
                             .background(
                                 model.dateUndecided ? Self.invertedFill : WPColor.fill,
                                 in: Capsule()
@@ -354,9 +336,9 @@ struct AddPlanView: View {
                 HStack(spacing: 8) {
                     Button { showTimePicker = true } label: {
                         Text(formatKoreanTime(model.startTime).isEmpty
-                             ? "시각 미정"
+                             ? "-- --:--"
                              : formatKoreanTime(model.startTime))
-                            .font(WPFont.hak(16))
+                            .wpTypography(16)
                             .foregroundStyle(
                                 model.startTime == nil ? Self.placeholderGray : WPColor.fgNeutral
                             )
@@ -369,13 +351,17 @@ struct AddPlanView: View {
                     if model.startTime != nil {
                         Button { model.startTime = nil } label: {
                             Text("지우기")
-                                .font(WPFont.hak(13, .bold))
+                                .wpTypography(12, .bold)
                                 .foregroundStyle(WPColor.fgMuted)
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 7)
+                                .padding(.vertical, 4)
                                 .background(WPColor.fill, in: Capsule())
                         }
                         .buttonStyle(.plain)
+                    } else {
+                        Button { showTimePicker = true } label: {
+                            WPMaterialIcon(kind: .clock).frame(width: 18, height: 18).foregroundStyle(WPColor.fgNeutral)
+                        }.buttonStyle(.plain).accessibilityLabel("시각 고르기")
                     }
                 }
             }
@@ -388,37 +374,47 @@ struct AddPlanView: View {
         SheetRow {
             StackLabel("위치")
             HStack(spacing: 8) {
-                TextField(
-                    "",
-                    text: Binding(get: { model.location }, set: { model.setLocation($0) }),
-                    prompt: Text("예식장, 스튜디오 등").foregroundColor(Self.placeholderGray)
-                )
-                .font(WPFont.tmoney(16))
-                .foregroundStyle(WPColor.fgNeutral)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                WPTmoneyInput(text: Binding(get: { model.location }, set: { model.setLocation($0) }),
+                    placeholder: "예식장, 스튜디오 등", placeholderColor: UIColor(Self.placeholderGray), identifier: "addplan.location")
+                    .padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 44)
+                    .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.locationError ? WPColor.danger : .clear, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(model.locationError ? WPColor.danger.opacity(0.1) : .clear, lineWidth: 2).padding(-2))
+                    .keyframeAnimator(initialValue: CGFloat.zero, trigger: locationRejection) { view, offset in
+                        view.offset(x: offset)
+                    } keyframes: { _ in
+                        CubicKeyframe(-6, duration: 0.08)
+                        CubicKeyframe(6, duration: 0.08)
+                        CubicKeyframe(-4, duration: 0.08)
+                        CubicKeyframe(4, duration: 0.08)
+                        CubicKeyframe(0, duration: 0.08)
+                    }
 
                 Button {
+                    if model.location.trimmingCharacters(in: .whitespaces).isEmpty {
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        locationRejection += 1
+                    }
                     Task { await model.searchPlaces(env: env) }
                 } label: {
                     Group {
                         if model.searching {
                             ProgressView().tint(.white)
                         } else {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.white)
+                            WPMaterialIcon(kind: .search).frame(width: 18, height: 18)
+                                .foregroundStyle(model.location.isEmpty ? WPColor.fgSubtle : .white)
                         }
                     }
-                    .frame(width: 42, height: 42)
-                    .background(Self.invertedFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(width: 44, height: 44)
+                    .background(model.location.isEmpty ? WPColor.fill : Self.invertedFill, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-                .disabled(model.location.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityLabel("장소 검색")
             }
 
+            if model.locationError {
+                Text("위치를 입력해주세요").wpTypography(12).foregroundStyle(WPColor.danger).padding(.top, 8)
+            }
             if !model.searchResults.isEmpty {
                 Spacer().frame(height: 4)
                 ForEach(model.searchResults) { place in
@@ -428,7 +424,7 @@ struct AddPlanView: View {
                                 .font(WPFont.tmoney(14, .bold))
                                 .foregroundStyle(WPColor.fgNeutral)
                             Text(addressText(place))
-                                .font(WPFont.hak(12))
+                                .wpTypography(12)
                                 .foregroundStyle(WPColor.fgSubtle)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -439,13 +435,13 @@ struct AddPlanView: View {
                 }
             } else if model.searchUnavailable {
                 Spacer().frame(height: 4)
-                Text("장소 검색은 백엔드에 `/plan/place/search` 가 추가되면 동작해요. 그전까지는 장소명을 직접 입력해 주세요.")
-                    .font(WPFont.hak(12))
+                Text("장소 검색을 불러오지 못했어요. 장소명을 직접 입력하거나 잠시 후 다시 시도해 주세요.")
+                    .wpTypography(12)
                     .foregroundStyle(WPColor.fgSubtle)
             } else if model.hasSearched {
                 Spacer().frame(height: 4)
                 Text("검색 결과가 없어요.")
-                    .font(WPFont.hak(12))
+                    .wpTypography(12)
                     .foregroundStyle(WPColor.fgSubtle)
             }
         }
@@ -463,28 +459,28 @@ struct AddPlanView: View {
             StackLabel("메모")
             ZStack(alignment: .bottomTrailing) {
                 TextEditor(text: Binding(get: { model.memo }, set: { model.setMemo($0) }))
-                    .font(WPFont.tmoney(15))
+                    .font(WPFont.tmoney(14))
                     .foregroundStyle(WPColor.fgNeutral)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 88)
-                    .padding(.horizontal, 8)
+                    .frame(height: 64)
+                    .padding(.horizontal, 11)
                     .padding(.vertical, 6)
                     .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(alignment: .topLeading) {
                         if model.memo.isEmpty {
                             Text("메모 남기기")
-                                .font(WPFont.tmoney(15))
+                                .font(WPFont.tmoney(14))
                                 .foregroundStyle(Self.placeholderGray)
-                                .padding(.horizontal, 13)
-                                .padding(.vertical, 14)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
                                 .allowsHitTesting(false)
                         }
                     }
 
                 Text(verbatim: "\(model.memo.count)/500")
-                    .font(WPFont.hak(11))
+                    .wpTypography(12)
                     .foregroundStyle(WPColor.fgSubtle)
-                    .padding(.trailing, 10)
+                    .padding(.trailing, 16)
                     .padding(.bottom, 8)
             }
         }
@@ -499,8 +495,8 @@ struct AddPlanView: View {
                 Task { await model.save(env: env, guest: guest) }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 10)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
         }
         .background(Color.white)
     }
@@ -560,7 +556,7 @@ private struct LabelGrid<Content: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(WPFont.hak(13, .bold))
+                .wpTypography(13, .bold)
                 .foregroundStyle(WPColor.fgMuted)
                 .frame(width: 84, alignment: .leading)
             content
@@ -578,7 +574,7 @@ private struct StackLabel: View {
 
     var body: some View {
         Text(label)
-            .font(WPFont.hak(13, .bold))
+            .wpTypography(13, .bold)
             .foregroundStyle(WPColor.fgMuted)
             .padding(.bottom, 8)
     }
@@ -666,15 +662,14 @@ private struct SaveButton: View {
     var body: some View {
         Button(action: action) {
             Text(text)
-                .font(WPFont.hak(18, .black))
+                .wpTypography(16, .bold)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 60)
+                .padding(.vertical, 16)
                 .background(
-                    enabled ? WPColor.primary : WPColor.primary.opacity(0.5),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    enabled ? WPColor.primary : WPColor.primary.opacity(0.7),
+                    in: RoundedRectangle(cornerRadius: 12)
                 )
-                .shadow(color: WPColor.primary.opacity(0.3), radius: 12, y: 6)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
@@ -689,25 +684,18 @@ private struct CategorySuggestions: View {
     var onSelect: (String) -> Void
 
     var body: some View {
-        FlowRow(spacing: 6, lineSpacing: 6) {
-            ForEach(names, id: \.self) { name in
-                let isSelected = name == selected
-                Button { onSelect(name) } label: {
-                    Text(name)
-                        .font(WPFont.hak(13, .semibold))
-                        .foregroundStyle(isSelected ? .white : WPColor.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(
-                            isSelected
-                                ? AnyShapeStyle(WPColor.primary)
-                                : AnyShapeStyle(Color(hex: PlanRules.categoryPastelHex(name))),
-                            in: Capsule()
-                        )
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(names, id: \.self) { name in
+                    Button { onSelect(name) } label: {
+                        Text(name).wpTypography(14, .medium).foregroundStyle(Color(hex: 0x57534E))
+                            .padding(.horizontal, 12).frame(height: 36)
+                            .background(Color(hex: 0xF5F5F4), in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: 0xE7E5E4)))
+                    }.buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-        }
+        }.scrollIndicators(.hidden)
     }
 }
 
@@ -720,7 +708,7 @@ private struct DatePickerSheet: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("일자 선택")
-                .font(WPFont.hak(18, .semibold))
+                .wpTypography(18, .semibold)
                 .foregroundStyle(WPColor.textPrimary)
                 .padding(.top, 24)
 
@@ -732,7 +720,7 @@ private struct DatePickerSheet: View {
 
             Button { dismiss() } label: {
                 Text("확인")
-                    .font(WPFont.hak(16, .bold))
+                    .wpTypography(16, .bold)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
@@ -759,14 +747,14 @@ private struct GuestLimitModal: View {
 
             VStack(spacing: 0) {
                 Text("로그인 없이 이용 중이시네요!")
-                    .font(WPFont.hak(18, .bold))
+                    .wpTypography(18, .bold)
                     .foregroundStyle(WPColor.textPrimary)
 
                 Spacer().frame(height: 12)
 
                 // 이모지는 웹 원문 그대로다.
                 Text("비로그인 상태에서는 최대 3개까지만 플랜을 추가할 수 있어요. 📌\n\n또한 비로그인 상태에서는 데이터가 저장되지 않아요.\n\n더 많은 플랜을 관리하고 싶다면 로그인해 보세요!")
-                    .font(WPFont.hak(14))
+                    .wpTypography(14)
                     .lineSpacing(6)
                     .foregroundStyle(WPColor.stone500)
                     .multilineTextAlignment(.center)
@@ -775,7 +763,7 @@ private struct GuestLimitModal: View {
 
                 Button(action: onConfirm) {
                     Text("로그인하러 가기")
-                        .font(WPFont.hak(15, .bold))
+                        .wpTypography(15, .bold)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
@@ -802,7 +790,7 @@ private struct BackPill: View {
                 Image(systemName: "arrow.left")
                     .font(.system(size: 17, weight: .semibold))
                 Text("뒤로가기")
-                    .font(WPFont.hak(16, .bold))
+                    .wpTypography(16, .bold)
             }
             .foregroundStyle(WPColor.primary)
             .padding(.horizontal, 14)

@@ -40,7 +40,7 @@ def main():
     records, sections = [], []
     for spec in json.loads(args.spec.read_text()):
         android_path = args.android / spec["android"]
-        # The API35 ReminderSettingsShotTest baseline includes its 52dp inset.
+        # Optional explicit baseline; current fixtures use API35 at 390dp and density 3.
         if spec["id"].startswith("reminders-") and spec.get("androidReference"):
             android_path = Path(spec["androidReference"])
         android, ios = normalized(android_path), normalized(lookup[spec["ios"]])
@@ -74,7 +74,7 @@ def main():
     (args.output / "manifest.json").write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n")
     page = '''<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Android · iOS 화면 대조</title>
 <style>body{font-family:system-ui,sans-serif;background:#f6f7f9;color:#17191e;max-width:1100px;margin:auto;padding:28px}h1{font-size:26px}h2{font-size:19px}p{line-height:1.6}small{font-size:12px;background:#fff0d8;padding:6px;border-radius:8px;margin-left:8px}article{padding:20px;background:white;border:1px solid #ddd;border-radius:16px;margin:24px 0}.pair{display:flex;gap:16px;overflow:auto}figure{margin:0;flex:0 0 390px}img{max-width:100%;display:block}figcaption{font-weight:bold;padding:8px 0}.notice{padding:16px;background:#fff0d8;border-radius:10px}</style>
-<h1>Android · iOS 실제 캡처 대조 · 2026-10-13</h1><p class="notice">전 화면 완전 일치 판정이 아닙니다. 동일 조건의 캡처와 구조 참고 캡처를 구분했습니다. 이미지 색 공간은 sRGB로 통일했습니다. 문구·배치·모션 차이를 숨기는 자동 유사도 점수는 사용하지 않습니다.</p>
+<h1>Android · iOS 실제 캡처 대조 · 2026-10-13</h1><p class="notice">Android API35와 iOS를 390dp/pt·3배 배율의 같은 데이터로 대조했습니다. 패스는 재생 시각도 고정했습니다. 이미지 색 공간은 sRGB입니다. OS 영역·광고 혜택 유무·글리프 안티앨리어싱과 난수 입자는 별도로 구분하며, 낙하 GIF는 위상 일치 판정용이 아닙니다. 자세한 범위는 REVIEW.md에 기록했습니다.</p>
 '''+"\n".join(sections)+"</html>"
     (args.output / "index.html").write_text(page)
     print(f"Wrote {len(records)} paired comparisons to {args.output / 'index.html'}")

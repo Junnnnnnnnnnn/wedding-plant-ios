@@ -41,9 +41,9 @@ struct BottomTabBar: View {
                                     }
                                 }
                             }
-                            Text(tab.label).font(WPFont.hak(10, .bold))
+                            Text(tab.label).font(WPFont.hak(11, active == tab || tab == .add ? .bold : .regular)).frame(height: 11).foregroundStyle(tab == .add ? WPColor.primary : active == tab ? WPColor.primary : Color(hex: 0x868B94))
                         }.foregroundStyle(active == tab ? WPColor.primary : Color(hex: 0x868B94))
-                            .frame(maxWidth: .infinity).frame(height: 42).contentShape(Rectangle())
+                            .frame(maxWidth: .infinity).frame(height: 42, alignment: .top).contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityIdentifier("tab.\(tab.rawValue)")
                         .accessibilityAddTraits(active == tab ? .isSelected : [])
                 }
