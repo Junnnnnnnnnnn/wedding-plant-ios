@@ -1,5 +1,6 @@
 import AuthenticationServices
 import Foundation
+import OSLog
 import GoogleSignIn
 import UIKit
 import KakaoSDKAuth
@@ -21,6 +22,7 @@ import WPNetworking
 /// 받아** 백엔드로 바꾼다. 그래서 `?kakao_login` 착지 구간이나 URL hash 처리가 없다.
 @MainActor
 final class SocialLoginService {
+    private static let log = Logger(subsystem: "com.zipshowkorea.weddingplant", category: "SocialLogin")
 
     /// 카카오 네이티브 앱 키. `Config/Local.xcconfig` → Info.plist 로 온다.
     ///
@@ -80,6 +82,7 @@ final class SocialLoginService {
         }
 
         let accessToken = try await kakaoAccessToken()
+        Self.log.notice("Kakao token issued; starting backend login")
         let response = try await env.api.send(
             Endpoint.kakaoLogin(kakaoToken: accessToken),
             decoding: AuthToken.self
@@ -129,14 +132,35 @@ final class SocialLoginService {
     }
 
     /// 사용자가 스스로 취소한 것은 **오류로 알리지 않는다** — 누르다 만 것뿐이다.
-    private static func mapKakao(_ error: Error) -> SocialLoginError {
+    static func mapKakao(_ error: Error) -> SocialLoginError {
         if let sdkError = error as? SdkError, sdkError.isClientFailed {
             switch sdkError.getClientError().reason {
             case .Cancelled: return .cancelled
-            default: return .failed
+            default: break
             }
         }
+        Self.log.error("Kakao SDK failed: \(kakaoDiagnostic(error), privacy: .public)")
         return .failed
+    }
+
+    /// SDK 설명에는 키나 인가 코드가 포함될 수 있어, 분류와 공식 오류 코드만 기록한다.
+    static func kakaoDiagnostic(_ error: Error) -> String {
+        guard let sdkError = error as? SdkError else {
+            return "non_sdk code=\((error as NSError).code)"
+        }
+        switch sdkError {
+        case let .AuthFailed(reason, info):
+            let description = info?.errorDescription ?? ""
+            let code = description.range(of: #"\bKOE[0-9]{3}\b"#, options: .regularExpression)
+                .map { String(description[$0]) } ?? "unavailable"
+            return "auth reason=\(reason.rawValue) code=\(code)"
+        case let .ClientFailed(reason, _):
+            return "client reason=\(reason)"
+        case let .ApiFailed(reason, _):
+            return "api code=\(reason.rawValue)"
+        case let .AppsFailed(reason, _):
+            return "apps reason=\(reason.rawValue)"
+        }
     }
 
     // MARK: - 애플
