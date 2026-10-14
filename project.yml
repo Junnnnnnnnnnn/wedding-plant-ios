@@ -50,7 +50,8 @@ settings:
 
     # 서명은 자동으로 둔다. Xcode 에서 실기기로 돌릴 때 무료 Apple ID 로 바로 된다.
     # CI 는 명령줄에서 덮어쓴다:
-    #   시뮬레이터/무서명 ipa → CODE_SIGNING_ALLOWED=NO
+    #   시뮬레이터 → CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- (Keychain 저장 필요)
+    #   무서명 ipa → CODE_SIGNING_ALLOWED=NO
     #   TestFlight          → CODE_SIGN_STYLE=Manual + 프로파일 지정
     # 명령줄 설정이 항상 우선하므로 여기서 끌 필요가 없다.
     CODE_SIGN_STYLE: Automatic
@@ -207,6 +208,9 @@ targets:
   WeddingPlantTests:
     type: bundle.unit-test
     platform: iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     sources:
       - path: App/Tests
     dependencies:
@@ -228,6 +232,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.weddingplant.uitests
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: WeddingPlant
 

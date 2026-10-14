@@ -1,6 +1,11 @@
 # 현재 상태 / 인수인계
 
-마지막 갱신: 2026-10-13
+마지막 갱신: 2026-10-14
+
+iOS 기본 API를 Android와 같은 `https://api.weddingplant.app`으로 전환했다.
+Keychain 세션은 API 주소별로 분리하며, 이전 공용 토큰은 이관하지 않으므로 전환 후 재로그인해야 한다.
+시뮬레이터도 Keychain 저장을 위해 ad-hoc 서명(`CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-`)으로 빌드한다.
+서버별 세션 분리·저장소 재생성 후 유지 테스트가 통과했다.
 
 Android v35 이식의 최신 구현·검증·미완료 항목은 [ANDROID_PARITY_20261013.md](ANDROID_PARITY_20261013.md)를 기준으로 본다.
 이메일 인증, 준비 패스 화면·서류·내보내기, 청첩장·정원 모션, 채팅·권한 등을 추가했고 Core 389개가 통과했다. 실제 Android/iOS 화면 14쌍과 낙하 133프레임을 대조한 기록도 추가했다.

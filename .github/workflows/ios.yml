@@ -1,7 +1,7 @@
 name: iOS
 
 # 이 워크플로는 Apple 개발자 계정이 없어도 동작한다.
-# 시뮬레이터 빌드는 코드 서명이 필요 없기 때문 (CODE_SIGNING_ALLOWED=NO).
+# 시뮬레이터는 개발자 계정 없이 ad-hoc 서명한다. 무서명 빌드는 Keychain 저장이 실패한다.
 # 계정이 필요한 건 실기기 설치와 TestFlight 업로드뿐이고, 그건 나중에 별도 job 으로 붙인다.
 
 on:
@@ -76,9 +76,9 @@ jobs:
             -configuration Debug \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED=YES \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY="-" \
             ONLY_ACTIVE_ARCH=YES
 
       - name: 화면 녹화 시작
@@ -100,7 +100,7 @@ jobs:
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath artifacts/Result.xcresult \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-"
 
       - name: 화면 녹화 종료
         if: always()

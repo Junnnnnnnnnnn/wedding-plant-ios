@@ -127,7 +127,7 @@ final class AppEnvironment: ObservableObject {
             return env
         }
 
-        let store = KeychainTokenStore()
+        let store = KeychainTokenStore(baseURL: baseURL)
         let client = APIClient(baseURL: baseURL, transport: URLSessionTransport(), tokenStore: store)
         return AppEnvironment(api: client, tokenStore: store, baseURL: baseURL, isDemo: false)
     }
@@ -139,8 +139,8 @@ final class AppEnvironment: ObservableObject {
            let url = URL(string: raw) {
             return url
         }
-        // 설정이 없으면 시뮬레이터에서 로컬 백엔드를 본다.
-        return URL(string: "http://localhost:3111")!
+        // 설정이 없어도 Android와 같은 운영 서버를 사용한다.
+        return URL(string: "https://api.weddingplant.app")!
     }
 
     /// 공유 링크(Universal Link / 커스텀 스킴)를 받는다.

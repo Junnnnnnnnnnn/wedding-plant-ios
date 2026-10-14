@@ -18,6 +18,13 @@ actor KeychainTokenStore: TokenStoring {
         self.service = service
     }
 
+    /// Never reuse an unscoped legacy token or another backend's session.
+    init(baseURL: URL) {
+        var endpoint = baseURL.absoluteString
+        while endpoint.hasSuffix("/") { endpoint.removeLast() }
+        self.service = "app.weddingplant.auth." + endpoint
+    }
+
     func currentToken() async -> String? {
         if !didLoad {
             cached = readFromKeychain()

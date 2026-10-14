@@ -18,9 +18,9 @@
 //   API_BASE_URL = http:/$()/192.168.0.10:3111
 //
 // 배포된 백엔드:
-//   API_BASE_URL = https:/$()/api.example.com
+//   API_BASE_URL = https:/$()/api.weddingplant.app
 
-API_BASE_URL = http:/$()/localhost:3111
+API_BASE_URL = https:/$()/api.weddingplant.app
 
 
 // ── 코드 서명 (선택) ──────────────────────────────────────────────────────────
