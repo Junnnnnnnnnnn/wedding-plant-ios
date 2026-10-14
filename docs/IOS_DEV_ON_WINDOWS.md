@@ -140,7 +140,7 @@ public struct APIEnvelope<T: Decodable>: Decodable {
 # project.yml
 name: WeddingPlant
 options:
-  bundleIdPrefix: com.zipshowkorea
+  bundleIdPrefix: app
   deploymentTarget: { iOS: "17.0" }
 packages:
   Core:
@@ -156,7 +156,7 @@ targets:
     resources: [App/Resources]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.zipshowkorea.weddingplant
+        PRODUCT_BUNDLE_IDENTIFIER: app.weddingplant
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
     dependencies:
@@ -260,7 +260,7 @@ Xcode 없이 openssl만으로 배포 인증서를 만들 수 있습니다.
 ### 4-1. 사전 준비
 
 - **Apple Developer Program 가입 (연 $99)** — TestFlight의 전제 조건입니다.
-- Bundle ID 결정: 예) `com.zipshowkorea.weddingplant`
+- Bundle ID 결정: 예) `app.weddingplant`
 
 ### 4-2. CSR 생성 (Windows, Git Bash 또는 openssl 설치 후)
 
@@ -274,7 +274,7 @@ openssl req -new -key ios_dist.key -out ios_dist.csr \
 
 1. Certificates, Identifiers & Profiles → **Certificates** → `+` → **Apple Distribution**
 2. `ios_dist.csr` 업로드 → `distribution.cer` 다운로드
-3. **Identifiers** → `+` → App IDs → Bundle ID `com.zipshowkorea.weddingplant` 등록
+3. **Identifiers** → `+` → App IDs → Bundle ID `app.weddingplant` 등록
    (Push Notifications, Associated Domains 등 필요한 Capability 체크)
 4. **Profiles** → `+` → **App Store Connect** 배포 프로파일 생성 → `WeddingPlant_AppStore.mobileprovision` 다운로드
 
@@ -401,7 +401,7 @@ jobs:
             <key>teamID</key><string>YOUR_TEAM_ID</string>
             <key>signingStyle</key><string>manual</string>
             <key>provisioningProfiles</key><dict>
-              <key>com.zipshowkorea.weddingplant</key><string>WeddingPlant AppStore</string>
+              <key>app.weddingplant</key><string>WeddingPlant AppStore</string>
             </dict>
           </dict></plist>
           PLIST

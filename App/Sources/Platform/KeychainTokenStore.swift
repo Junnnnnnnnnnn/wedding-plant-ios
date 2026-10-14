@@ -14,7 +14,7 @@ actor KeychainTokenStore: TokenStoring {
     private var cached: String?
     private var didLoad = false
 
-    init(service: String = "com.zipshowkorea.weddingplant") {
+    init(service: String = "app.weddingplant") {
         self.service = service
     }
 

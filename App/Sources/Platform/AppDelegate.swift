@@ -9,7 +9,7 @@ import UIKit
 final class AppDelegate: NSObject, UIApplicationDelegate {
 
     private static let log = Logger(
-        subsystem: "com.zipshowkorea.weddingplant",
+        subsystem: "app.weddingplant",
         category: "WPPush"
     )
 

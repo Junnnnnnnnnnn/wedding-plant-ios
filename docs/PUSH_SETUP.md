@@ -53,7 +53,7 @@ iOS 대상에는 알림 본문을 함께 실어야 한다:
 ## 2. Apple Developer 콘솔
 
 1. Apple Developer Program 가입
-2. Identifiers → App ID `com.zipshowkorea.weddingplant` 등록 → **Push Notifications** 체크
+2. Identifiers → App ID `app.weddingplant` 등록 → **Push Notifications** 체크
 3. Keys → **APNs Auth Key(.p8)** 생성 → 다운로드 (한 번만 받을 수 있다)
    - Key ID 와 Team ID 를 함께 적어 둔다
    - **`.p8` 은 저장소에 넣지 않는다** (`.gitignore` 에 이미 있다)
@@ -61,7 +61,7 @@ iOS 대상에는 알림 본문을 함께 실어야 한다:
 ## 3. Firebase 콘솔
 
 1. 기존 프로젝트(안드로이드와 같은 것)에 **iOS 앱 추가**
-   - 번들 ID: `com.zipshowkorea.weddingplant`
+   - 번들 ID: `app.weddingplant`
 2. `GoogleService-Info.plist` 다운로드 → **`App/Resources/Firebase/`** 에 둔다
    - 넣은 뒤 `xcodegen generate` 를 다시 돌려야 번들에 들어간다
    - 저장소가 공개라 `.gitignore` 되어 있다. 각자 받아서 두면 된다

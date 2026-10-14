@@ -32,7 +32,7 @@ API_BASE_URL = http:/$()/localhost:3111
 //
 // Bundle ID 가 다른 팀에 이미 등록돼 거부되면 뒤에 본인 식별자를 붙인다.
 //
-// PRODUCT_BUNDLE_IDENTIFIER = com.zipshowkorea.weddingplant.mine
+// PRODUCT_BUNDLE_IDENTIFIER = app.weddingplant.mine
 
 
 // ── 넣으면 안 되는 것 ─────────────────────────────────────────────────────────

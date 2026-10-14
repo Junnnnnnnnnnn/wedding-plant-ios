@@ -126,8 +126,8 @@ git pull
 2. 아이폰을 USB 로 연결 → 아이폰에서 "이 컴퓨터를 신뢰"
 3. Xcode → 프로젝트 → **WeddingPlant** 타깃 → **Signing & Capabilities**
    - 서명 방식은 `project.yml` 에서 이미 **Automatic** 이다. **Team 만 고르면 된다.**
-   - Bundle Identifier `com.zipshowkorea.weddingplant` 가 다른 팀에 등록돼 있어 거부되면
-     뒤에 본인 식별자를 붙인다 (예: `com.zipshowkorea.weddingplant.jisoo`)
+   - Bundle Identifier `app.weddingplant` 가 다른 팀에 등록돼 있어 거부되면
+     뒤에 본인 식별자를 붙인다 (예: `app.weddingplant.jisoo`)
 4. 상단 기기 목록에서 연결된 아이폰 선택 → **Cmd+R**
 5. 아이폰: **설정 → 일반 → VPN 및 기기 관리 → 본인 Apple ID → 신뢰**
 

@@ -108,7 +108,7 @@ switch ($Step) {
         Write-Host ".p12 생성 완료: $p12" -ForegroundColor Green
         Write-Host ""
         Write-Host "다음 단계 (브라우저에서):" -ForegroundColor Cyan
-        Write-Host "  1. Identifiers 에 Bundle ID 등록: com.zipshowkorea.weddingplant"
+        Write-Host "  1. Identifiers 에 Bundle ID 등록: app.weddingplant"
         Write-Host "  2. Profiles -> '+' -> App Store Connect -> 프로파일 생성 -> 다운로드"
         Write-Host "     저장 위치: $signing\profile.mobileprovision"
         Write-Host "  3. App Store Connect -> Integrations -> Keys 에서 API 키(.p8) 발급"

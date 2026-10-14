@@ -43,7 +43,7 @@ gh secret set KAKAO_NATIVE_APP_KEY --body "<네이티브 앱 키>"
 
 1. <https://developers.kakao.com> → 내 애플리케이션 → 웨딩플랜 앱
 2. **앱 설정 > 플랫폼 > iOS 등록**
-   - 번들 ID: `com.zipshowkorea.weddingplant` (안드로이드 패키지명과 같다)
+   - 번들 ID: `app.weddingplant` (안드로이드 패키지명과 같다)
    - 마켓 URL 은 출시 전이라 비워 둬도 된다
 3. **제품 설정 > 카카오 로그인** 이 켜져 있는지 확인 (안드로이드용으로 이미 켜져 있다)
 
@@ -127,7 +127,7 @@ Mac 없이 openssl 로 만든다. Git for Windows 에 openssl 이 들어 있다.
 ## A-3. App ID · 프로비저닝 프로파일
 
 1. **Identifiers** → `+` → App IDs → App
-   - Bundle ID: `com.zipshowkorea.weddingplant` (Explicit)
+   - Bundle ID: `app.weddingplant` (Explicit)
    - Capability 는 지금 아무것도 필요 없다. 나중에 푸시를 붙일 때 Push Notifications 를 켠다.
 2. **Profiles** → `+` → Distribution → **App Store Connect**
    - App ID: 위에서 만든 것
@@ -151,7 +151,7 @@ Mac 없이 openssl 로 만든다. Git for Windows 에 openssl 이 들어 있다.
 - 플랫폼: iOS
 - 이름: 웨딩플랜 (App Store 전체에서 고유해야 함)
 - 기본 언어: 한국어
-- 번들 ID: `com.zipshowkorea.weddingplant`
+- 번들 ID: `app.weddingplant`
 - SKU: 아무 문자열 (예: `weddingplant-ios`)
 
 ## A-6. GitHub Secrets 등록
@@ -256,7 +256,7 @@ gh run download --name unsigned-ipa --dir .\ipa
 | 증상 | 원인 / 해결 |
 | --- | --- |
 | CI 에서 `security import` 실패 | `.p12` 가 OpenSSL 3 기본 방식으로 만들어진 경우. `-Step p12` 를 다시 실행 (`-legacy` 로 재생성) |
-| `No profiles for 'com.zipshowkorea...' were found` | Bundle ID 와 프로파일이 안 맞음. A-3 에서 Explicit App ID 로 만들었는지 확인 |
+| `No profiles for 'app.weddingplant...' were found` | Bundle ID 와 프로파일이 안 맞음. A-3 에서 Explicit App ID 로 만들었는지 확인 |
 | TestFlight 에 빌드가 안 보임 | 처리에 10~30분. 그 뒤에도 없으면 Apple 에서 온 거부 메일 확인 |
 | `Invalid build number` | 이미 쓴 빌드 번호. 워크플로를 다시 돌리면 실행 번호가 올라가 해결된다 |
 | Sideloadly 가 아이폰을 못 찾음 | iTunes/Apple Devices 미설치, 또는 "이 컴퓨터를 신뢰"를 안 누름. 케이블도 데이터 전송용인지 확인 |

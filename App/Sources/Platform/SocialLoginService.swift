@@ -22,7 +22,7 @@ import WPNetworking
 /// 받아** 백엔드로 바꾼다. 그래서 `?kakao_login` 착지 구간이나 URL hash 처리가 없다.
 @MainActor
 final class SocialLoginService {
-    private static let log = Logger(subsystem: "com.zipshowkorea.weddingplant", category: "SocialLogin")
+    private static let log = Logger(subsystem: "app.weddingplant", category: "SocialLogin")
 
     /// 카카오 네이티브 앱 키. `Config/Local.xcconfig` → Info.plist 로 온다.
     ///

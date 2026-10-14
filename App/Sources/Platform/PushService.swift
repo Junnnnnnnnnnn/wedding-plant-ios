@@ -19,7 +19,7 @@ import WPNetworking
 final class PushService: NSObject, ObservableObject {
 
     private static let log = Logger(
-        subsystem: "com.zipshowkorea.weddingplant",
+        subsystem: "app.weddingplant",
         category: "WPPush"
     )
 

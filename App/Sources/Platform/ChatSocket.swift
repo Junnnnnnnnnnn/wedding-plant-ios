@@ -58,7 +58,7 @@ final class ChatSocket: NSObject, ObservableObject {
 
     /// 실기기에서 왜 안 붙는지 보려면 이 로그가 유일한 단서다.
     /// Xcode 콘솔에서 `WPSocket` 으로 필터하면 프레임이 순서대로 보인다.
-    private static let log = Logger(subsystem: "com.zipshowkorea.weddingplant", category: "WPSocket")
+    private static let log = Logger(subsystem: "app.weddingplant", category: "WPSocket")
 
     init(baseURL: URL, tokenStore: any TokenStoring) {
         self.baseURL = baseURL

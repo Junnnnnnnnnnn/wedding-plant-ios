@@ -139,7 +139,7 @@ App Store Connect 의 **지원 URL**(지침 1.5)과 지원 연락처에도 같�
 코드는 다 붙었고 CI 빌드도 통과했다. 남은 것은 **콘솔 등록 하나**다.
 
 - <https://developers.kakao.com> → 웨딩플랜 앱 → **앱 설정 > 플랫폼 > iOS 등록**
-- 번들 ID: `com.zipshowkorea.weddingplant` (안드로이드 패키지명과 같다)
+- 번들 ID: `app.weddingplant` (안드로이드 패키지명과 같다)
 - **iOS 는 키 해시가 필요 없다** — 번들 ID 하나면 된다
 
 **키는 이미 있다.** 안드로이드와 같은 앱이라 네이티브 앱 키가 같고,
@@ -192,7 +192,7 @@ CI 로 확인할 수 없다. 길은 둘이다.
 ### 3. 백엔드 `APPLE_BUNDLE_IDS` 설정 + 배포
 
 Apple 로그인은 백엔드에 커밋만 되어 있고 **밀지 않았다**(푸시가 곧 배포다).
-운영에 올릴 때 환경변수 `APPLE_BUNDLE_IDS=com.zipshowkorea.weddingplant` 를
+운영에 올릴 때 환경변수 `APPLE_BUNDLE_IDS=app.weddingplant` 를
 함께 넣어야 한다 — **비어 있으면 애플 로그인이 막힌다**(`aud` 를 검사할 수
 없는 상태로 열어 두지 않는다).
 

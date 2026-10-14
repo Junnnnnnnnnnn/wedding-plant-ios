@@ -6,7 +6,7 @@
 name: WeddingPlant
 
 options:
-  bundleIdPrefix: com.zipshowkorea
+  bundleIdPrefix: app
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -79,7 +79,7 @@ targets:
       Release: Config/Base.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.zipshowkorea.weddingplant
+        PRODUCT_BUNDLE_IDENTIFIER: app.weddingplant
         PRODUCT_NAME: WeddingPlant
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -153,13 +153,13 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)
-          - CFBundleURLName: com.zipshowkorea.weddingplant.share
+          - CFBundleURLName: app.weddingplant.share
             CFBundleURLSchemes:
               - weddingplant
           # 카카오 로그인이 카카오톡 앱에서 돌아올 때 쓰는 스킴.
           # **`kakao` + 네이티브 앱 키** 형태라 키가 주소에 들어간다 —
           # 공개 정보이고 이것만으로는 아무것도 못 한다.
-          - CFBundleURLName: com.zipshowkorea.weddingplant.kakao
+          - CFBundleURLName: app.weddingplant.kakao
             CFBundleURLSchemes:
               - kakao$(KAKAO_NATIVE_APP_KEY)
         # 카카오톡이 깔려 있는지 물어보려면 미리 적어야 한다. 안 적으면
@@ -204,7 +204,7 @@ targets:
       - path: App/UITests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.zipshowkorea.weddingplant.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: app.weddingplant.uitests
     dependencies:
       - target: WeddingPlant
 

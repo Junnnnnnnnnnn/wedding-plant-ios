@@ -34,7 +34,7 @@ protocol PushTokenProviding: AnyObject {
 final class PushTokenProvider: NSObject, PushTokenProviding {
 
     private static let log = Logger(
-        subsystem: "com.zipshowkorea.weddingplant",
+        subsystem: "app.weddingplant",
         category: "WPPush"
     )
 
