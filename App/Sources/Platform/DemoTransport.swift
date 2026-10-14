@@ -10,7 +10,12 @@ import WPUtils
 actor DemoTransport: HTTPTransport {
     private var invitation: [String: Any]?
     private var reminder: [String: Any] = ["leadDays": [7, 1, 0], "hour": 9, "email": false, "emailAddress": "demo@example.com", "devices": ["ios": 1]]
-    init(newUser: Bool = false) { self.newUser = newUser }
+    init(newUser: Bool = false) {
+        self.newUser = newUser
+        if ProcessInfo.processInfo.arguments.contains("-WPExistingInvitation") {
+            invitation = ["slug": "demo-couple", "title": "우리, 결혼합니다", "groom": "민준", "bride": "지수", "published": false]
+        }
+    }
     /// 로딩 상태가 화면에 보이도록 약간의 지연을 준다.
     var latency: Duration = .milliseconds(200)
 
@@ -48,9 +53,11 @@ actor DemoTransport: HTTPTransport {
             json = String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self)
         } else if path.contains("/plan/pass/room/") {
             let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
-            json = "{\"result\":true,\"data\":{\"hasPass\":\(hasPass),\"plan\":\"YEARLY\",\"buyerName\":\"지수\"}}"
+            let plan = ProcessInfo.processInfo.arguments.contains("-WPLifetimePass") ? "LIFETIME" : "YEARLY"
+            json = "{\"result\":true,\"data\":{\"hasPass\":\(hasPass),\"plan\":\"\(plan)\",\"buyerName\":\"지수\"}}"
         } else if path.contains("/plan/pass/file/schedule/") {
-            json = "{\"result\":true,\"data\":{\"canOpen\":true,\"roomId\":1,\"quotaBytes\":1073741824,\"usedBytes\":0,\"list\":[]}}"
+            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
+            json = "{\"result\":true,\"data\":{\"canOpen\":\(hasPass),\"roomId\":1,\"quotaBytes\":1073741824,\"usedBytes\":0,\"list\":[]}}"
         } else if path.hasSuffix("/plan/pass/reminder-setting") {
             if request.method == .put, let data = request.body,
                let edits = try JSONSerialization.jsonObject(with: data) as? [String: Any] {

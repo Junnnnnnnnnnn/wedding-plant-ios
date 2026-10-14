@@ -7,7 +7,7 @@ struct HomeInvitationEntry: View {
     var rowOnly = false
     var body: some View {
         Group {
-            switch model.state {
+            switch model.homeState {
             case .loading, .error: EmptyView()
             case .landing:
                 if rowOnly {
@@ -25,15 +25,15 @@ struct HomeInvitationEntry: View {
                 if !rowOnly {
                 NavigationLink { InvitationStudioView() } label: {
                     VStack(alignment: .leading, spacing: 0) {
-                        SeasideGardenView(wishes: model.wishes, empty: model.state == .empty, peek: true,
+                        SeasideGardenView(wishes: model.wishes, empty: model.homeState == .empty, peek: true,
                             groom: model.result?.invitation?.groom ?? "", bride: model.result?.invitation?.bride ?? "")
                             .aspectRatio(2, contentMode: .fit).allowsHitTesting(false).clipped()
-                            .id(model.state == .empty ? "empty" : "mine")
+                            .id(model.homeState == .empty ? "empty" : "mine")
                         HStack {
                             VStack(alignment: .leading, spacing: 5) {
-                                Text(model.state == .empty ? "하객 자리가 비어 있어요" : model.result?.invitation?.published == true ? "청첩장 공개 중" : "청첩장이 아직 비공개예요").font(WPFont.hak(15, .bold))
-                                Text(model.state == .empty ? "사진 · 날짜 · 장소를 담아 하객을 맞아요" : "링크 · QR로 하객을 맞아요").font(WPFont.hak(12)).foregroundStyle(.secondary)
-                            }; Spacer(); Text(model.state == .empty ? "만들기" : "보기").font(WPFont.hak(13, .bold))
+                                Text(model.homeState == .empty ? "하객 자리가 비어 있어요" : model.result?.invitation?.published == true ? "청첩장 공개 중" : "청첩장이 아직 비공개예요").font(WPFont.hak(15, .bold))
+                                Text(model.homeState == .empty ? "사진 · 날짜 · 장소를 담아 하객을 맞아요" : "링크 · QR로 하객을 맞아요").font(WPFont.hak(12)).foregroundStyle(.secondary)
+                            }; Spacer(); Text(model.homeState == .empty ? "만들기" : "보기").font(WPFont.hak(13, .bold))
                         }.padding(16)
                     }.background(WPColor.fill).clipShape(RoundedRectangle(cornerRadius: 18))
                 }.buttonStyle(.plain)

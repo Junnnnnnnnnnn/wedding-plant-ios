@@ -15,6 +15,10 @@ import CoreImage.CIFilterBuiltins
     var state: InvitationRules.StudioState {
         InvitationRules.studioState(loaded: result != nil, failed: error != nil && result == nil, hasInvitation: result?.invitation != nil, canEdit: result?.canEdit == true)
     }
+    var homeState: InvitationRules.StudioState {
+        InvitationRules.homeState(loaded: result != nil, failed: error != nil,
+                                 hasPass: result?.hasPass == true, hasInvitation: result?.invitation != nil)
+    }
     func load(_ env: AppEnvironment) async {
         error = nil
         do {

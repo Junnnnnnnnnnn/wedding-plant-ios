@@ -16,7 +16,6 @@ struct UserView: View {
     @StateObject private var model = UserViewModel()
 
     @State private var showDatePicker = false
-    @State private var showPass = false
     @State private var confirmSignOut = false
     @State private var confirmWithdraw = false
 
@@ -31,14 +30,16 @@ struct UserView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 240)
                 } else {
-                    content
+                    VStack(spacing: 0) {
+                        ProfileHeader(name: model.name, date: model.date)
+                        content.padding(.horizontal, 16).padding(.vertical, 16)
+                    }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
         }
+        .ignoresSafeArea(edges: .top)
+        .toolbar(.hidden, for: .navigationBar)
         .task { await model.load(env: env, guest: guest) }
-        .fullScreenCover(isPresented: $showPass) { PassView(roomId: env.boundRoomId) }
         .task(id: model.saved) {
             guard model.saved else { return }
             await model.startSavedResetTimer()
@@ -47,12 +48,10 @@ struct UserView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ProfileHeader(name: model.name, dDayLabel: model.dDayLabel)
-
-            Button { showPass = true } label: {
-                HStack { Image("pass_card_logo").resizable().scaledToFit().frame(width: 60, height: 48); VStack(alignment: .leading, spacing: 4) { Text("준비 패스").font(WPFont.hak(18, .bold)); Text("서류 보관 · 엑셀 · 결제일 알림 · 청첩장").font(WPFont.hak(11)) }; Spacer(); Image(systemName: "chevron.right") }.padding(18).background(Color(hex: 0xFFF4F7), in: RoundedRectangle(cornerRadius: 20))
-            }.buttonStyle(.plain).padding(.top, 20).accessibilityIdentifier("user.pass")
-            Spacer().frame(height: 28)
+            if model.loggedIn {
+                UserPassCard(loggedIn: model.loggedIn)
+                Spacer().frame(height: 20)
+            }
 
             SettingsSectionHeader(symbol: "person.fill", label: "기본 정보")
             Spacer().frame(height: 16)
@@ -202,44 +201,28 @@ struct UserView: View {
 
 // MARK: - 프로필 헤더
 
-/// 웹: `bg-gradient-to-r from-[#ee2b8c] to-[#ff5c95]` 카드 + 반투명 D-Day 알약
+/// Android ProfileHead: full-width brand header, initial avatar and wedding-day sentence.
 private struct ProfileHeader: View {
     var name: String
-    var dDayLabel: String
-
+    var date: KstDate
+    @Environment(\.dismiss) private var dismiss
+    private var subtitle: String {
+        let days = KstDate.today().days(until: date)
+        return days > 0 ? "결혼식까지 \(days)일" : days == 0 ? "오늘이 결혼식이에요" : "결혼식이 \(-days)일 지났어요"
+    }
     var body: some View {
-        HStack(spacing: 12) {
-            Text(name.isEmpty ? "이름을 입력해 주세요" : "\(name)님")
-                .font(WPFont.tmoney(24, .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(dDayLabel)
-                .font(WPFont.hak(20, .black))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Color.white.opacity(0.2),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                )
+        BrandHead(corner: 24, horizontal: 24, top: 20, bottom: 20) {
+            HStack(spacing: 12) {
+                HeadIconButton(systemName: "arrow.left", label: "뒤로가기", size: 32) { dismiss() }
+                Text(String(name.trimmingCharacters(in: .whitespaces).prefix(1)).isEmpty ? "?" : String(name.prefix(1)))
+                    .font(WPFont.hak(18, .black)).foregroundStyle(.white).frame(width: 44, height: 44)
+                    .background(.white.opacity(0.2), in: Circle()).overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 2))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(name.isEmpty ? "프로필" : name).font(WPFont.hak(20, .bold)).tracking(-0.4).lineLimit(1)
+                    Text(subtitle).font(WPFont.hak(12.5)).foregroundStyle(.white.opacity(0.8))
+                }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 28)
-        .background(
-            LinearGradient(
-                colors: [WPColor.budgetGradientStart, WPColor.budgetGradientEnd],
-                startPoint: .leading,
-                endPoint: .trailing
-            ),
-            in: RoundedRectangle(cornerRadius: 32, style: .continuous)
-        )
     }
 }
 

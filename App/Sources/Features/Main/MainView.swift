@@ -90,7 +90,7 @@ struct MainView: View {
                 // LazyVStack은 작은 화면의 스크롤 중 배치 계산이 반복될 수 있어 전체 높이를 확정한다.
                 VStack(alignment: .leading, spacing: 0) {
                     head
-                    if (invitation.state == .empty || invitation.state == .mine), env.isMyAdRoom(model.roomIdValue) {
+                    if (invitation.homeState == .empty || invitation.homeState == .mine), env.isMyAdRoom(model.roomIdValue) {
                         HomeInvitationEntry(model: invitation).padding(.horizontal, 16).padding(.top, 16)
                     }
                     if !model.planLoading && model.errorMessage == nil && !model.isGuest {
@@ -209,7 +209,7 @@ struct MainView: View {
     // MARK: - 머리 면
 
     private var head: some View {
-        BrandHead(bottom: 0, overhang: 72) {
+        BrandHead(bottom: 0, overhang: 72, passMember: invitation.result?.hasPass == true && env.isMyAdRoom(model.roomIdValue)) {
             HStack(spacing: 8) {
                 if model.planLoading {
                     SkeletonBox(width: 110, height: 22, onBrand: true)
@@ -223,6 +223,14 @@ struct MainView: View {
                     }.accessibilityLabel("내 정보").accessibilityIdentifier("main.profile")
                 }
                 Spacer(minLength: 0)
+                if invitation.result?.hasPass == true && env.isMyAdRoom(model.roomIdValue) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "leaf").font(.system(size: 13))
+                        Text("준비 패스").font(WPFont.hak(9, .bold))
+                        Image(systemName: "checkmark").font(.system(size: 10))
+                    }.foregroundStyle(Color(hex: 0x875022)).padding(.horizontal, 8).padding(.vertical, 5)
+                        .background(Color(hex: 0xFFF1B8), in: Capsule())
+                }
             }
             .guideAnchor("main-header-info")
 

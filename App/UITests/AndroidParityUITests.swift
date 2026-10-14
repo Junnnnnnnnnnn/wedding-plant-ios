@@ -81,7 +81,11 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(app.buttons["feed.copy.1"].waitForExistence(timeout: 5))
     }
     func testPassOpeningBenefitsAndNativePlans() {
-        let app = launch(); app.buttons["main.profile"].tap()
+        let app = launch()
+        for _ in 0..<3 {
+            app.buttons["main.profile"].tap()
+            if app.buttons["user.pass"].waitForExistence(timeout: 3) { break }
+        }
         XCTAssertTrue(app.buttons["user.pass"].waitForExistence(timeout: 5)); app.buttons["user.pass"].tap()
         let skip = app.webViews.buttons["건너뛰기"]
         XCTAssertTrue(skip.waitForExistence(timeout: 10)); skip.tap()

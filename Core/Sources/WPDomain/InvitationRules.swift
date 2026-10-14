@@ -86,6 +86,12 @@ public enum InvitationRules {
     public static func mineEmptySeats(published: Bool, guestbookOn: Bool, guests: Int?) -> Bool { !published || !guestbookOn || guests == 0 }
     public static func mineLabelNote(published: Bool, guests: Int?) -> String { !published ? "공개 전" : guests.map { "하객 \($0)명" } ?? "공개 중" }
     public enum StudioState { case loading, error, landing, empty, mine }
+    /// Home decoration requires an active pass even when an old invitation remains editable.
+    public static func homeState(loaded: Bool, failed: Bool, hasPass: Bool, hasInvitation: Bool) -> StudioState {
+        if failed { return .error }; if !loaded { return .loading }
+        guard hasPass else { return .landing }
+        return hasInvitation ? .mine : .empty
+    }
     public static func studioState(loaded: Bool, failed: Bool, hasInvitation: Bool, canEdit: Bool) -> StudioState {
         if failed { return .error }; if !loaded { return .loading }
         if hasInvitation { return .mine }; return canEdit ? .empty : .landing

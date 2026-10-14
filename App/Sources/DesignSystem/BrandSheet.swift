@@ -48,6 +48,7 @@ struct BrandHead<Content: View>: View {
     var top: CGFloat = 16
     var bottom: CGFloat = 20
     var overhang: CGFloat = 0
+    var passMember = false
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -60,7 +61,9 @@ struct BrandHead<Content: View>: View {
         .padding(.bottom, bottom)
         .background {
             GeometryReader { geometry in
-                brandGradient.frame(height: max(0, geometry.size.height - overhang))
+                Group {
+                    if passMember { PassMemberBackground() } else { brandGradient }
+                }.frame(height: max(0, geometry.size.height - overhang))
                     .clipShape(.rect(bottomLeadingRadius: corner, bottomTrailingRadius: corner, style: .circular))
             }
         }
@@ -285,5 +288,20 @@ struct SkeletonBox: View {
 
     private var highlight: Color {
         onBrand ? Color.white.opacity(0.38) : WPColor.fillPressed
+    }
+}
+
+/// Same 115-degree orange/pink member header and edge rings as Android.
+struct PassMemberBackground: View {
+    var body: some View {
+        GeometryReader { g in
+            LinearGradient(colors: [Color(hex: 0xF12888), Color(hex: 0xFF9355)], startPoint: UnitPoint(x: 0, y: 0.25), endPoint: UnitPoint(x: 1, y: 0.75))
+                .overlay(RadialGradient(colors: [.white.opacity(0.15), .clear], center: UnitPoint(x: 0.9, y: 0.05), startRadius: 0, endRadius: max(g.size.width, g.size.height) * 0.52))
+                .overlay(alignment: .topTrailing) {
+                    Circle().stroke(.white.opacity(0.07), lineWidth: 23).frame(width: 157, height: 157)
+                        .background(Circle().stroke(.white.opacity(0.04), lineWidth: 32).padding(-27.5))
+                        .offset(x: 73.5, y: 46.5)
+                }.clipped()
+        }
     }
 }
