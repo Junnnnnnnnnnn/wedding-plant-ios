@@ -42,6 +42,7 @@ struct WeddingPlantApp: App {
                         env.pendingShareCode = code
                     }
                 }
+                .task(id: env.isAuthenticated) { await env.refreshAdEligibility() }
                 // 로그인 상태가 되면 알림 권한을 묻고 기기 토큰을 등록한다.
                 //
                 // 설치 후 첫 로그인에는 FCM 갱신 콜백이 오지 않으므로,
@@ -59,11 +60,11 @@ struct WeddingPlantApp: App {
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { await notifications.start(env: env, push: push) } }
+                    if phase == .active { Task { await notifications.start(env: env, push: push); await env.refreshAdEligibility() } }
                     else if phase == .background { notifications.stop() }
                 }
                 .onChange(of: push.currentChatRoomId) { _, room in notifications.markRead(room) }
-                .onChange(of: env.roomsRevision) { _, _ in Task { await notifications.refresh() } }
+                .onChange(of: env.roomsRevision) { _, _ in Task { await notifications.refresh(); await env.refreshAdEligibility() } }
                 // 웹과 같은 주소(`/share/{code}`)를 Universal Link 로 받는다.
                 // 실제로 동작하려면 웹 서버에 `apple-app-site-association` 이 있어야 한다.
                 .onOpenURL { url in

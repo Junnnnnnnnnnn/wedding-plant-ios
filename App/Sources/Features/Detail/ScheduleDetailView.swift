@@ -103,6 +103,9 @@ struct ScheduleDetailView: View {
                         }
                     }
 
+                    if model.detail != nil, !model.loading, !model.isGuest, model.canWrite, model.errorMessage == nil {
+                        InlineBannerAd(placement: "schedule", horizontal: 24, top: 40, bottom: 8)
+                    }
                     if let message = model.errorMessage, model.detail != nil {
                         Spacer().frame(height: 12)
                         InfoBanner(message: message, actionLabel: "닫기") {

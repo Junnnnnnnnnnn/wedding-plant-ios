@@ -164,3 +164,30 @@ Mac 확보가 불확실하거나 시간이 걸리면, 그 사이에 Windows 에�
 - Core 로직 확장 (일정 CRUD, 카테고리, 채팅 도메인) — 유닛테스트로 전부 검증 가능
 - 백엔드 API 스펙 확인 및 `Endpoint.swift` 채우기
 - Apple Developer Program 가입 (승인 대기가 있으니 미리)
+
+
+## iOS 광고 (2026-10-14)
+
+AdMob 네이티브 광고는 홈 할 일 사이, 피드 3번째 이후 8개마다, 자랑하기 2번째 이후
+6개마다 표시한다. 마지막 항목 뒤에는 넣지 않는다. 배너는 일정 캘린더·예산·일정 상세
+하단에 표시한다. 본인 플랜·로그인·패스 조회가 완료되어야 요청하며, 패스 이용자와
+조회 상태가 불명확한 계정에는 광고를 요청하지 않는다. 광고 로딩 실패 시 빈칸도 숨긴다.
+
+Debug는 Google 공식 iOS 테스트 앱/광고 단위만 사용한다. Release에는 다음 값을
+`Config/Local.xcconfig` 또는 CI 설정으로 주입한다. Android 광고 단위를 재사용하지 않는다.
+
+```xcconfig
+ADMOB_APP_ID = ca-app-pub-본인게시자ID~iOS앱ID
+ADMOB_NATIVE_AD_UNIT_ID = ca-app-pub-본인게시자ID/네이티브단위ID
+ADMOB_BANNER_AD_UNIT_ID = ca-app-pub-본인게시자ID/배너단위ID
+```
+
+세 값이 모두 있어야 Release 광고가 켜진다. AdMob 콘솔의 개인정보 보호 메시지를
+설정하면 UMP가 필요한 동의를 처리하고, 필요한 경우 내 정보에 광고 개인정보 설정이
+나타난다. 로그인·패스 확인 전 SDK 초기화를 하지 않는다.
+
+UI 테스트는 `-WPDemoMode -WPAdPreview`로 명시적 견본 배치를 확인한다.
+실제 Google 테스트 광고는 `-WPDemoMode -WPRealTestAds`로 확인한다.
+`-WPPassEnabled`를 더하면 패스 계정의 정원 및 광고 숨김을 재현한다.
+견본은 일반 실행에는 표시되지 않는다. `InvitationAdsUITests`가 안내 4개 카드,
+6개 편집 슬롯, 패스 분기, 광고 위치와 SDK 로딩을 검증한다.

@@ -38,4 +38,8 @@ WP_ENTITLEMENTS =
 CODE_SIGN_ENTITLEMENTS = $(WP_ENTITLEMENTS)
 
 // 개인 설정으로 덮어쓰기. 파일이 없어도 빌드가 깨지지 않는다.
+// Debug uses Google demo ads. Release ads stay off until all iOS IDs are supplied.
+ADMOB_APP_ID =
+ADMOB_NATIVE_AD_UNIT_ID =
+ADMOB_BANNER_AD_UNIT_ID =
 #include? "Local.xcconfig"

@@ -10,6 +10,8 @@ import CoreImage.CIFilterBuiltins
     @Published var busy = false
     @Published var wishes: [InvitationWish] = []
     @Published var total: Int?
+    @Published var planDate: String?
+    @Published var planVenue: String?
     var state: InvitationRules.StudioState {
         InvitationRules.studioState(loaded: result != nil, failed: error != nil && result == nil, hasInvitation: result?.invitation != nil, canEdit: result?.canEdit == true)
     }
@@ -17,6 +19,15 @@ import CoreImage.CIFilterBuiltins
         error = nil
         do {
             result = try await env.api.send(Endpoint.myInvitation())
+            planDate = nil; planVenue = nil
+            if state == .empty {
+                let endpoint = result?.roomId.map { Endpoint.room(shareCode: String($0)) } ?? Endpoint.user()
+                if let plan = try? await env.api.send(endpoint, decoding: PlanUser.self) {
+                    planDate = plan.weddingDate.map { String($0.prefix(10)) }
+                    planVenue = plan.weddingVenue?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if planVenue?.isEmpty == true { planVenue = nil }
+                }
+            }
             if let invitation = result?.invitation, invitation.published,
                InvitationRules.normalize(invitation.design).sections.contains(where: { $0.type == "guestbook" && $0.visible }) {
                 do {
@@ -39,7 +50,8 @@ struct InvitationStudioView: View {
     var titleSlot: AnyView? = nil
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var model = InvitationStore()
-    @State private var edit = false
+    private struct EditTarget: Identifiable { let id: String }
+    @State private var editTarget: EditTarget?
     @State private var preview = false
     @State private var pass = false
     @State private var confirmPublish = false
@@ -73,20 +85,20 @@ struct InvitationStudioView: View {
                             emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total))
                             .frame(height: min(geometry.size.width * 440 / 320, max(360, geometry.size.height - wpStatusBarHeight - 142)))
                             .id(model.state == .landing ? "landing" : model.state == .empty ? "empty" : "mine")
-                        details.padding(24)
+                        details.padding(.horizontal, 16).padding(.top, 22).padding(.bottom, 32)
                     }
                 }
             }.background(.white)
                 .refreshable { await model.load(env) }
         }.ignoresSafeArea(edges: .top).font(.custom("KakaoSmallSans-Regular", size: 14))
             .task { await model.load(env) }
-            .fullScreenCover(isPresented: $edit, onDismiss: { Task { await model.load(env) } }) {
-                InvitationEditorView(saved: model.result?.invitation, roomId: model.result?.roomId)
+            .fullScreenCover(item: $editTarget, onDismiss: { Task { await model.load(env) } }) { target in
+                InvitationEditorView(saved: model.result?.invitation, roomId: model.result?.roomId, initialFocus: target.id, planDate: model.planDate, planVenue: model.planVenue)
             }
             .fullScreenCover(isPresented: $preview) {
                 InvitationPreviewView(content: model.result?.invitation ?? Self.example)
             }
-            .fullScreenCover(isPresented: $pass, onDismiss: { Task { await model.load(env) } }) { PassView(roomId: model.result?.roomId) }
+            .fullScreenCover(isPresented: $pass, onDismiss: { Task { await model.load(env); await env.refreshAdEligibility() } }) { PassView(roomId: model.result?.roomId) }
             .confirmationDialog(model.result?.invitation?.published == true ? "청첩장을 비공개로 바꿀까요?" : "청첩장을 공개할까요?", isPresented: $confirmPublish, titleVisibility: .visible) {
                 Button(model.result?.invitation?.published == true ? "비공개로 바꾸기" : "공개하기") {
                     Task { await model.publish(model.result?.invitation?.published != true, env: env) }
@@ -108,13 +120,13 @@ struct InvitationStudioView: View {
                     }
                     if let image = qr(url.absoluteString) { Image(uiImage: image).interpolation(.none).resizable().frame(width: 140, height: 140).frame(maxWidth: .infinity).accessibilityLabel("청첩장 QR 코드") }
                 }
-                Button("청첩장 고치기") { edit = true }.buttonStyle(InvitationActionStyle()).disabled(model.result?.canEdit != true)
+                Button("청첩장 고치기") { editTarget = .init(id: "layout") }.buttonStyle(InvitationActionStyle()).disabled(model.result?.canEdit != true)
                 Button("하객이 보는 청첩장") { preview = true }.buttonStyle(InvitationActionStyle(primary: false))
                 Button(saved.published ? "비공개로 돌리기" : "공개하기") { confirmPublish = true }.disabled(model.busy || model.result?.canEdit != true)
                 Divider()
                 Text("담긴 것").font(.custom("KakaoSmallSans-Bold", size: 18))
                 ForEach(InvitationRules.normalize(saved.design).sections, id: \.type) { section in
-                    Button { edit = true } label: {
+                    Button { editTarget = .init(id: "layout") } label: {
                         HStack {
                             Text(label(section.type)); Spacer(); Text(section.visible ? "켜짐" : "꺼짐").foregroundStyle(.secondary); Image(systemName: "chevron.right")
                         }.padding(.vertical, 8)
@@ -127,18 +139,8 @@ struct InvitationStudioView: View {
                     }
                 }
             } else {
-                let empty = model.state == .empty
-                Text(empty ? "준비 패스 이용 중" : "준비 패스에 포함된 모바일 청첩장").font(.custom("KakaoSmallSans-Regular", size: 12))
-                Text(empty ? "OUR GARDEN IS READY" : "OUR OWN LITTLE GARDEN").font(.system(size: 10)).tracking(2).foregroundStyle(.secondary)
-                Text(empty ? "정원은 준비됐어요.\n하객 자리가 비어 있어요." : "링크 하나로,\n하객이 정원에 걸어와요.")
-                    .font(.custom("KakaoSmallSans-Bold", size: 28)).lineSpacing(8)
-                Text("사진과 예식 정보를 담은 모바일 청첩장. 받은 사람이 축하를 남기면 그 사람이 픽셀 하객이 되어 두 사람 곁에 서요.").lineSpacing(7)
-                Text("청첩장에 담기는 것").font(.custom("KakaoSmallSans-Bold", size: 16))
-                ForEach(["분위기 · 가든 / 아이보리 / 로즈", "사진 최대 20장", "예식 날짜 · 장소", "초대의 말 · 가족 소개", "계좌 · 안내 말씀", "하객의 축하 글"], id: \.self) { Text($0).padding(.vertical, 3) }
-                Button(empty ? "청첩장 만들기" : "준비 패스로 시작하기") { if empty { edit = true } else { pass = true } }
-                    .buttonStyle(InvitationActionStyle()).accessibilityIdentifier("invitation.primary")
-                Button("예시 청첩장 구경하기") { preview = true }.buttonStyle(InvitationActionStyle(primary: false))
-                Text("준비 패스로 우리 청첩장 한 장 · 패스가 끝나도 그대로").font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(.secondary)
+                InvitationLandingDetails(empty: model.state == .empty, planDate: model.planDate, planVenue: model.planVenue,
+                    onEdit: { editTarget = .init(id: $0) }, onPass: { pass = true }, onExample: { preview = true })
             }
         }.foregroundStyle(Color(hex: 0x173C2F))
     }

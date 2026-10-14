@@ -42,7 +42,7 @@ struct FeedView: View {
                     } else if model.posts.isEmpty {
                         emptyState
                     } else {
-                        ForEach(model.posts) { post in
+                        ForEach(Array(model.posts.enumerated()), id: \.element.id) { index, post in
                             FeedCard(
                                 post: post,
                                 votePending: model.votePendingId == post.id,
@@ -52,6 +52,9 @@ struct FeedView: View {
                                 onOpen: { path.append(post) },
                                 onCopy: { copyPost = post }
                             )
+                            if AdRules.adAfter(index: index, count: model.posts.count, first: 3, every: 8) {
+                                NativeAdSlot(placement: "feed.\(index)", style: .feed, horizontal: 16, top: 8, bottom: 8)
+                            }
                         }
 
                         if model.hasMore {

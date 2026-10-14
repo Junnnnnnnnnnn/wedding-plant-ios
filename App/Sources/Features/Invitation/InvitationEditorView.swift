@@ -8,6 +8,9 @@ import WPUtils
 struct InvitationEditorView: View {
     let saved: InvitationContent?
     let roomId: Int?
+    var initialFocus: String = "layout"
+    var planDate: String?
+    var planVenue: String?
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
     @State private var target: String? = "layout"
@@ -72,7 +75,10 @@ struct InvitationEditorView: View {
             }
         }.interactiveDismissDisabled(draft != baseline || busy)
             .task {
-                draft = saved ?? InvitationRules.draft(); draft.design = InvitationRules.normalize(draft.design); baseline = draft
+                target = initialFocus
+                draft = saved ?? InvitationRules.draft()
+                if saved == nil { draft.weddingDate = planDate; draft.venue = planVenue ?? "" }
+                draft.design = InvitationRules.normalize(draft.design); baseline = draft
                 let token = await env.tokenStore.currentToken() ?? ""
                 // Use account identity, never the token itself, for local draft isolation.
                 storageKey = "invitation.draft.\(roomId ?? 0).\(JWTDecoder.planUserId(from: token) ?? "unknown")"

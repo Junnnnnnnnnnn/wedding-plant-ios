@@ -22,6 +22,41 @@ final class AppEnvironment: ObservableObject {
     @Published var moderationRevision = 0
     @Published var isAuthenticated: Bool = false
 
+    /// Own-plan eligibility, resolved by the same server endpoint as the invitation entry.
+    @Published private(set) var adGate: AdGate = .unknown
+    @Published private(set) var adRoomId: Int?
+    private var adIdentity: String?
+    private var adRevision = 0
+
+    func refreshAdEligibility() async {
+        guard isAuthenticated, let token = await tokenStore.currentToken() else { resetAds(); return }
+        if adIdentity != token { resetAds(); adIdentity = token }
+        adRevision += 1
+        let revision = adRevision
+        do {
+            let mine: MyInvitation = try await api.send(Endpoint.myInvitation())
+            guard isAuthenticated, await tokenStore.currentToken() == token, adRevision == revision else { return }
+            adRoomId = mine.roomId
+            adGate = AdRules.gate(loggedIn: true, roomResolved: true, roomId: mine.roomId,
+                                  pass: .init(hasPass: mine.hasPass))
+            AdsService.shared.setGate(adGate, demo: isDemo)
+        } catch {
+            // A failed refresh is not proof of an unpaid plan. Keep the last known gate.
+        }
+    }
+
+    func isMyAdRoom(_ roomId: Int?) -> Bool {
+        adGate != .unknown && (roomId == nil || roomId == adRoomId)
+    }
+
+    private func resetAds() {
+        adRevision += 1
+        adIdentity = nil
+        adRoomId = nil
+        adGate = .unknown
+        AdsService.shared.setGate(.unknown, demo: isDemo)
+    }
+
     /// 공유 링크로 들어왔을 때의 코드. 값이 있으면 참여 화면을 덮어 띄운다.
     @Published var pendingShareCode: String?
 
@@ -185,6 +220,7 @@ final class AppEnvironment: ObservableObject {
     }
 
     func signOut() async {
+        resetAds()
         await tokenStore.clear()
         isAuthenticated = false
         planComplete = nil

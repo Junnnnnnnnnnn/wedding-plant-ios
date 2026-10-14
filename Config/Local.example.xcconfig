@@ -53,3 +53,8 @@ API_BASE_URL = http:/$()/localhost:3111
 GOOGLE_IOS_CLIENT_ID =
 GOOGLE_SERVER_CLIENT_ID =
 GOOGLE_REVERSED_CLIENT_ID =
+
+// AdMob iOS app/units (not Android IDs). Debug always uses official Google test ads.
+ADMOB_APP_ID =
+ADMOB_NATIVE_AD_UNIT_ID =
+ADMOB_BANNER_AD_UNIT_ID =

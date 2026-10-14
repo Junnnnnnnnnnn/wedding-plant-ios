@@ -133,6 +133,7 @@ struct UserView: View {
             // 같은 시안(B안)이다.
             NavigationLink("차단 관리") { BlockListView() }.font(WPFont.hak(14)).padding(.vertical, 14)
             NavigationLink("결제일 알림 설정") { ReminderSettingsView() }.font(WPFont.hak(14)).padding(.vertical, 14)
+            AdPrivacyOptionsRow()
             SupportLinks()
 
             Spacer().frame(height: 16)

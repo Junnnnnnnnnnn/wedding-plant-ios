@@ -32,7 +32,7 @@ struct BragView: View {
                     } else if model.posts.isEmpty {
                         emptyState
                     } else {
-                        ForEach(model.posts) { post in
+                        ForEach(Array(model.posts.enumerated()), id: \.element.bragId) { index, post in
                             BragCard(
                                 post: post,
                                 likePending: model.likePendingId == post.bragId,
@@ -41,6 +41,9 @@ struct BragView: View {
                             )
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
+                            if AdRules.adAfter(index: index, count: model.posts.count, first: 2, every: 6) {
+                                NativeAdSlot(placement: "brag.\(index)", style: .brag, top: 4, bottom: 16)
+                            }
                         }
 
                         if model.hasMore {

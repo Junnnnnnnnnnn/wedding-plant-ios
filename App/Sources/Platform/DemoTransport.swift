@@ -69,6 +69,8 @@ actor DemoTransport: HTTPTransport {
             json = DemoData.amountDetail
         } else if path.contains("/amount/category-chart") {
             json = DemoData.categoryChart
+        } else if path == "/plan/room/1" {
+            json = DemoData.user
         } else if path.hasSuffix("/plan/user") {
             json = newUser ? DemoData.newUser : DemoData.user
         } else if path.hasSuffix("/plan/schedule/calendar") {
@@ -107,7 +109,12 @@ actor DemoTransport: HTTPTransport {
         } else if path.hasSuffix("/plan/brag/my") {
             json = DemoData.bragMy
         } else if path.hasSuffix("/plan/brag/list") {
-            json = DemoData.bragList
+            if ProcessInfo.processInfo.arguments.contains("-WPAdPreview"),
+               var envelope = try JSONSerialization.jsonObject(with: Data(DemoData.bragList.utf8)) as? [String: Any],
+               var data = envelope["data"] as? [String: Any], var list = data["list"] as? [[String: Any]], var extra = list.last {
+                extra["bragId"] = 3; list.append(extra); data["list"] = list; data["total"] = list.count; envelope["data"] = data
+                json = String(decoding: try JSONSerialization.data(withJSONObject: envelope), as: UTF8.self)
+            } else { json = DemoData.bragList }
         } else if path.contains("/plan/brag/") && !path.contains("/like/") {
             json = DemoData.bragDetail
         } else if path.hasSuffix("/plan/feed/stats") {

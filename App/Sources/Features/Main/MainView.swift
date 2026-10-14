@@ -90,7 +90,9 @@ struct MainView: View {
                 // LazyVStack은 작은 화면의 스크롤 중 배치 계산이 반복될 수 있어 전체 높이를 확정한다.
                 VStack(alignment: .leading, spacing: 0) {
                     head
-                    HomeInvitationEntry(model: invitation).padding(.horizontal, 16).padding(.top, 16)
+                    if (invitation.state == .empty || invitation.state == .mine), env.isMyAdRoom(model.roomIdValue) {
+                        HomeInvitationEntry(model: invitation).padding(.horizontal, 16).padding(.top, 16)
+                    }
                     if !model.planLoading && model.errorMessage == nil && !model.isGuest {
                         PayThisWeekView(schedules: model.planned + model.completed, today: today,
                             roomId: model.roomIdValue,
@@ -176,6 +178,7 @@ struct MainView: View {
             guard !env.boundRoom.needsCover else { return }
             await model.load(env: env, guest: guest)
             await invitation.load(env)
+            await env.refreshAdEligibility()
         }
         .navigationDestination(for: Int.self) { scheduleId in
             ScheduleDetailView(scheduleId: scheduleId, roomId: model.roomIdValue)
@@ -271,7 +274,7 @@ struct MainView: View {
                         }
                         Spacer()
                         if model.amountsLoaded { Image(systemName: "chevron.right").font(.system(size: 20)).foregroundStyle(WPColor.gray400) }
-                    }.padding(.horizontal, 20).padding(.vertical, 16)
+                    }.padding(.horizontal, 20).padding(.vertical, 16).contentShape(Rectangle())
                 }.buttonStyle(.plain).disabled(!model.amountsLoaded).accessibilityIdentifier("main.budget")
                 HomeInvitationEntry(model: invitation, rowOnly: true)
             }.background(.white, in: RoundedRectangle(cornerRadius: 20)).clipShape(RoundedRectangle(cornerRadius: 20))
@@ -325,6 +328,10 @@ struct MainView: View {
 
             // 앞으로 할 일은 구분선 목록으로 낮춘다 — 지금 당장이 아니라 카드만큼의
             // 무게가 필요 없고, 같은 화면에 훨씬 많이 들어온다.
+            if AdRules.homeAdVisible(gate: env.adGate, isMyPlan: env.isMyAdRoom(model.roomIdValue) && !model.isGuest,
+                                      thisMonthCount: buckets.thisMonth.count, hasMoreBelow: !buckets.later.isEmpty), model.errorMessage == nil {
+                NativeAdSlot(placement: "home", style: .home)
+            }
             if !buckets.later.isEmpty {
                 SectionHeader(
                     title: "그 다음",

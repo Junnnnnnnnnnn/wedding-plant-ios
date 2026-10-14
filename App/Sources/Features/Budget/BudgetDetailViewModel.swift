@@ -29,7 +29,7 @@ final class BudgetDetailViewModel: ObservableObject {
     @Published var selectedCategory: String?
     @Published var errorMessage: String?
 
-    private var roomId: String?
+    private(set) var roomId: String?
     private let roomIdFromArg: String?
 
     /// 필터 조합별 목록 캐시 — 탭을 오갈 때마다 전량을 다시 받지 않는다 (웹과 동일)

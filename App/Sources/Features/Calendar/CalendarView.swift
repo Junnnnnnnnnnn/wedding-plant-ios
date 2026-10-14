@@ -47,6 +47,9 @@ struct CalendarView: View {
                     header
                     WeekdayRow()
                     grid
+                    if !model.loading, !model.readOnly, env.isAuthenticated, env.isMyAdRoom(roomId) {
+                        InlineBannerAd(placement: "calendar", bottom: 40)
+                    }
                     // 플로팅 버튼에 마지막 주가 가리지 않도록 (웹 `pb-24`)
                     Spacer().frame(height: 96)
                 }

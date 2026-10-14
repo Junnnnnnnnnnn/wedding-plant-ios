@@ -92,6 +92,10 @@ struct BudgetDetailView: View {
                         }
                     }
 
+                    if !model.loading, model.errorMessage == nil, !model.isGuest,
+                       model.usedTotal + model.plannedTotal > 0, env.isMyAdRoom(model.roomId.flatMap(Int.init)) {
+                        InlineBannerAd(placement: "budget")
+                    }
                     // 웹 `pb-32`
                     Spacer().frame(height: 128)
                 }
