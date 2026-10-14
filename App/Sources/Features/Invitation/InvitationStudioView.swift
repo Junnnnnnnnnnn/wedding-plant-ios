@@ -2,7 +2,6 @@ import SwiftUI
 import WPDomain
 import WPModels
 import WPNetworking
-import CoreImage.CIFilterBuiltins
 
 @MainActor final class InvitationStore: ObservableObject {
     @Published var result: MyInvitation?
@@ -52,11 +51,13 @@ import CoreImage.CIFilterBuiltins
 
 struct InvitationStudioView: View {
     var titleSlot: AnyView? = nil
+    var motionEnabled = true
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var model = InvitationStore()
     private struct EditTarget: Identifiable { let id: String }
     @State private var editTarget: EditTarget?
     @State private var preview = false
+    @State private var headerHeight: CGFloat = 170
     @State private var pass = false
     @State private var confirmPublish = false
     private var published: Bool { model.result?.invitation?.published == true }
@@ -65,14 +66,10 @@ struct InvitationStudioView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
-                    BrandHead(corner: 24, horizontal: 20, top: 14, bottom: 20) {
-                        if let titleSlot { titleSlot } else { Text("모바일 청첩장").font(WPFont.hak(18, .bold)).foregroundStyle(.white) }
-                        Text("모바일 청첩장").font(WPFont.hak(22, .bold)).foregroundStyle(.white).padding(.top, 16)
-                        if let saved = model.result?.invitation {
-                            Text("\(saved.published ? "공개 중" : "공개 전")  ·  사진 \(saved.photos.count)장\(model.total.map { "  ·  축하 \($0)" } ?? "")")
-                                .font(WPFont.hak(13)).foregroundStyle(.white).padding(.top, 12)
-                        }
-                    }
+                    ExploreHead(switcher: titleSlot ?? AnyView(Text("모바일 청첩장").font(WPFont.hak(18, .bold)).foregroundStyle(.white)), headline: "모바일 청첩장", stats: studioStats, loading: false) { EmptyView() }
+                        .background(GeometryReader { head in
+                            Color.clear.onAppear { headerHeight = head.size.height }.onChange(of: head.size.height) { _, value in headerHeight = value }
+                        })
                     Color.clear.frame(height: 12)
                     switch model.state {
                     case .loading: ProgressView().frame(height: 400)
@@ -86,8 +83,8 @@ struct InvitationStudioView: View {
                             groom: model.result?.invitation?.groom ?? "정우진", bride: model.result?.invitation?.bride ?? "한채원",
                             script: model.state == .mine ? InvitationRules.mineLines(published: published, guestbookOn: guestbookOn, guests: model.total) : nil,
                             labelNote: model.state == .mine ? InvitationRules.mineLabelNote(published: published, guests: model.total) : nil,
-                            emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total))
-                            .frame(height: min(geometry.size.width * 440 / 320, max(360, geometry.size.height - wpStatusBarHeight - 142)))
+                            emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total), motionEnabled: motionEnabled)
+                            .frame(height: min(geometry.size.width * 440 / 320, max(360, geometry.size.height - headerHeight - 12)))
                             .id(model.state == .landing ? "landing" : model.state == .empty ? "empty" : "mine")
                         details.padding(.horizontal, 16).padding(.top, 22).padding(.bottom, 32)
                     }
@@ -109,39 +106,16 @@ struct InvitationStudioView: View {
                 }
             } message: { Text("공개하면 링크를 받은 누구나 로그인 없이 볼 수 있어요.") }
     }
+    private var studioStats: [(String, String)] {
+        guard let saved = model.result?.invitation else { return [] }
+        return [("청첩장", saved.published ? "공개 중" : "공개 전"), ("하객", model.total.map { "\($0)명" } ?? "—"), ("사진", "\(saved.photos.count)장")]
+    }
     @ViewBuilder private var details: some View {
         VStack(alignment: .leading, spacing: 20) {
             if let saved = model.result?.invitation {
-                Text(saved.title).font(.custom("KakaoSmallSans-Bold", size: 28))
-                Text("\(saved.groom) · \(saved.bride)")
-                if let error = model.error { Text(error).foregroundStyle(.red) }
-                if saved.published, let url = URL(string: AppConfig.webBaseURL + "/invitation/" + saved.slug) {
-                    ShareLink(item: url) { Label("청첩장 링크 보내기", systemImage: "square.and.arrow.up") }.buttonStyle(InvitationActionStyle())
-                    HStack {
-                        Text(url.absoluteString.replacingOccurrences(of: "https://", with: "")).font(.system(size: 12)).lineLimit(2)
-                        Spacer()
-                        Button("복사") { UIPasteboard.general.url = url }
-                    }
-                    if let image = qr(url.absoluteString) { Image(uiImage: image).interpolation(.none).resizable().frame(width: 140, height: 140).frame(maxWidth: .infinity).accessibilityLabel("청첩장 QR 코드") }
-                }
-                Button("청첩장 고치기") { editTarget = .init(id: "layout") }.buttonStyle(InvitationActionStyle()).disabled(model.result?.canEdit != true)
-                Button("하객이 보는 청첩장") { preview = true }.buttonStyle(InvitationActionStyle(primary: false))
-                Button(saved.published ? "비공개로 돌리기" : "공개하기") { confirmPublish = true }.disabled(model.busy || model.result?.canEdit != true)
-                Divider()
-                Text("담긴 것").font(.custom("KakaoSmallSans-Bold", size: 18))
-                ForEach(InvitationRules.normalize(saved.design).sections, id: \.type) { section in
-                    Button { editTarget = .init(id: "layout") } label: {
-                        HStack {
-                            Text(label(section.type)); Spacer(); Text(section.visible ? "켜짐" : "꺼짐").foregroundStyle(.secondary); Image(systemName: "chevron.right")
-                        }.padding(.vertical, 8)
-                    }.disabled(model.result?.canEdit != true)
-                }
-                if !model.wishes.isEmpty {
-                    Text("축하 글 \(model.total ?? model.wishes.count)").font(.custom("KakaoSmallSans-Bold", size: 18))
-                    ForEach(model.wishes, id: \.id) { wish in
-                        VStack(alignment: .leading, spacing: 6) { Text(wish.name).bold(); Text(wish.message) }.padding(.vertical, 8)
-                    }
-                }
+                InvitationSavedDetails(content: saved, total: model.total, canEdit: model.result?.canEdit == true, busy: model.busy,
+                    onEdit: { editTarget = .init(id: $0) }, onPublish: { confirmPublish = true }, onPreview: { preview = true })
+                if let error = model.error { Text(error).foregroundStyle(WPColor.danger) }
             } else {
                 InvitationLandingDetails(empty: model.state == .empty, planDate: model.planDate, planVenue: model.planVenue,
                     onEdit: { editTarget = .init(id: $0) }, onPass: { pass = true }, onExample: { preview = true })
@@ -150,14 +124,17 @@ struct InvitationStudioView: View {
     }
     static var example: InvitationContent {
         var result = InvitationRules.draft(); result.groom = "정우진"; result.bride = "한채원"
-        result.weddingDate = "2027-05-22"; result.venue = "바닷가 정원"; return result
+        result.title = "우리의 계절이 피어나는 날"
+        result.message = "서로의 계절이 되어 주기로 했습니다.\n봄의 설렘과 여름의 다정함으로\n오래도록 나란히 걷겠습니다.\n그 첫걸음에 함께해 주세요."
+        result.weddingDate = "2027-05-22"; result.weddingTime = "13:00"; result.venue = "웨딩플랜트 가든홀"
+        result.photos = [.init(key: "showcase-portrait", url: Bundle.main.url(forResource: "invitation_showcase_portrait", withExtension: "png")?.absoluteString)]
+        result.design?.sections = InvitationRules.sectionTypes.map { .init(type: $0, visible: true) }
+        result.design?.couple = .init(groomFather: "정민호", groomMother: "이수정", groomRelation: "아들", brideFather: "한상우", brideMother: "오지혜", brideRelation: "딸")
+        result.design?.location.guide = "지하철을 타고 오시면 역에서 걸어서 5분이에요.\n건물 지하 주차장을 2시간 무료로 쓰실 수 있어요."
+        result.design?.notice.body = "화환은 정중히 사양합니다.\n축하해 주시는 따뜻한 마음만 감사히 받겠습니다."
+        return result
     }
-    private func label(_ type: String) -> String { InvitationRules.sectionTypes.firstIndex(of: type).map { InvitationRules.sectionLabels[$0] } ?? type }
-    private func qr(_ value: String) -> UIImage? {
-        let filter = CIFilter.qrCodeGenerator(); filter.message = Data(value.utf8)
-        guard let output = filter.outputImage, let image = CIContext().createCGImage(output, from: output.extent) else { return nil }
-        return UIImage(cgImage: image)
-    }
+
 }
 struct InvitationActionStyle: ButtonStyle {
     var primary = true

@@ -158,6 +158,8 @@ targets:
           - kakao_regular.ttf
           - kakao_bold.ttf
           - kakao_light.ttf
+          - NotoSerif-Regular.ttf
+          - NotoSerif-Italic.ttf
         # xcconfig 에서 주입된다. AppEnvironment.baseURL() 이 이 키를 읽는다.
         GIDClientID: $(GOOGLE_IOS_CLIENT_ID)
         GADApplicationIdentifier: $(ADMOB_EFFECTIVE_APP_ID)

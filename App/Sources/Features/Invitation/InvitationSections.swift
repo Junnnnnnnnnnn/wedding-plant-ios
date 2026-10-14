@@ -5,6 +5,7 @@ import WPModels
 struct InvitationGuestbookSection: View {
     let content: InvitationContent
     let editing: Bool
+    var motionEnabled = true
     let toast: (String) -> Void
     private var p: InvitationPalette { .init(content.template) }
     private let muted = Color(hex: 0xBFCEC3)
@@ -12,14 +13,19 @@ struct InvitationGuestbookSection: View {
         VStack(spacing: 0) {
             Text("A GARDEN FULL OF WISHES").font(.custom("KakaoSmallSans-Regular", size: 9)).tracking(2).foregroundStyle(p.bright)
             Text("축하의 정원").font(.custom("KakaoSmallSans-Light", size: 27)).tracking(-1.2).foregroundStyle(Color(hex: 0xF8EDCF)).padding(.top, 20)
-            Text("바다 앞 작은 결혼식에\n당신의 따뜻한 마음도 함께해 주세요.").font(.custom("KakaoSmallSans-Regular", size: 12)).lineSpacing(10.8).multilineTextAlignment(.center).foregroundStyle(muted).padding(.top, 16)
+            Text("바다 앞 작은 결혼식에\n당신의 따뜻한 마음도 함께해 주세요.").wpTypography(12, face: .kakao, lineHeight: 22.8).padding(.vertical, -2).multilineTextAlignment(.center).foregroundStyle(muted).padding(.top, 16)
             HStack(spacing: 8) {
                 Circle().fill(Color(hex: 0xACD0B5)).frame(width: 5, height: 5).background(Circle().fill(Color(hex: 0xACD0B5).opacity(0.35)).padding(-2.5))
                 Text("공개하면 하객이 남긴 축하가 여기 모여요").font(.custom("KakaoSmallSans-Regular", size: 10)).foregroundStyle(muted).frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "heart").font(.system(size: 12))
                 Text("—개의 축하").font(.custom("KakaoSmallSans-Regular", size: 9))
             }.foregroundStyle(p.bright).padding(.horizontal, 24).padding(.top, 32).padding(.bottom, 16)
-            SeasideGardenView(groom: content.groom, bride: content.bride).aspectRatio(320.0 / 440, contentMode: .fit)
+            SeasideGardenView(wishes: [
+                .init(id: "example-1", name: "축하의 별", message: "두 사람의 모든 계절을 응원해요", avatar: 3),
+                .init(id: "example-2", name: "행복한 마음", message: "오래오래, 지금처럼 다정하게", avatar: 16),
+                .init(id: "example-3", name: "작은 꽃", message: "세상에서 가장 빛나는 날이 되길", avatar: 1),
+                .init(id: "example-4", name: "따뜻한 축복", message: "함께 걷는 길에 늘 꽃이 피기를", avatar: 19)
+            ], groom: content.groom, bride: content.bride, labelNote: "예시 글", motionEnabled: motionEnabled).aspectRatio(320.0 / 440, contentMode: .fit)
             VStack(spacing: 16) {
                 Button { toast("미리보기에서는 보내지 않아요") } label: {
                     HStack(spacing: 12) {
@@ -41,12 +47,14 @@ struct InvitationPhotoImage: View {
     let url: URL
     var mode: ContentMode = .fill
     var body: some View {
-        Group {
-            if url.isFileURL, let image = UIImage(contentsOfFile: url.path) {
-                Image(uiImage: image).resizable().aspectRatio(contentMode: mode)
-            } else {
-                AsyncImage(url: url) { image in image.resizable().aspectRatio(contentMode: mode) } placeholder: { Color.gray.opacity(0.12) }
-            }
+        GeometryReader { geometry in
+            Group {
+                if url.isFileURL, let image = UIImage(contentsOfFile: url.path) {
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: mode)
+                } else {
+                    AsyncImage(url: url) { image in image.resizable().aspectRatio(contentMode: mode) } placeholder: { Color.gray.opacity(0.12) }
+                }
+            }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
         }
     }
 }
@@ -66,16 +74,14 @@ struct InvitationGallery: View {
                 Spacer()
                 Text("기억을 모아, 사랑을 담아").foregroundStyle(p.muted)
             }.font(.custom("KakaoSmallSans-Regular", size: 9))
-            ViewThatFits {
-                title(size: 54)
-                title(size: 46)
-            }.padding(.top, 24)
+            GeometryReader { geometry in title(size: min(64, max(46, (geometry.size.width + 48) * 0.13))) }
+                .frame(height: 120).padding(.top, 24)
             Text("우리의 가장 빛나는 순간들.\n사진을 누르면 조금 더 가까이 볼 수 있어요.")
-                .font(.custom("KakaoSmallSans-Regular", size: 12)).lineSpacing(11).foregroundStyle(p.muted).padding(.top, 24)
+                .wpTypography(12, face: .kakao, lineHeight: 22.8).padding(.vertical, -2).foregroundStyle(p.muted).padding(.top, 24)
             // An adaptive layout measures width without imposing a fixed height on the scroll view.
             GalleryRowsLayout(rows: rows) {
                 ForEach(0..<slots, id: \.self) { index in tile(index) }
-            }.padding(.top, 28)
+            }.padding(.top, 28).id("galleryGrid")
             if editing {
                 Text("사진 \(content.photos.count) / 20장 · 빈 자리를 누르면 사진을 올려요")
                     .font(.custom("KakaoSmallSans-Regular", size: 9)).foregroundStyle(p.muted)
@@ -85,12 +91,12 @@ struct InvitationGallery: View {
     }
     private func title(size: CGFloat) -> some View {
         HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: -4) {
-                Text("Every little").font(.custom("Georgia", size: size)).foregroundStyle(p.ink)
-                Text("moment.").font(.custom("Georgia-Italic", size: size)).foregroundStyle(p.gold)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Every little").font(.custom("NotoSerif", size: size)).foregroundStyle(p.ink)
+                Text("moment.").font(.custom("NotoSerif-Italic", size: size)).foregroundStyle(p.gold)
             }.tracking(-2)
             Spacer(minLength: 0)
-            Image(systemName: "camera.macro").font(.system(size: 36, weight: .ultraLight)).foregroundStyle(p.gold).padding(.bottom, 6)
+            InvitationFlower().stroke(p.gold, lineWidth: 1.2).frame(width: 36, height: 36).padding(.trailing, 12).padding(.bottom, 6)
         }
     }
     private func tile(_ index: Int) -> some View {
@@ -104,7 +110,7 @@ struct InvitationGallery: View {
                         }
                         VStack {
                             HStack {
-                                Text(String(format: "%02d", index + 1)).font(.custom("Georgia", size: 13)).shadow(radius: 5)
+                                Text(String(format: "%02d", index + 1)).font(.custom("NotoSerif", size: 13)).shadow(radius: 5)
                                 Spacer()
                                 if index == 0 && editing { Text("표지").font(.custom("KakaoSmallSans-Bold", size: 10)).padding(6).background(p.forest, in: Capsule()) }
                             }
@@ -120,7 +126,7 @@ struct InvitationGallery: View {
                             Text(next ? "사진 올리기" : String(format: "%02d", index + 1)).font(.custom("KakaoSmallSans-Regular", size: 10))
                         }.foregroundStyle(next ? p.ink : p.muted)
                     }
-                }.clipped()
+                }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
             }
         }.buttonStyle(.plain).accessibilityLabel(index < content.photos.count ? "\(index + 1)번 사진 보기" : "사진 올리기")
     }
@@ -171,14 +177,14 @@ struct InvitationLocation: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("OUR PLACE").font(.custom("KakaoSmallSans-Regular", size: 9)).tracking(3).foregroundStyle(p.muted)
-            Text("오시는 길").font(.custom("KakaoSmallSans-Regular", size: 21)).tracking(-0.7).padding(.top, 12).padding(.bottom, 32)
+            HStack { Text("오시는 길").font(.custom("KakaoSmallSans-Regular", size: 21)).tracking(-0.7); Spacer(); InvitationFlower().stroke(p.gold, lineWidth: 1).frame(width: 26, height: 26) }.padding(.top, 12).padding(.bottom, 32)
             row("WHERE") {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(content.venue.isEmpty ? "예식장 이름과 주소가 들어갈 자리" : content.venue).font(.custom("KakaoSmallSans-Regular", size: 14))
                     if !address.isEmpty { Text(address).font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(p.muted) }
                 }
             }
-            if !location.guide.isEmpty { row("HOW") { Text(location.guide).font(.custom("KakaoSmallSans-Regular", size: 13)).lineSpacing(12) } }
+            if !location.guide.isEmpty { row("HOW") { Text(location.guide).wpTypography(13, face: .kakao, lineHeight: 24.7).padding(.vertical, -3) } }
             Button { openMap("https://map.kakao.com/link/search/") } label: {
                 VStack(spacing: 12) {
                     Image(systemName: query.isEmpty ? "leaf" : "mappin.and.ellipse").font(.system(size: 27, weight: .light))
@@ -203,7 +209,7 @@ struct InvitationLocation: View {
         }.padding(.vertical, 20).overlay(alignment: .top) { Rectangle().fill(p.rule).frame(height: 1) }
     }
     private func mapButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Text(title).font(.custom("KakaoSmallSans-Regular", size: 12)).frame(maxWidth: .infinity).frame(minHeight: 44).background(p.paper).overlay(Rectangle().stroke(p.rule)) }.buttonStyle(.plain)
+        Button(action: action) { HStack(spacing: 6) { if title == "주소 복사" { Image(systemName: "square.on.square").font(.system(size: 11)) }; Text(title) }.font(.custom("KakaoSmallSans-Regular", size: 12)).frame(maxWidth: .infinity).frame(minHeight: 44).background(p.paper).overlay(Rectangle().stroke(p.rule)) }.buttonStyle(.plain)
     }
     private func openMap(_ base: String) {
         if let encoded = query.addingPercentEncoding(withAllowedCharacters: .alphanumerics), let url = URL(string: base + encoded) { openURL(url) }
@@ -230,7 +236,7 @@ struct InvitationAccounts: View {
     var body: some View {
         VStack(spacing: 12) {
             Text("마음 전하실 곳").font(.custom("KakaoSmallSans-Regular", size: 21)).tracking(-0.7)
-            Text("참석이 어려우신 분들을 위해 적어 두었어요.\n보내 주시는 마음, 오래 간직하겠습니다.").font(.custom("KakaoSmallSans-Regular", size: 12)).lineSpacing(10).multilineTextAlignment(.center).foregroundStyle(p.muted).padding(.bottom, 20)
+            Text("참석이 어려우신 분들을 위해 적어 두었어요.\n보내 주시는 마음, 오래 간직하겠습니다.").wpTypography(12, face: .kakao, lineHeight: 22.8).padding(.vertical, -2).multilineTextAlignment(.center).foregroundStyle(p.muted).padding(.bottom, 20)
             if accounts.isEmpty { Text("은행과 계좌번호를 적은 줄만 하객에게 보여요").font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(p.muted) }
             ForEach(["groom", "bride"], id: \.self) { side in
                 let rows = accounts.filter { $0.side == side }

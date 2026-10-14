@@ -25,6 +25,7 @@ struct InvitationHero: View {
     let replay: () -> Void
     let share: () -> Void
     var edit: (() -> Void)?
+    var selected = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var p: InvitationPalette { .init(content.template) }
     private let cream = Color(hex: 0xF8EDCF)
@@ -58,7 +59,7 @@ struct InvitationHero: View {
                 }.font(.custom("KakaoSmallSans-Regular", size: 15)).padding(.top, 24)
                 Text("소중한 당신을, 우리의 시작에 초대합니다.").font(.custom("KakaoSmallSans-Regular", size: 11)).tracking(0.4).padding(.top, 12)
                 Image(systemName: "arrow.down").font(.system(size: 17)).foregroundStyle(p.bright).frame(height: 44).padding(.top, 32)
-            }.foregroundStyle(cream).padding(.horizontal, 32).padding(.bottom, 40).opacity(copy).offset(y: (1 - copy) * 12)
+            }.frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(cream).padding(.horizontal, 32).padding(.bottom, 40).opacity(copy).offset(y: (1 - copy) * 12)
             if progress < 1 {
                 HStack(spacing: 0) {
                     half(left: true, width: width).rotation3DEffect(.degrees(-104 * eased), axis: (x: 0,y: 1,z: 0), anchor: .leading, perspective: 0.25)
@@ -69,19 +70,21 @@ struct InvitationHero: View {
             if !reduceMotion { sparkle(time: max(0, elapsed) * 1000, burst: progress >= 1) }
             VStack {
                 HStack {
-                    Button(action: replay) { Text("W⋆").font(.custom("Georgia", size: 26)).foregroundStyle(p.bright).frame(width: 44, height: 44).background(Color(hex: 0x112B25).opacity(0.3), in: Circle()).overlay(Circle().stroke(p.bright.opacity(0.35), lineWidth: 1)) }.accessibilityLabel("문 열림 다시 보기")
+                    Button(action: replay) { Text("W").font(.custom("NotoSerif", size: 26)).foregroundStyle(p.bright).frame(width: 44, height: 44).background(Color(hex: 0x112B25).opacity(0.3), in: Circle()).overlay(Circle().stroke(p.bright.opacity(0.35), lineWidth: 1)) }.accessibilityLabel("문 열림 다시 보기")
                     Spacer()
                     Button(action: share) { Image(systemName: "square.and.arrow.up").font(.system(size: 17)).foregroundStyle(cream).frame(width: 44, height: 44) }.accessibilityLabel("청첩장 전하기")
                 }.padding(.horizontal, 24).padding(.vertical, 20)
                 if let edit {
-                    HStack { Spacer(); Button(action: edit) { Label(content.photos.isEmpty ? "표지 사진 올리기" : "표지 사진 바꾸기", systemImage: "camera").font(.custom("KakaoSmallSans-Bold", size: 12)).padding(10).background(cream, in: Capsule()).foregroundStyle(p.forest) } }.padding(.horizontal, 30)
+                    VStack(alignment: .trailing, spacing: 10) {
+                    InvitationEditBadge(selected: selected)
+                    Button(action: edit) { Label(content.photos.isEmpty ? "표지 사진 올리기" : "표지 사진 바꾸기", systemImage: "camera").font(.custom("KakaoSmallSans-Bold", size: 12)).padding(10).background(cream, in: Capsule()).foregroundStyle(p.forest) } }.frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 30).padding(.top, 10)
                 }
                 Spacer()
             }
         }.frame(width: width, height: height)
     }
     private func half(left: Bool, width: CGFloat) -> some View {
-        Image("invitation_door").resizable().scaledToFill().frame(width: width, height: height).clipped()
+        Image(uiImage: UIImage(named: "invitation_door.png") ?? UIImage()).resizable().scaledToFill().frame(width: width, height: height).clipped()
             .frame(width: width / 2, height: height, alignment: left ? .leading : .trailing).clipped()
     }
     private func gateCopy(width: CGFloat) -> some View {
@@ -95,9 +98,9 @@ struct InvitationHero: View {
             }.padding(.top, 116)
             VStack(spacing: 0) {
                 Spacer()
-                Text("a new beginning").font(.custom("Georgia-Italic", size: 16)).foregroundStyle(p.bright).padding(.bottom, 12)
-                Text("Love").font(.custom("Georgia", size: size)).tracking(-4)
-                Text("in bloom.").font(.custom("Georgia-Italic", size: size * 0.83)).tracking(-4).padding(.top, -12)
+                Text("a new beginning").font(.custom("NotoSerif-Italic", size: 16)).foregroundStyle(p.bright).padding(.bottom, 12)
+                Text("Love").font(.custom("NotoSerif", size: size)).tracking(-4)
+                Text("in bloom.").font(.custom("NotoSerif-Italic", size: size * 0.83)).tracking(-4).padding(.top, -12)
                 p.bright.opacity(0.35).frame(width: 1, height: 32).padding(.top, 24)
                 Text("우리의 이야기가 피어나는 곳").font(.custom("KakaoSmallSans-Regular", size: 11)).tracking(1.5).padding(.top, 16)
                 Label("아래로 스크롤해 문을 열어 주세요", systemImage: "arrow.down").font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(p.bright).padding(.top, 28)

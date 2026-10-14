@@ -8,16 +8,17 @@ struct InvitationCalendar: View {
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     var body: some View {
         VStack(spacing: 16) {
-            Text("SAVE OUR DAY").font(.custom("KakaoSmallSans-Regular", size: 9)).tracking(3).foregroundStyle(palette.muted)
+            Text("SAVE OUR DAY").wpTypography(9, face: .kakao, lineHeight: 13.5).tracking(3).foregroundStyle(palette.muted)
             if let date = content.weddingDate.flatMap({ KstDate(dateString: $0) }) {
                 let weekday = KST.calendar.component(.weekday, from: date.startOfDay) - 1
                 VStack(spacing: 6) {
-                    Text("\(date.year)년 \(date.month)월 \(date.day)일 \(weekdays[weekday])요일").font(.custom("KakaoSmallSans-Regular", size: 19)).tracking(-0.5)
-                    if let time = timeLabel { Text(time).font(.custom("KakaoSmallSans-Regular", size: 13)).foregroundStyle(palette.muted) }
+                    Text(verbatim: "\(date.year)년 \(date.month)월 \(date.day)일 \(weekdays[weekday])요일").wpTypography(19, face: .kakao, lineHeight: 28.5).tracking(-0.5)
+                    if let time = timeLabel { Text(time).wpTypography(13, face: .kakao, lineHeight: 19.5).foregroundStyle(palette.muted) }
                 }
+                Color.clear.frame(height: 0)
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
-                        ForEach(0..<7) { i in Text(weekdays[i]).font(.custom("KakaoSmallSans-Regular", size: 10)).foregroundStyle(i == 0 ? palette.gold : palette.muted).frame(maxWidth: .infinity) }
+                        ForEach(0..<7) { i in Text(weekdays[i]).wpTypography(10, face: .kakao, lineHeight: 15).foregroundStyle(i == 0 ? palette.gold : palette.muted).frame(maxWidth: .infinity) }
                     }.padding(.bottom, 10)
                     palette.rule.frame(height: 1)
                     let first = KstDate(year: date.year, month: date.month, day: 1)!
@@ -37,9 +38,9 @@ struct InvitationCalendar: View {
                     }
                 }.frame(maxWidth: 320)
                 let days = date.daysFromToday()
-                Text(days > 0 ? "결혼식까지 \(days)일 남았어요" : days == 0 ? "오늘, 두 사람이 결혼해요" : "\(-days)일 전, 두 사람이 부부가 되었어요").font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(palette.forest)
+                Text(days > 0 ? "결혼식까지 \(days)일 남았어요" : days == 0 ? "오늘, 두 사람이 결혼해요" : "\(-days)일 전, 두 사람이 부부가 되었어요").wpTypography(12, face: .kakao, lineHeight: 18).foregroundStyle(palette.forest)
             } else {
-                Text("예식 날짜를 정하면 달력이 펼쳐져요").font(.custom("KakaoSmallSans-Regular", size: 11)).padding(12).background(palette.placeholder)
+                Text("예식 날짜를 정하면 달력이 펼쳐져요").wpTypography(11, face: .kakao, lineHeight: 16.5).padding(12).background(palette.placeholder)
             }
         }.frame(maxWidth: .infinity).padding(.horizontal, 28).padding(.top, 56).padding(.bottom, 48)
     }

@@ -14,8 +14,9 @@ struct SeasideGardenView: UIViewRepresentable {
     var script: [String]? = nil
     var labelNote: String? = nil
     var emptySeats = false
+    var motionEnabled = true
     func makeUIView(context: Context) -> GardenCanvas {
-        GardenCanvas(wishes: wishes, demo: demo, empty: empty, peek: peek, groom: groom, bride: bride, script: script, labelNote: labelNote, emptySeats: emptySeats)
+        GardenCanvas(wishes: wishes, demo: demo, empty: empty, peek: peek, groom: groom, bride: bride, script: script, labelNote: labelNote, emptySeats: emptySeats, motionEnabled: motionEnabled)
     }
     func updateUIView(_ view: GardenCanvas, context: Context) {
         view.updateWishes(wishes)
@@ -92,12 +93,14 @@ final class GardenCanvas: UIView {
         bubble.onHold = { [weak self] in self?.engine.holdSpeech() }
         bubble.isHidden = true; addSubview(bubble)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
+        if !motionEnabled { engine.settle() }
         if !motionEnabled && showsDialog { typed = lines[0].count; advanceDialog() }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     func updateWishes(_ values: [InvitationWish]) {
         guard !demo, values != lastWishes else { return }
         lastWishes = values; engine.setWishes(values)
+        if !motionEnabled { engine.settle(); setNeedsDisplay() }
     }
     func updateCouple(groom: String, bride: String) {
         for actor in engine.actors where actor.isCouple {

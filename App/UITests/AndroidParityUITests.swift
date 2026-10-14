@@ -310,7 +310,7 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(app.buttons["invitation.replay"].waitForExistence(timeout: 5))
         app.buttons["invitation.replay"].tap()
         Thread.sleep(forTimeInterval: 3.2)
-        XCTAssertTrue(app.staticTexts["우리, 결혼합니다"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["우리의 계절이 피어나는 날"].firstMatch.waitForExistence(timeout: 5))
         capture(app, "parity-invitation-preview")
     }
     func testInvitationCreateSaveAndPublish() {
@@ -324,11 +324,12 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(groom.waitForExistence(timeout: 5)); groom.tap(); groom.typeText("우진"); bride.tap(); bride.typeText("채원")
         capture(app, "parity-invitation-editor")
         app.buttons["invitation.save"].tap()
+        XCTAssertTrue(app.buttons["공개하러 가기"].waitForExistence(timeout: 10)); app.buttons["공개하러 가기"].tap()
         XCTAssertTrue(app.buttons["청첩장 고치기"].waitForExistence(timeout: 10))
-        for _ in 0..<5 { if app.buttons["공개하기"].isHittable { break }; app.swipeUp() }
-        app.buttons["공개하기"].tap()
+        for _ in 0..<5 { if app.buttons["공개하고 링크 받기"].isHittable { break }; app.swipeUp() }
+        app.buttons["공개하고 링크 받기"].tap()
         app.buttons.matching(identifier: "공개하기").allElementsBoundByIndex.last!.tap()
-        XCTAssertTrue(app.buttons["청첩장 링크 보내기"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["invitation.address"].waitForExistence(timeout: 10))
         capture(app, "parity-invitation-published")
     }
 }

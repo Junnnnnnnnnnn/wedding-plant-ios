@@ -92,7 +92,7 @@ struct InvitationLandingDetails: View {
         }
     }
 }
-private struct InvitationLandingButton: ButtonStyle {
+struct InvitationLandingButton: ButtonStyle {
     let primary: Bool
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.custom("KakaoSmallSans-Regular", size: 13)).frame(maxWidth: .infinity, minHeight: 46)
