@@ -1,0 +1,33 @@
+{
+  "checks": [
+    "inventory count",
+    "sidebar count",
+    "next case",
+    "previous case",
+    "search",
+    "group filter",
+    "unverified filter",
+    "memo persistence",
+    "motion mode",
+    "motion frame"
+  ],
+  "total": 172,
+  "summary": {
+    "total": 172,
+    "paired": 106,
+    "single": 57,
+    "missing": 9,
+    "sameFixture": 42,
+    "issues": 5
+  },
+  "motion": [
+    {
+      "platform": "android",
+      "frames": 14
+    },
+    {
+      "platform": "ios",
+      "frames": 20
+    }
+  ]
+}

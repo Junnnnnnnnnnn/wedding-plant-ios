@@ -16,9 +16,12 @@ final class AndroidParityUITests: XCTestCase {
         app.buttons["tab.schedule"].tap()
         XCTAssertTrue(app.buttons["calendar.next"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["calendar.close"].exists)
+        capture(app, "review-calendar-month")
         app.buttons["tab.add"].tap()
         XCTAssertTrue(app.textFields["addplan.title"].waitForExistence(timeout: 5))
+        capture(app, "review-add-empty")
         app.textFields["addplan.title"].tap(); app.textFields["addplan.title"].typeText("드레스 투어\n")
+        capture(app, "review-add-title-keyboard")
         let dress = app.buttons["드레스"].firstMatch
         XCTAssertTrue(dress.waitForExistence(timeout: 5)); dress.tap()
         let card = app.buttons["카드"]
@@ -43,6 +46,7 @@ final class AndroidParityUITests: XCTestCase {
         app.buttons["tab.rooms"].tap()
         XCTAssertTrue(app.textFields["chat.input"].waitForExistence(timeout: 10))
         app.buttons["신랑 · 신부 관리"].tap()
+        capture(app, "review-couple-management")
         XCTAssertTrue(app.buttons["신랑 · 신부 해제"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["invite.reader"].exists)
         app.buttons["신랑 · 신부 해제"].tap()
@@ -84,6 +88,7 @@ final class AndroidParityUITests: XCTestCase {
         let app = launch()
         for _ in 0..<3 {
             app.buttons["main.profile"].tap()
+            capture(app, "review-profile-top")
             if app.buttons["user.pass"].waitForExistence(timeout: 3) { break }
         }
         XCTAssertTrue(app.buttons["user.pass"].waitForExistence(timeout: 5)); app.buttons["user.pass"].tap()
@@ -116,7 +121,7 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(save.waitForExistence(timeout: 10))
         if workbook { app.buttons["엑셀"].tap() }
         for _ in 0..<4 { if save.isHittable { break }; app.swipeUp() }
-        XCTAssertTrue(save.isEnabled); save.tap()
+        XCTAssertTrue(save.isEnabled); capture(app, "review-edit-ready"); save.tap()
         XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 5) || app.buttons["복사"].exists || app.otherElements["ActivityListView"].exists)
         capture(app, workbook ? "parity-export-workbook-share" : "parity-export-pdf-share")
     }
@@ -138,7 +143,7 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 5)); title.tap(); title.typeText("신혼집 준비")
         app.buttons["addplan.category"].tap()
         let search = app.textFields["category.search"]
-        XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("신혼여행항공")
+        XCTAssertTrue(search.waitForExistence(timeout: 5)); capture(app, "review-category-default"); search.tap(); search.typeText("신혼여행항공")
         let result = app.buttons["신혼여행 항공·교통"]
         XCTAssertTrue(result.waitForExistence(timeout: 5)); result.tap()
         capture(app, "parity-category-search")
@@ -147,6 +152,7 @@ final class AndroidParityUITests: XCTestCase {
         app.buttons["addplan.category"].tap(); app.buttons["category.add"].tap()
         let name = app.textFields["category.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("우리만의 준비")
+        capture(app, "review-category-create")
         app.buttons["category.create"].tap(); app.buttons["category.confirm"].tap()
         XCTAssertTrue(app.buttons["addplan.category"].label.contains("우리만의 준비"))
     }
@@ -167,6 +173,7 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(app.buttons["main.budget"].waitForExistence(timeout: 10))
         capture(app, "parity-home-budget")
         app.buttons["main.profile"].tap()
+        capture(app, "review-profile-top")
         let reminders = app.buttons["결제일 알림 설정"]
         for _ in 0..<5 { if reminders.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(reminders.isHittable); reminders.tap()
@@ -180,13 +187,13 @@ final class AndroidParityUITests: XCTestCase {
     func testCreatePlanShowsBloomBeforeReturning() {
         let app = launch(); app.buttons["tab.add"].tap()
         let title = app.textFields["addplan.title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 5)); title.tap(); title.typeText("스튜디오 계약")
+        XCTAssertTrue(title.waitForExistence(timeout: 5)); capture(app, "review-create-start"); title.tap(); title.typeText("스튜디오 계약")
         let category = app.buttons["스튜디오"].firstMatch
         XCTAssertTrue(category.waitForExistence(timeout: 5)); category.tap()
         let cash = app.buttons["현금"]
         for _ in 0..<3 { if cash.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(cash.isHittable); cash.tap()
-        XCTAssertTrue(app.buttons["addplan.save"].isEnabled); app.buttons["addplan.save"].tap()
+        XCTAssertTrue(app.buttons["addplan.save"].isEnabled); capture(app, "review-create-ready"); app.buttons["addplan.save"].tap()
         XCTAssertTrue(app.staticTexts["플랜이 등록되었어요"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["bloom.close"].exists)
         capture(app, "parity-bloom-created")
@@ -196,13 +203,13 @@ final class AndroidParityUITests: XCTestCase {
     func testOnboardingPermissionsCanBeSkipped() {
         let app = launch(["-WPForceOnboarding"])
         let next = app.buttons["setting.next"]
-        XCTAssertTrue(next.waitForExistence(timeout: 10)); next.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 10)); capture(app, "review-onboarding-date"); next.tap()
         let budget = app.textFields["setting.budget"]
-        XCTAssertTrue(budget.waitForExistence(timeout: 5)); budget.tap(); budget.typeText("5000"); next.tap()
+        XCTAssertTrue(budget.waitForExistence(timeout: 5)); capture(app, "review-onboarding-budget"); budget.tap(); budget.typeText("5000"); next.tap()
         let name = app.textFields["setting.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("지수"); next.tap()
+        XCTAssertTrue(name.waitForExistence(timeout: 5)); capture(app, "review-onboarding-name"); name.tap(); name.typeText("지수"); capture(app, "review-onboarding-name-filled"); next.tap()
         let agree = app.buttons["setting.agreeAll"]
-        XCTAssertTrue(agree.waitForExistence(timeout: 10)); agree.tap()
+        XCTAssertTrue(agree.waitForExistence(timeout: 10)); capture(app, "review-onboarding-terms"); agree.tap(); capture(app, "review-onboarding-terms-agreed")
         let submit = app.buttons["setting.submit"]
         for _ in 0..<3 { if submit.isHittable { break }; app.swipeUp() }
         submit.tap()
@@ -211,7 +218,7 @@ final class AndroidParityUITests: XCTestCase {
         capture(app, "parity-onboarding-permissions")
         let later = app.buttons["setting.permissions.later"]
         if later.exists { later.tap() } else { permissionNext.tap() }
-        XCTAssertTrue(app.buttons["setting.inviteLater"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["setting.inviteLater"].waitForExistence(timeout: 5)); capture(app, "review-onboarding-invite")
         app.buttons["setting.inviteLater"].tap()
         XCTAssertTrue(app.buttons["tab.home"].waitForExistence(timeout: 10))
     }
@@ -221,16 +228,19 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(plan.waitForExistence(timeout: 10))
         for _ in 0..<6 { if plan.isHittable { break }; app.swipeUp() }
         plan.tap()
+        capture(app, "review-detail-top")
         let edit = app.buttons["수정하기"]
         for _ in 0..<8 { if edit.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(edit.isHittable)
         // Attach/delete belong in the editor; details only allow document viewing.
         XCTAssertFalse(app.buttons["파일 첨부"].exists)
+        capture(app, "review-detail-actions")
         edit.tap()
         XCTAssertTrue(app.textFields["addplan.title"].waitForExistence(timeout: 5))
+        capture(app, "review-edit-top")
         let save = app.buttons["addplan.save"]
         for _ in 0..<12 { if save.isHittable { break }; app.swipeUp() }
-        XCTAssertTrue(save.isEnabled); save.tap()
+        XCTAssertTrue(save.isEnabled); capture(app, "review-edit-ready"); save.tap()
         XCTAssertTrue(app.staticTexts["플랜이 수정되었어요"].waitForExistence(timeout: 10))
         capture(app, "parity-bloom-updated"); app.buttons["bloom.close"].tap()
         let delete = app.buttons["detail.delete"]
@@ -238,6 +248,7 @@ final class AndroidParityUITests: XCTestCase {
         for _ in 0..<8 { if delete.isHittable { break }; app.swipeUp() }
         delete.tap()
         XCTAssertTrue(app.staticTexts["이 플랜을 삭제할까요?"].waitForExistence(timeout: 5))
+        capture(app, "review-delete-confirm")
         app.buttons["detail.confirmDelete"].tap()
         XCTAssertTrue(app.staticTexts["플랜이 삭제되었어요"].waitForExistence(timeout: 10))
         capture(app, "parity-bloom-deleted"); app.buttons["bloom.close"].tap()
