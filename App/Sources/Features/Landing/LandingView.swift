@@ -63,7 +63,19 @@ struct LandingView: View {
         }
         // 분홍 면 위라 상태바 글자가 흰색이어야 한다.
         .preferredColorScheme(.dark)
-        .sheet(isPresented: $showEmail) { EmailAuthSheet().environmentObject(env) }
+        .wpLightStatusBar()
+        .sheet(isPresented: $showEmail) {
+            // 같은 이메일의 카카오·구글 계정이면 시트를 닫고 그 로그인을 시작합니다(Android `onSocial`)
+            EmailAuthSheet { platform in
+                Task {
+                    switch platform {
+                    case "kakao": await signIn()
+                    case "google": await signInGoogle()
+                    default: break
+                    }
+                }
+            }.environmentObject(env)
+        }
         #if DEBUG
         .sheet(isPresented: $showDevLogin) {
             DevTokenLoginSheet().environmentObject(env)
@@ -135,19 +147,18 @@ struct LandingView: View {
             }
 
             Button {
-                Task {
-                    isLoading = true
-                    defer { isLoading = false }
-                    do { try await login.service.signInWithGoogle(env: env) } catch { show(error) }
-                }
+                Task { await signInGoogle() }
             } label: {
-                Text("Google로 시작하기").font(WPFont.hak(16, .bold))
-                    .frame(maxWidth: .infinity).frame(height: 48)
-                    .foregroundStyle(WPColor.textPrimary).background(.white, in: RoundedRectangle(cornerRadius: 12))
-            }.disabled(isLoading).accessibilityIdentifier("auth.google")
+                HStack(spacing: 8) {
+                    GoogleGMark().frame(width: 17, height: 17)
+                    Text("Google로 시작하기").font(WPFont.hak(16, .bold))
+                }
+                .frame(maxWidth: .infinity).frame(height: 48)
+                .foregroundStyle(Color(hex: 0x1F1F1F)).background(.white, in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain).disabled(isLoading).accessibilityIdentifier("auth.google")
 
             // **Sign in with Apple 은 같은 위치·크기여야 한다**(심사 지침 4.8).
-            // 카카오보다 작거나 아래로 밀어 두면 "동등하게 제공" 으로 안 본다.
+            // 카카오보다 작거나 아래로 밀어 두면 "동등하게 제공" 으로 안 본다. Android 에는 없는 iOS 전용 버튼.
             SignInWithAppleButton(.signIn) { request in
                 // 이름은 애플이 **첫 로그인 때 한 번만** 준다. 그때 받아야 한다.
                 request.requestedScopes = [.fullName, .email]
@@ -162,11 +173,22 @@ struct LandingView: View {
             .opacity(isLoading ? 0.7 : 1)
             .accessibilityIdentifier("auth.apple")
 
+            // Android `OutlineButton` — 흰 테두리(60%) · 흰 글자, 채우지 않음
             Button { showEmail = true } label: {
-                Label("이메일로 시작하기", systemImage: "envelope")
-                    .font(WPFont.hak(16, .bold)).frame(maxWidth: .infinity).frame(height: 48)
-                    .foregroundStyle(WPColor.textPrimary).background(.white, in: RoundedRectangle(cornerRadius: 12))
-            }.disabled(isLoading).accessibilityIdentifier("auth.email")
+                HStack(spacing: 8) {
+                    Image(systemName: "envelope").font(.system(size: 16))
+                    Text("이메일로 시작하기").font(WPFont.hak(16, .bold))
+                }
+                .frame(maxWidth: .infinity).frame(height: 48)
+                .foregroundStyle(.white)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.6), lineWidth: 1))
+                .contentShape(RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain).disabled(isLoading).accessibilityIdentifier("auth.email")
+
+            // 웹 AuthButtons 와 같은 문장 — 입구가 여럿이어도 같은 앱이라는 것을 먼저 말한다
+            Text("어느 쪽으로 시작해도 같은 플랜입니다.")
+                .font(WPFont.hak(12)).foregroundStyle(.white.opacity(0.85))
+                .multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(.top, 8)
 
             #if DEBUG
             // 카카오 SDK 연동 전, 실기기에서 백엔드 붙은 화면을 보기 위한 통로.
@@ -182,6 +204,12 @@ struct LandingView: View {
             #endif
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func signInGoogle() async {
+        isLoading = true
+        defer { isLoading = false }
+        do { try await login.service.signInWithGoogle(env: env) } catch { show(error) }
     }
 
     private func signIn() async {

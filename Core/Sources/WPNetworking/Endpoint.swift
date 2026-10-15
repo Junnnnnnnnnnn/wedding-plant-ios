@@ -6,8 +6,11 @@ import WPModels
 /// 웹 앱에서 실제로 호출하는 `/plan/...` 경로를 한곳에 모았다.
 /// 화면 코드가 경로 문자열을 직접 만들지 않게 해서 오타·중복을 막는다.
 public enum Endpoint {
-    public static func allSchedules(roomId: Int, page: Int) -> HTTPRequest {
-        HTTPRequest(path: "/plan/schedule/room/\(roomId)/list", query: ["page": String(page), "count": "100"])
+    /// 전체 일정 한 쪽. 방이 없으면(혼자 쓰는 사람) 개인 목록 `/plan/schedule/list` 다 —
+    /// 달력 보드 뷰가 둘 다 쓴다(안드로이드 `PlanRepository.getAllSchedules`).
+    public static func allSchedules(roomId: Int?, page: Int) -> HTTPRequest {
+        let path = roomId.map { "/plan/schedule/room/\($0)/list" } ?? "/plan/schedule/list"
+        return HTTPRequest(path: path, query: ["page": String(page), "count": "100"])
     }
     /// 동적 경로 세그먼트 인코딩. (shareCode 등 사용자 입력이 섞이는 경우 필수)
     public static func escape(_ segment: String) -> String {

@@ -73,6 +73,20 @@ enum WPColor {
     static let danger = Color(hex: 0xDC2626)
     static let dangerBg = Color(hex: 0xFEF2F2)
 
+    // MARK: 온보딩 (안드로이드 `WpPrimaryButton` · `SettingScreen.InviteChoiceCard` 의 값)
+    /// 잠긴 주 버튼 면. 시안 C안 10 `bg-[#e8eaed]`
+    static let buttonDisabled = Color(hex: 0xE8EAED)
+    /// 잠긴 주 버튼 글자 · 날짜 휠의 고르지 않은 숫자. `text-[#b0b4bb]`
+    static let buttonDisabledText = Color(hex: 0xB0B4BB)
+    /// 초대 단계에서 고른 카드의 면
+    static let inviteChoiceSelected = Color(hex: 0xFFF7FB)
+    /// 초대 단계 '부를게요' 동그라미(고르기 전)
+    static let inviteChoiceIcon = Color(hex: 0xFFEAF3)
+    /// 플랜 완료 카드의 무지개 테두리 — 안드로이드 `BloomRainbow`(권한 단계의 미리보기 카드도 같은 테두리)
+    static let bloomRainbow: [Color] = [
+        Color(hex: 0xFAF4CE), Color(hex: 0x96C6AE), Color(hex: 0xE9BED8), Color(hex: 0xC5E2E1), Color(hex: 0xF3E5CB),
+    ]
+
     /// 멤버 아바타 그라데이션. 웹 `AVATAR_GRADIENTS`
     static let avatarGradients: [(Color, Color)] = [
         (Color(hex: 0xEE2B8C), Color(hex: 0xFF7EB3)),
@@ -115,6 +129,10 @@ enum WPColor {
     static let strokeMuted = Color(hex: 0x10000000)
     /// SEED `stroke-neutral-subtle`. 웹 `#0000000c` — 구분선 목록
     static let strokeSubtle = Color(hex: 0x0C000000)
+    /// 광고 「광고」 배지 글자·테두리, 별점. 안드로이드 `WpColors.AdBadgeInk`·`AdBadgeLine`·`AdStar` (웹에는 광고가 없다)
+    static let adBadgeInk = Color(hex: 0x4B5563)
+    static let adBadgeLine = Color(hex: 0xC9CDD4)
+    static let adStar = Color(hex: 0xF4B400)
     /// 브랜드 램프. 웹 `#fff1f7` — 카테고리 태그 바탕
     static let brand100 = Color(hex: 0xFFF1F7)
     static let brand200 = Color(hex: 0xFFE3EF)
@@ -130,6 +148,38 @@ enum WPColor {
     static let criticalWeak = Color(hex: 0xFDF0F0)
     /// SEED `fg-informative`. 웹 `#217cf9` — 토요일
     static let informative = Color(hex: 0x217CF9)
+    /// 안드로이드 `WpColors.PrimaryPressed` — 달력에서 **고른 날** 숫자.
+    static let primaryPressed = Color(hex: 0xD4237B)
+    /// 안드로이드 `WpColors.PassSheetFaint` — 달력 보드 묶음의 `N개`.
+    static let passSheetFaint = Color(hex: 0x9AA0A6)
+
+    // MARK: 결제 어긋남 표 (안드로이드 `PaymentMismatchBadge`, 웹 `PAYMENT_MISMATCH`)
+    static let mismatchText = Color(hex: 0x05795F)
+    static let mismatchBackground = Color(hex: 0xEEF6F2)
+
+    // MARK: 날짜 타일 카드 (안드로이드 `DateTileRow`, 웹 `PlanDateTileItem`)
+    static let dateTileBorder = Color(hex: 0xEEE8ED)
+    static let dateTileFill = Color(hex: 0xFFF0F7)
+    static let dateTileMutedFill = Color(hex: 0xF4F2F5)
+    static let dateTileInk = Color(hex: 0xC1367C)
+    static let dateTileMutedInk = Color(hex: 0xA799A5)
+    static let dateTileDoneTitle = Color(hex: 0x91818B)
+    static let dateTileCategory = Color(hex: 0xBF2E77)
+    static let dateTileStatus = Color(hex: 0x958791)
+    static let dateTileNoAmount = Color(hex: 0x9A8D97)
+
+    // MARK: - 일정 상세 (안드로이드 `WpColors.DetailBorder` 등)
+
+    /// 상세 카드 테두리·구분선. 안드로이드 `DetailBorder`
+    static let detailBorder = Color(hex: 0xEEE7EC)
+    /// 상세 카드 이름표(장소·메모·서류). 안드로이드 `DetailLabel`
+    static let detailLabel = Color(hex: 0x7D727A)
+    /// 줄 끝의 흐린 화살표·자물쇠. 안드로이드 `ChevronFaint`
+    static let chevronFaint = Color(hex: 0xD6CCD2)
+    /// 피드 줄의 연분홍 타일. 안드로이드 `SpouseBadgeBg`
+    static let spouseBadgeBg = Color(hex: 0xFFF2F6)
+    /// 추가 카테고리 칩 바탕. 안드로이드 `ExtraCategories` 의 `0xFFFFF0F7`
+    static let extraChipBg = Color(hex: 0xFFF0F7)
 
     /// 일정 상태 뱃지 배경
     static func statusBackground(_ status: PlanStatusStyle) -> Color { status.background }

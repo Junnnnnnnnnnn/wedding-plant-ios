@@ -16,12 +16,32 @@ final class ScheduleDetailViewModel: ObservableObject {
     @Published var deleted = false
     @Published var sessionExpired = false
     @Published var isGuest = false
+    /// 완료 토글을 보내는 중 — 안드로이드 `statusPending`
+    @Published var statusPending = false
+    /// 채팅으로 보내기 줄의 부제(`현우에게 이 플랜을 보내요`)를 고르는 신랑·신부 대화 판정.
+    /// 안드로이드 `CoupleChatStore` 와 같은 `/plan/room/list` 를 같은 규칙(`CoupleChatRules.pick`)으로 읽는다.
+    @Published var couple: CoupleChatState = .loading
+    /// `/plan/feed/postable` 의 일정 id. `nil` = 아직 못 받음(받는 중) — 안드로이드 `postablesLoaded`
+    @Published var postableIds: Set<Int>?
 
     @Published var permission: PlanPermission?
     @Published var roomId: Int?
     var canWrite: Bool { isGuest || permission.map { $0.canEdit } == true }
     var canSeeDocuments: Bool { !isGuest && (permission == .owner || permission == .spouse) }
     let scheduleId: Int
+
+    /// 피드 줄의 네 모습 — 안드로이드 `FeedShare`(올릴 수 있음 · 받는 중(흐리게) · 예정이라 잠김 · 뺌)
+    enum FeedShare { case ready, checking, locked, hidden }
+
+    /// 피드는 **내가 만든 완료 일정**만 받는다(서버 `/plan/feed/postable`). 판정은 안드로이드
+    /// `ScheduleDetailScreen` 의 `feed` 와 같다 — 예정이면 잠그고, 완료인데 목록을 아직 못 받았으면 흐리게
+    /// 자리를 지키고(빼면 완료를 누르는 순간 아래 줄이 출렁인다), 받았는데 없으면 뺀다.
+    var feedShare: FeedShare {
+        guard canWrite, let detail else { return .hidden }
+        if !detail.isCompleted { return .locked }
+        guard let ids = postableIds else { return .checking }
+        return ids.contains(detail.id) ? .ready : .hidden
+    }
 
     init(scheduleId: Int, roomId: Int? = nil) {
         self.roomId = roomId
@@ -67,6 +87,7 @@ final class ScheduleDetailViewModel: ObservableObject {
             var resolved = roomId ?? env.boundRoomId
             if resolved == nil { let user: PlanUser = try await env.api.send(Endpoint.user()); resolved = user.roomId }
             roomId = resolved
+            couple = CoupleChatRules.pick(rooms.list, myId: me)
             permission = rooms.list.first { $0.roomId == resolved }.flatMap { BoundRoom.myPermission(in: $0, planUserId: me) }
             if permission == nil, let user: PlanUser = try? await env.api.send(Endpoint.user()), user.roomId == resolved {
                 permission = user.members?.first { $0.planUserId.lowercased() == me?.lowercased() }?.permission
@@ -76,6 +97,7 @@ final class ScheduleDetailViewModel: ObservableObject {
                 Endpoint.schedule(id: scheduleId),
                 decoding: ScheduleDetail.self
             )
+            if detail?.isCompleted == true, canWrite { await loadPostables(env: env) } else { postableIds = nil }
         } catch let error as APIError {
             // 401 의 토큰 정리·재로그인 안내는 APIClient 가 공통으로 맡는다.
             // 여기서는 화면을 되돌리기 위한 플래그만 세운다.
@@ -83,6 +105,38 @@ final class ScheduleDetailViewModel: ObservableObject {
             sessionExpired = error.requiresReauthentication
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// 안드로이드 `FeedViewModel.loadPostables` — 못 받으면 빈 목록(= 피드 줄을 뺌)으로 둔다.
+    func loadPostables(env: AppEnvironment) async {
+        postableIds = nil
+        if let page = try? await env.api.send(Endpoint.feedPostable(), decoding: PostablePage.self) {
+            postableIds = Set(page.list.map(\.scheduleId))
+        } else {
+            postableIds = []
+        }
+    }
+
+    /// 완료로 표시 · 예정으로 되돌리기 — 안드로이드 `ScheduleDetailViewModel.toggleStatus`.
+    func toggleStatus(env: AppEnvironment) async {
+        guard let current = detail, !statusPending, !isGuest, canWrite else { return }
+        let toCompleted = !current.isCompleted
+        statusPending = true
+        do {
+            try await env.api.sendIgnoringData(
+                Endpoint.updateScheduleStatus(id: current.id, status: toCompleted ? .completed : .normal)
+            )
+            detail?.status = toCompleted ? "COMPLETED" : "NORMAL"
+            statusPending = false
+            if toCompleted { await loadPostables(env: env) } else { postableIds = nil }
+        } catch {
+            statusPending = false
+            if case .http(let status, _) = error as? APIError, status == 404 {
+                errorMessage = "삭제되었거나 찾을 수 없는 일정이에요."
+            } else {
+                errorMessage = "상태를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요."
+            }
         }
     }
 

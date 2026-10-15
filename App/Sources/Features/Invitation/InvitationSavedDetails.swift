@@ -12,6 +12,8 @@ struct InvitationSavedDetails: View {
     let onEdit: (String) -> Void
     let onPublish: () -> Void
     let onPreview: () -> Void
+    /// 공개·비공개를 바꾼 뒤의 한 줄(안드로이드 `shareNote`)
+    var shareNote: String? = nil
     @State private var copied = false
     @State private var exportQR = false
     private var url: String { AppConfig.webBaseURL + "/invitation/" + content.slug }
@@ -19,15 +21,18 @@ struct InvitationSavedDetails: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 7) {
-                Image(systemName: "leaf").font(.system(size: 15))
+                InvSprout(size: 15, color: content.published ? WPColor.invAccent : WPColor.invLandMuted)
                 Text(content.published ? "공개 중" : "공개 전").font(invitationFont(12))
-            }.foregroundStyle(content.published ? WPColor.invAccent : WPColor.invLandMuted)
+            }.foregroundStyle(content.published ? WPColor.invAccent : WPColor.invLandMuted).accessibilityElement(children: .combine)
             heading.wpTypography(23, face: .kakao, lineHeight: 32.2).tracking(-0.9).foregroundStyle(WPColor.invInk)
             VStack(alignment: .leading, spacing: 8) {
                 panelTitle(content.published ? "링크와 QR로 초대해요" : "공개하면 열리는 것")
                 if content.published { shareCard } else { disclosure }
                 if content.published && !guestbookOn {
-                    Text("댓글 관리 칸을 꺼 둬서 하객이 축하를 남길 수 없어요. 청첩장 고치기에서 다시 켤 수 있어요.").wpTypography(12, face: .kakao, lineHeight: 20.4).foregroundStyle(WPColor.invLandMuted)
+                    Text("댓글 관리 칸을 꺼 둬서 하객이 축하를 남길 수 없어요. 청첩장 고치기에서 다시 켤 수 있어요.".wpKeepAll).wpTypography(12, face: .kakao, lineHeight: 19.2).foregroundStyle(WPColor.invLandMuted)
+                }
+                if let shareNote {
+                    Text(shareNote.wpKeepAll).wpTypography(12, face: .kakao, lineHeight: 19.2).foregroundStyle(WPColor.invAccent).accessibilityIdentifier("invitation.shareNote")
                 }
             }.padding(.top, 6)
             VStack(spacing: 8) {
@@ -46,7 +51,7 @@ struct InvitationSavedDetails: View {
                                 InvitationPixelIcon(name: "item" + item.key.prefix(1).uppercased() + item.key.dropFirst()).frame(width: 32, height: 32)
                                     .saturation(item.visible ? 1 : 0).opacity(item.visible ? 1 : 0.4).padding(.bottom, 2)
                                 Text(item.name).font(invitationFont(12.5, bold: true)).foregroundStyle(WPColor.invInk)
-                                Text(item.note).font(invitationFont(10.5)).foregroundStyle(item.filled && item.visible ? WPColor.invAccent : WPColor.invLandMuted).lineLimit(1)
+                                Text(item.visible ? item.note : "꺼 둠").font(invitationFont(10.5)).foregroundStyle(item.filled && item.visible ? WPColor.invAccent : WPColor.invLandMuted).lineLimit(1)
                             }.padding(.horizontal, 6).padding(.top, 12).padding(.bottom, 10).frame(maxWidth: .infinity, minHeight: 96)
                                 .background(item.filled && item.visible ? WPColor.invSoft : WPColor.invWhite, in: RoundedRectangle(cornerRadius: 10))
                                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(item.visible && !item.filled ? WPColor.invDash : WPColor.invLine, style: StrokeStyle(lineWidth: 1, dash: item.filled && item.visible ? [] : [3,3])))
@@ -60,9 +65,11 @@ struct InvitationSavedDetails: View {
             .fileExporter(isPresented: $exportQR, document: InvitationQRDocument(data: qrImage?.pngData() ?? Data()), contentType: .png, defaultFilename: "wedding-invitation-qr") { _ in }
     }
     private var heading: Text {
-        if !content.published { return Text("우리 청첩장이 완성됐어요.\n공개하면 링크가 생겨요.") }
-        if let total, total > 0 { return Text("하객 \(total)명").font(invitationFont(23, bold: true)).foregroundColor(WPColor.invAccent) + Text("이\n축하를 남겼어요.") }
-        return Text("청첩장이 열렸어요.\n주소와 QR로 초대해요.")
+        // 안드로이드 `Heading` — 한 줄은 보통, 한 줄은 굵은 초록
+        let bold = { (text: String) in Text(text).font(invitationFont(23, bold: true)).foregroundColor(WPColor.invAccent) }
+        if !content.published { return Text("우리 청첩장이 완성됐어요.\n") + bold("공개하면 링크가 생겨요.") }
+        if let total, total > 0 { return bold("하객 \(total)명") + Text("이\n축하를 남겼어요.") }
+        return Text("청첩장이 열렸어요.\n") + bold("주소와 QR로 초대해요.")
     }
     private func panelTitle(_ title: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -72,25 +79,30 @@ struct InvitationSavedDetails: View {
     }
     private var disclosure: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("주소를 아는 누구나 로그인 없이 봐요 — 이름·예식 날짜와 장소·초대의 말·사진·축하 글, 그리고 켜 둔 칸에 적은 부모님 성함·주소·안내·계좌번호까지.").foregroundStyle(WPColor.invInk)
-            Text("주소 끝은 처음 만든 사람의 이메일을 바꾼 값이라 되돌려 읽을 수 있어요. 검색에는 나오지 않고, 언제든 비공개로 돌릴 수 있어요.").foregroundStyle(WPColor.invLandMuted)
-        }.wpTypography(12, face: .kakao, lineHeight: 20.4).padding(.horizontal, 14).padding(.vertical, 12)
+            Text("주소를 아는 누구나 로그인 없이 봐요 — 이름·예식 날짜와 장소·초대의 말·사진·축하 글, 그리고 켜 둔 칸에 적은 부모님 성함·주소·안내·계좌번호까지.".wpKeepAll).foregroundStyle(WPColor.invInk)
+            Text("주소 끝은 처음 만든 사람의 이메일을 바꾼 값이라 되돌려 읽을 수 있어요. 검색에는 나오지 않고, 언제든 비공개로 돌릴 수 있어요.".wpKeepAll).foregroundStyle(WPColor.invLandMuted)
+        }.wpTypography(12, face: .kakao, lineHeight: 20.4).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 14).padding(.vertical, 12)
             .background(WPColor.invGarden, in: RoundedRectangle(cornerRadius: 10)).overlay(RoundedRectangle(cornerRadius: 10).stroke(WPColor.invLine))
     }
     private var shareCard: some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(spacing: 6) {
                 if let qrImage { Image(uiImage: qrImage).resizable().interpolation(.none).frame(width: 104, height: 104).background(.white).clipShape(RoundedRectangle(cornerRadius: 6)).accessibilityLabel("청첩장 주소 QR 코드") }
-                Button { exportQR = true } label: { Text("QR 저장").underline().frame(minHeight: 28) }.font(invitationFont(12)).foregroundStyle(WPColor.invLandMuted)
+                Button { exportQR = true } label: { Text("QR 저장").underline().frame(minHeight: 28).contentShape(Rectangle()) }.buttonStyle(.plain).font(invitationFont(12)).foregroundStyle(WPColor.invLandMuted)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Button { UIPasteboard.general.string = url; copied = true } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(url.replacingOccurrences(of: "https://", with: "")).wpTypography(13, face: .kakao, lineHeight: 19.5).foregroundStyle(WPColor.invForest).multilineTextAlignment(.leading)
-                        Label(copied ? "복사했어요" : "눌러서 복사", systemImage: copied ? "checkmark" : "square.on.square").font(invitationFont(11.5)).foregroundStyle(copied ? WPColor.invAccent : WPColor.invLandMuted)
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6)
-                }.buttonStyle(.plain).accessibilityIdentifier("invitation.address")
-                Button(action: onPublish) { Label(busy ? "바꾸는 중…" : "비공개로 돌리기", systemImage: "lock").underline().frame(minHeight: 28) }.font(invitationFont(12)).foregroundStyle(WPColor.invLandMuted).disabled(!canEdit || busy)
+                        HStack(spacing: 4) {
+                            InvIconView(copied ? InvIcon.check : InvIcon.copy, size: 12, color: copied ? WPColor.invAccent : WPColor.invLandMuted)
+                            Text(copied ? "복사했어요" : "눌러서 복사").font(invitationFont(11.5, bold: copied))
+                        }.foregroundStyle(copied ? WPColor.invAccent : WPColor.invLandMuted)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 8).padding(.vertical, 6).contentShape(Rectangle())
+                }.buttonStyle(.plain).padding(.leading, -8).accessibilityIdentifier("invitation.address")
+                Button(action: onPublish) {
+                    HStack(spacing: 5) { InvIconView(InvIcon.lock, size: 12, color: WPColor.invLandMuted); Text(busy ? "바꾸는 중…" : "비공개로 돌리기").underline() }.frame(minHeight: 28).contentShape(Rectangle())
+                }.buttonStyle(.plain).font(invitationFont(12)).foregroundStyle(WPColor.invLandMuted).opacity(!canEdit || busy ? 0.55 : 1).disabled(!canEdit || busy)
             }
         }.padding(12).background(WPColor.invGarden, in: RoundedRectangle(cornerRadius: 10)).overlay(RoundedRectangle(cornerRadius: 10).stroke(WPColor.invLine))
     }

@@ -26,6 +26,15 @@ final class ChatViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var loadingMore = false
     @Published private(set) var hasMore = true
+    /// 이 대화방의 멤버가 아니다(서버 403 `NOT_CHAT_MEMBER`, 또는 멤버 목록에 내가 없음) — 안드로이드 `notMember`
+    @Published var notMember = false
+    /// 기록을 한 번이라도 받았는가. 받기 전·실패했을 때는 "없다" 고 말하지 않는다.
+    @Published var historyLoaded = false
+
+    /// 안드로이드 `ChatViewModel.NOT_MEMBER_MESSAGE` · `SHARE_FAILED_MESSAGE` · `SHARE_UNKNOWN_MESSAGE`
+    static let notMemberMessage = "참여 중인 대화방이 아니에요."
+    static let shareFailedMessage = "공유하지 못했어요. 잠시 후 다시 시도해 주세요."
+    static let shareUnknownMessage = "전송 결과를 확인하지 못했어요. 대화방을 확인한 후 다시 시도해 주세요."
 
     let chatRoomId: Int
 
@@ -42,6 +51,9 @@ final class ChatViewModel: ObservableObject {
         self.planRoomId = planRoomId
         self.chatRoomId = chatRoomId
     }
+
+    /// 토큰의 내 id — 머리의 나·상대 얼굴을 가른다.
+    var myPlanUserId: String? { myId }
 
     var memberNames: String {
         members.isEmpty ? "대화 중인 멤버" : members.map(\.name).joined(separator: ", ")
@@ -61,29 +73,41 @@ final class ChatViewModel: ObservableObject {
         myId = JWTDecoder.planUserId(from: token)
 
         await load(env: env)
+        // 멤버가 아닌 방에는 붙지 않는다(보낼 수 없다)
+        if notMember { return }
         await loadActivities(env: env)
         connectSocket(env: env)
     }
 
-    private func load(env: AppEnvironment) async {
+    func load(env: AppEnvironment) async {
         loading = true
+        notMember = false
+        historyLoaded = false
         page = 1
 
-        let info = try? await env.api.send(
-            Endpoint.chatInfo(chatRoomId: chatRoomId),
-            decoding: ChatRoomInfo.self
-        )
-        if let info {
+        do {
+            let info = try await env.api.send(Endpoint.chatInfo(chatRoomId: chatRoomId), decoding: ChatRoomInfo.self)
             if !info.name.isEmpty { roomName = info.name }
             members = info.memberList
             planRoomId = info.planUserRoomId ?? planRoomId
-        }
+            // 멤버 목록에 내가 없으면 보낼 수 없다 — 까닭만 말한다(안드로이드와 같음)
+            if let myId, !info.memberList.isEmpty, !info.memberList.contains(where: { $0.planUserId == myId }) {
+                notMember = true; lines = []; hasMore = false; loading = false
+                return
+            }
+        } catch let error as APIError {
+            if case let .http(_, body) = error, body?.contains("NOT_CHAT_MEMBER") == true {
+                notMember = true; lines = []; hasMore = false; loading = false
+                return
+            }
+        } catch {}
 
         defer { loading = false }
         do {
             let history: ChatHistoryPage = try await env.api.send(Endpoint.chatHistory(chatRoomId: chatRoomId, page: 1, count: ChatTimeline.pageSize))
             lines = ChatTimeline.lines(from: history.list, myId: myId)
             hasMore = ChatTimeline.hasMore(receivedCount: history.list.count)
+            historyLoaded = true
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
     }
@@ -135,8 +159,12 @@ final class ChatViewModel: ObservableObject {
             case let .roomList(payload):
                 applyRoomList(payload)
             case let .serverError(message):
-                errorMessage = message
-                if sharingSchedule != nil { sharingSchedule = nil; shareError = message; shareTimeout?.cancel() }
+                if sharingSchedule != nil {
+                    // 올리기가 거절됐다 — 시트에는 안드로이드·웹과 같은 문장을 낸다
+                    sharingSchedule = nil; shareError = Self.shareFailedMessage; shareTimeout?.cancel()
+                } else {
+                    errorMessage = message
+                }
             case .reconnected:
                 Task { await self.syncMissed(env: env) }
             }
@@ -216,16 +244,16 @@ final class ChatViewModel: ObservableObject {
     func shareSchedule(_ id: Int) {
         guard sharingSchedule == nil else { return }
         sharedSchedule = nil; shareError = nil
-        guard connected else { shareError = "연결이 끊겼어요. 잠시 후 다시 시도해 주세요."; return }
+        guard connected else { shareError = Self.shareFailedMessage; return }
         sharingSchedule = id
         guard socket?.sendSchedule(id, onAck: { [weak self] in self?.completeShare() }) == true else {
-            sharingSchedule = nil; shareError = "보내지 못했어요. 다시 시도해 주세요."; return
+            sharingSchedule = nil; shareError = Self.shareFailedMessage; return
         }
         shareTimeout?.cancel()
         shareTimeout = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(10)) } catch { return }
             guard let self, sharingSchedule == id else { return }
-            sharingSchedule = nil; shareError = "전송 결과를 확인하지 못했어요. 대화에 올라갔는지 먼저 확인해 주세요."
+            sharingSchedule = nil; shareError = Self.shareUnknownMessage
         }
     }
     private func completeShare() {

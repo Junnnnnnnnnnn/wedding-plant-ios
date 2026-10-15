@@ -32,9 +32,10 @@ struct KakaoStartButton: View {
     }
 }
 
-/// 웹 setting 플로우의 "다음" 버튼.
-/// `w-full max-w-[320px] px-8 py-3 bg-[#FFAAB8] text-white text-lg font-semibold rounded-lg shadow-md`
-/// disabled 는 `bg-stone-300`.
+/// 온보딩 "다음" 버튼 — 안드로이드 `WpPrimaryButton`(시안 C안 10).
+/// `w-full max-w-[340px] rounded-xl bg-[#ee2b8c] py-4 text-[16px] font-bold`,
+/// 잠김은 `bg-[#e8eaed] text-[#b0b4bb]`. 예전 `#FFAAB8` + 그림자는 안드로이드와 달랐다.
+/// 높이 56 = 위아래 16 + 16pt 글자의 줄 높이 24(Compose 기본 1.5).
 struct WPNextButton: View {
     var text: String
     var enabled: Bool = true
@@ -46,27 +47,35 @@ struct WPNextButton: View {
     var body: some View {
         Button(action: action) {
             Text(text)
-                .font(WPFont.hak(18, .semibold))
-                .foregroundStyle(.white)
+                .font(WPFont.hak(16, .bold))
+                .foregroundStyle(enabled ? Color.white : WPColor.buttonDisabledText)
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(height: 56)
                 .background(
-                    enabled ? WPColor.accent : WPColor.stone300,
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    enabled ? WPColor.primary : WPColor.buttonDisabled,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                 )
-                .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // `.plain` 은 잠긴 버튼을 반투명으로 흐려 `#e8eaed` 가 `#f3f4f6` 으로 보였다 — 잠김 색은 위에서 직접 칠한다.
+        .buttonStyle(UndimmedButtonStyle())
         .disabled(!enabled)
         .accessibilityIdentifier(identifier ?? "")
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 340)
     }
 }
 
-/// 웹 `LandingHero`.
+/// 잠겨도 흐리지 않는 버튼 모양 — 잠긴 모습을 화면이 직접 칠할 때 쓴다.
+struct UndimmedButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}
+
+/// 웹 `LandingHero` — 안드로이드 `Common.kt` 의 `LandingHero` 와 같은 치수.
 ///
-/// 제목·부제 **둘 다** `font-bold tracking-tight text-stone-900` 이다.
-/// 부제를 흐린 회색으로 두면 웹과 달라진다.
+/// 가운데 정렬(축하·환영·약관)은 제목·부제 **둘 다** `font-bold tracking-tight text-stone-900` 이다.
+/// 줄 높이는 Compose 기본(1.5)을 따른다.
 struct LandingHero: View {
     var title: String
     var subtitle: String?
@@ -74,28 +83,42 @@ struct LandingHero: View {
     var subtitleSize: CGFloat = 18
     /// 웹의 동명 prop. true 면 Tmoney, false 면 덩근미소.
     var useUserFont: Bool = true
+    /// 온보딩 질문 단계는 `true`(시안 C안 10) — 왼쪽 정렬, 폭 340, 제목 줄 높이 1.3,
+    /// 부제는 보통 굵기 `#555d6d` · 줄 높이 1.7. 가운데 정렬이면 두 줄 제목의 둘째 줄이
+    /// 매번 다른 자리에서 시작해 읽는 눈이 흔들린다(안드로이드 주석 그대로).
+    var alignStart: Bool = false
+
+    /// 안드로이드 `TrackingTight` = -0.4sp (크기와 무관한 고정값)
+    private let tracking: CGFloat = -0.4
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(title)
-                .font(font(titleSize, .bold))
-                .tracking(WPFont.trackingTight(titleSize))
-                .foregroundStyle(WPColor.stone900)
-                .multilineTextAlignment(.center)
+        VStack(alignment: alignStart ? .leading : .center, spacing: 8) {
+            line(title, size: titleSize, bold: true, color: WPColor.stone900,
+                 lineHeight: alignStart ? titleSize * 1.3 : titleSize * 1.5)
 
             if let subtitle, !subtitle.trimmingCharacters(in: .whitespaces).isEmpty {
-                Text(subtitle)
-                    .font(font(subtitleSize, .bold))
-                    .tracking(WPFont.trackingTight(subtitleSize))
-                    .foregroundStyle(WPColor.stone900)
-                    .multilineTextAlignment(.center)
+                line(subtitle, size: subtitleSize, bold: !alignStart,
+                     color: alignStart ? WPColor.fgMuted : WPColor.stone900,
+                     lineHeight: alignStart ? subtitleSize * 1.7 : subtitleSize * 1.5)
             }
         }
+        .frame(maxWidth: alignStart ? 340 : .infinity, alignment: alignStart ? .leading : .center)
         .frame(maxWidth: .infinity)
     }
 
-    private func font(_ size: CGFloat, _ weight: Font.Weight) -> Font {
-        useUserFont ? WPFont.tmoney(size, weight) : WPFont.hak(size, weight)
+    @ViewBuilder
+    private func line(_ text: String, size: CGFloat, bold: Bool, color: Color, lineHeight: CGFloat) -> some View {
+        if useUserFont {
+            // 안드로이드 Tmoney 는 Regular 파일 하나에 굵기를 합성한다 — ExtraBold 파일로 바꾸면 모양이 달라진다.
+            WPTmoneyText(text: text, size: size, bold: bold, color: UIColor(color), lineHeight: lineHeight, tracking: tracking)
+                .fixedSize()
+        } else {
+            Text(text)
+                .wpTypography(size, bold ? .bold : .regular, lineHeight: lineHeight)
+                .tracking(tracking)
+                .foregroundStyle(color)
+                .multilineTextAlignment(alignStart ? .leading : .center)
+        }
     }
 }
 
@@ -150,10 +173,9 @@ struct CircleCheck: View {
     var body: some View {
         ZStack {
             Circle().fill(checked ? WPColor.accent : Color.white)
-            Circle().stroke(checked ? WPColor.accent : WPColor.stone300, lineWidth: 1)
-            Image(systemName: "checkmark")
-                .font(.system(size: size * 0.5, weight: .bold))
-                .foregroundStyle(checked ? .white : WPColor.stone300)
+            Circle().strokeBorder(checked ? WPColor.accent : WPColor.stone300, lineWidth: 1)
+            // 안드로이드 `Icons.Filled.Check`(지름의 0.6) — SF `checkmark` 는 획이 달라 원본 경로로 그린다.
+            WPMaterialPathIcon(paths: WPIconPaths.check, size: size * 0.6, color: checked ? .white : WPColor.stone300)
         }
         .frame(width: size, height: size)
     }

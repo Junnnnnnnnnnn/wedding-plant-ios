@@ -86,11 +86,11 @@ public enum InvitationRules {
     public static func mineEmptySeats(published: Bool, guestbookOn: Bool, guests: Int?) -> Bool { !published || !guestbookOn || guests == 0 }
     public static func mineLabelNote(published: Bool, guests: Int?) -> String { !published ? "공개 전" : guests.map { "하객 \($0)명" } ?? "공개 중" }
     public enum StudioState { case loading, error, landing, empty, mine }
-    /// Home decoration requires an active pass even when an old invitation remains editable.
-    public static func homeState(loaded: Bool, failed: Bool, hasPass: Bool, hasInvitation: Bool) -> StudioState {
-        if failed { return .error }; if !loaded { return .loading }
-        guard hasPass else { return .landing }
-        return hasInvitation ? .mine : .empty
+    /// 홈의 청첩장 입구 — Android `InvitationRules.homeInvite` = `studioView` 와 **같은 판정 하나**입니다.
+    /// 청첩장이 있으면 패스가 끝났어도 정원 카드(`mine`)를 냅니다(패스가 끝나도 청첩장은 남습니다).
+    /// 예전 iOS 는 패스가 없으면 숨겼는데, 그러면 패스가 끝난 사람만 iOS 홈에서 자기 청첩장 입구를 잃었습니다.
+    public static func homeState(loaded: Bool, failed: Bool, hasInvitation: Bool, canEdit: Bool) -> StudioState {
+        studioState(loaded: loaded, failed: failed, hasInvitation: hasInvitation, canEdit: canEdit)
     }
     public static func studioState(loaded: Bool, failed: Bool, hasInvitation: Bool, canEdit: Bool) -> StudioState {
         if failed { return .error }; if !loaded { return .loading }

@@ -16,6 +16,7 @@ struct UserPassCard: View {
     @State private var plans = false
     @State private var export = false
     @State private var reminders = false
+    @State private var documents = false
     private var lifetime: Bool { state?.plan == "LIFETIME" }
     private var label: String { lifetime ? "평생" : state?.plan == "MONTHLY" ? "월간" : "년간" }
     var body: some View {
@@ -70,32 +71,38 @@ struct UserPassCard: View {
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(hex: 0xF0E3EA)))
                 .overlay { PassHighlightBorder(radius: 20) }
             if state?.hasPass == true, let room {
+                // 안드로이드 `PassMemberToolsCardBody` — 패스 면(분홍→주황) 카드 한 장: 리본 한 줄 + 혜택 세 칸
                 VStack(spacing: 12) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkle").font(.system(size: 14))
+                    HStack(spacing: 0) {
+                        WPMaterialPathIcon(paths: DocIcon.localFloristOutlined, size: 14, color: .white)
+                        Spacer().frame(width: 6)
                         Text("우리 둘, 준비 패스와 함께").wpTypography(11)
-                        Spacer()
-                        Button { plans = true } label: { Text(label).wpTypography(9).opacity(0.8) }
+                        Spacer(minLength: 8)
+                        Button { plans = true } label: { Text("\(label) · 이용 중").wpTypography(9).lineLimit(1).opacity(0.8) }
                             .accessibilityIdentifier("pass.plans")
                     }
                     HStack(spacing: 6) {
-                        NavigationLink { PassDownloadView(roomId: room) } label: { tool("서류 보관", "folder") }
-                        Button { export = true } label: { tool("엑셀 받기", "arrow.down.doc") }
-                        Button { reminders = true } label: { tool("결제일 알림", "bell") }
+                        Button { documents = true } label: { tool("서류 보관", WPIconPaths.descriptionOutlined) }
+                            .accessibilityIdentifier("pass.documents")
+                        Button { export = true } label: { tool("엑셀 받기", DocIcon.downloadOutlined) }
+                        Button { reminders = true } label: { tool("결제일 알림", DocIcon.notificationsOutlined) }
                     }.buttonStyle(.plain)
                 }.foregroundStyle(.white).padding(.horizontal, 16).padding(.vertical, 15)
-                    .background(LinearGradient(colors: [Color(hex: 0xF12888), Color(hex: 0xFF9355)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 20))
+                    .background(PassMemberBackground().clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous)))
 
             }
         }.task(id: loggedIn) { await load() }
             .fullScreenCover(isPresented: $intro) { PassView(roomId: room) }
             .sheet(isPresented: $plans) { PassPlansView(roomId: room) }
             .sheet(isPresented: $export) { if let room { CalendarExportSheet(roomId: room) } }
+            .fullScreenCover(isPresented: $documents) { DocumentsWorkspaceView(roomId: room) }
             .fullScreenCover(isPresented: $reminders, onDismiss: { Task { await load() } }) { ReminderSettingsView(roomId: room) }
     }
-    private func tool(_ title: String, _ icon: String) -> some View {
-        HStack(spacing: 5) { Image(systemName: icon).font(.system(size: 13)); Text(title).wpTypography(10) }
-            .frame(maxWidth: .infinity).frame(minHeight: 36).background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 7))
+    /// 웹 `.mobilePerks button` — `#ffffff19` 7px 라운드, 36px, 10px 흰 글자
+    private func tool(_ title: String, _ icon: [String]) -> some View {
+        HStack(spacing: 5) { WPMaterialPathIcon(paths: icon, size: 13, color: .white); Text(title).wpTypography(10).lineLimit(1) }
+            .padding(6).frame(maxWidth: .infinity).frame(minHeight: 36).background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 7))
+            .contentShape(Rectangle())
     }
     private var reminderSummary: String {
         guard let reminder else { return "설정 확인" }

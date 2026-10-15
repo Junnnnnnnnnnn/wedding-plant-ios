@@ -2,6 +2,7 @@ import SwiftUI
 import WPDomain
 import WPModels
 import WPNetworking
+import WPUtils
 
 /// 웹 `app/share/[shareCode]/page.tsx` 이식.
 ///
@@ -16,16 +17,30 @@ final class ShareJoinViewModel: ObservableObject {
         case joined
         /// 비로그인 → 로그인 안내
         case loginRequired
-        /// 배우자 초대 — **수락 전에 반드시 묻는다.**
-        case askingSpouse(myScheduleCount: Int)
-        case askingMove
-        case failed(String)
+        /// 신랑·신부 초대 — **수락 전에 반드시 묻는다**(안드로이드 `SpouseConfirm`).
+        /// - myPlanCount: 내가 만들어 둔 일정 수. 못 셌으면 nil — 0 건이면 줄을 안 낸다.
+        /// - hasSpouseSeat: 지금 다른 플랜의 신랑·신부인가. 못 알아냈으면 false — 지어내지 않는다.
+        case askingSpouse(myPlanCount: Int?, hasSpouseSeat: Bool, ownerName: String?, joining: Bool)
+        /// refused: 까닭이 있는 거절이라 다시 눌러도 같은 답 — "다시 시도" 를 내지 않는다.
+        case failed(String, refused: Bool)
+    }
+
+    /// 안드로이드 `SpouseRules` 와 한 글자도 다르지 않게.
+    static let inviteRoleRequiredMessage = "이 초대 링크는 더 이상 쓸 수 없어요. 신랑 · 신부 초대 링크를 새로 받아 주세요."
+    static func joinErrorMessage(_ body: String?) -> String? {
+        guard let body else { return nil }
+        if body.contains("INVITE_ROLE_REQUIRED") { return inviteRoleRequiredMessage }
+        if body.contains("PLAN_HAS_SPOUSE") { return "이미 신랑 · 신부가 함께하는 플랜이에요." }
+        if body.contains("OWNER_HAS_SPOUSE") { return "내 플랜에 이미 신랑 · 신부가 있어요. 신랑 · 신부는 한 플랜에서만 함께할 수 있어요." }
+        if body.contains("INVITER_IS_SPOUSE") { return "초대한 분은 이미 다른 플랜을 신랑 · 신부로 함께 쓰고 있어요." }
+        if body.contains("PASS_ON_OWN_ROOM") { return "내 플랜에 준비 패스가 있어요. 패스는 플랜에 붙어 있어 옮겨지지 않아요 — 상대를 내 플랜에 신랑 · 신부로 초대해 주세요." }
+        return nil
     }
 
     @Published private(set) var state: State = .joining
 
     let shareCode: String
-    /// **초대 링크가 역할을 지닌다.** `?as=spouse` 면 귀속, 아니면 조언자다.
+    /// **초대 링크가 역할을 지닌다.** `?as=spouse` 가 없는 옛 링크는 서버에 묻지 않고 거절한다.
     let asSpouse: Bool
 
     init(shareCode: String, asSpouse: Bool) {
@@ -36,91 +51,86 @@ final class ShareJoinViewModel: ObservableObject {
     func join(env: AppEnvironment, guest: GuestStore) async {
         let code = shareCode.trimmingCharacters(in: .whitespaces)
         guard !code.isEmpty else {
-            state = .failed("잘못된 공유 링크입니다.")
+            state = .failed("잘못된 공유 링크입니다.", refused: false)
             return
         }
-
+        // 옛 "함께 보는 사람" 링크. 로그인 뒤 이 초대로 다시 끌려오지 않게 남긴 코드도 지운다
         guard asSpouse else {
-            state = .failed("예전 초대 링크예요. 상대에게 새 신랑·신부 초대 링크를 받아 주세요.")
+            guest.shareAfterLogin = nil
+            state = .failed(Self.inviteRoleRequiredMessage, refused: true)
             return
         }
         let token = await env.tokenStore.currentToken()
         guard let token, !token.isEmpty else {
             // 로그인 후 이어서 참여할 수 있게 코드를 남겨 둔다 (웹 `setShareAfterLogin`).
-            guest.shareAfterLogin = code + (asSpouse ? "?as=spouse" : "")
+            guest.shareAfterLogin = code + "?as=spouse"
             state = .loginRequired
             return
         }
-
-        // **조언자(`READ`)는 귀속이 아니다.** 남의 플랜을 같이 보며 거드는 자리라
-        // 자기 플랜을 그대로 두고, 경고도 띄우지 않고 바로 참여한다.
-        if asSpouse {
-            // **수락 전에 반드시 묻는다.** 예전에는 열자마자 참여시켜서, 눌러 보고
-            // 나서야 자기 플랜이 안 보이는 걸 알았다.
-            //
-            // 내가 만들어 둔 일정이 **있을 때만** 개수를 말한다 — 0 건인 사람에게
-            // "일정이 안 보이게 된다" 고 하면 없는 손해를 지어내는 셈이다.
-            let mine = try? await env.api.send(
-                Endpoint.scheduleList(status: .normal),
-                decoding: SchedulePage.self
-            )
-            state = .askingSpouse(myScheduleCount: mine?.total ?? 0)
-            return
-        }
-
-        await performJoin(code: code, env: env, guest: guest)
+        // **수락 전에 반드시 묻는다.** 개수·자리는 나란히 세고, 못 세면 줄 없이 묻는다.
+        state = .askingSpouse(myPlanCount: nil, hasSpouseSeat: false, ownerName: nil, joining: false)
+        async let normal = try? env.api.send(Endpoint.scheduleList(status: .normal), decoding: SchedulePage.self)
+        async let done = try? env.api.send(Endpoint.scheduleList(status: .completed), decoding: SchedulePage.self)
+        async let rooms = try? env.api.send(Endpoint.roomList(), decoding: RoomList.self)
+        let (n, d, r) = await (normal, done, rooms)
+        guard case let .askingSpouse(_, _, _, joining) = state else { return }
+        let count = (n != nil && d != nil) ? (n!.list.count + d!.list.count) : nil
+        let bound = r.flatMap { BoundRoom.find(in: $0.list, planUserId: JWTDecoder.planUserId(from: token)) }
+        let owner = bound?.ownerName.trimmingCharacters(in: .whitespaces)
+        state = .askingSpouse(myPlanCount: count, hasSpouseSeat: bound != nil, ownerName: owner?.isEmpty == false ? owner : nil, joining: joining)
     }
 
-    /// 배우자 초대를 수락했을 때. 거절하면 참여 요청이 **나가지 않는다.**
+    /// 경고에서 "네, 같이 준비할게요". 경고에 "그 플랜에서는 빠지게 돼요" 줄이 떠 있었을 때만 옮기는 데 동의한 것이다.
     func confirmSpouseJoin(env: AppEnvironment, guest: GuestStore) async {
-        await performJoin(
-            code: shareCode.trimmingCharacters(in: .whitespaces),
-            env: env,
-            guest: guest
-        )
+        guard case let .askingSpouse(count, seat, owner, joining) = state, !joining else { return }
+        state = .askingSpouse(myPlanCount: count, hasSpouseSeat: seat, ownerName: owner, joining: true)
+        await performJoin(code: shareCode.trimmingCharacters(in: .whitespaces), env: env, guest: guest, moveSeat: seat)
     }
 
-    func confirmMove(env: AppEnvironment, guest: GuestStore) async {
-        await performJoin(code: shareCode, env: env, guest: guest, moveSeat: true)
-    }
+    /// 참여하지 않고 나간다 — 로그인 뒤 다시 이 초대로 끌려오지 않게 남겨 둔 코드를 지운다.
+    func abandon(guest: GuestStore) { guest.shareAfterLogin = nil }
 
-    private func performJoin(code: String, env: AppEnvironment, guest: GuestStore, moveSeat: Bool = false) async {
-        state = .joining
+    private func performJoin(code: String, env: AppEnvironment, guest: GuestStore, moveSeat: Bool) async {
+        let asked = state
         do {
-            try await env.api.sendIgnoringData(
-                Endpoint.joinRoom(shareCode: code, asSpouse: asSpouse, moveSeat: moveSeat)
-            )
+            try await env.api.sendIgnoringData(Endpoint.joinRoom(shareCode: code, asSpouse: asSpouse, moveSeat: moveSeat))
             guest.shareAfterLogin = nil
-            // **귀속 캐시를 비운다.** 안 비우면 방금 배우자가 된 사람이 다음 진입에서
-            // 여전히 "귀속 아님" 으로 읽혀 자기 개인 플랜(빈 화면)을 본다.
+            // **귀속 캐시를 비운다.** 안 비우면 방금 배우자가 된 사람이 다음 진입에서 자기 개인 플랜(빈 화면)을 본다.
             env.boundRoom = .unknown
             env.boundRoomPlan = nil
             await env.refreshBoundRoom()
             env.roomsRevision += 1
             state = .joined
         } catch let error as APIError {
-            if case .http(let status, let body) = error, status == 409, body?.contains("SPOUSE_IN_OTHER_ROOM") == true {
-                state = .askingMove
+            if case .http(let status, let body) = error, status == 409 {
+                // 다른 플랜의 신랑·신부인데 동의 표시 없이 갔다 — 거절이 아니라 그 줄을 붙여 경고를 다시 띄운다
+                if body?.contains("SPOUSE_IN_OTHER_ROOM") == true {
+                    if case let .askingSpouse(count, _, owner, _) = asked {
+                        state = .askingSpouse(myPlanCount: count, hasSpouseSeat: true, ownerName: owner, joining: false)
+                    } else {
+                        state = .askingSpouse(myPlanCount: nil, hasSpouseSeat: true, ownerName: nil, joining: false)
+                    }
+                    return
+                }
+                if let refused = Self.joinErrorMessage(body) {
+                    guest.shareAfterLogin = nil
+                    state = .failed(refused, refused: true)
+                    return
+                }
+            }
+            if case .http(let status, _) = error, status == 404 {
+                guest.shareAfterLogin = nil
+                state = .failed("존재하지 않는 공유 링크입니다. 링크를 다시 확인해 주세요.", refused: false)
                 return
             }
-            // 401 은 여기서 직접 처리한다. 공통 처리는 토큰만 지우고 끝나서
-            // 재로그인 뒤에 참여가 이어지지 않는다.
-            if error.requiresReauthentication {
-                guest.shareAfterLogin = code + (asSpouse ? "?as=spouse" : "")
-                state = .loginRequired
+            if case .transport = error {
+                state = .failed("네트워크 오류로 참여하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.", refused: false)
                 return
             }
-            state = .failed(Self.message(for: error))
+            state = .failed("플랜에 참여하지 못했습니다. 잠시 후 다시 시도해 주세요.", refused: false)
         } catch {
-            state = .failed("플랜에 참여하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+            state = .failed("플랜에 참여하지 못했습니다. 잠시 후 다시 시도해 주세요.", refused: false)
         }
-    }
-
-    private static func message(for error: APIError) -> String {
-        if case let .http(status, _) = error, status == 404 {
-            return "존재하지 않는 공유 링크입니다. 링크를 다시 확인해 주세요."
-        }
-        return "플랜에 참여하지 못했습니다. 잠시 후 다시 시도해 주세요."
     }
 }
 
@@ -157,38 +167,33 @@ struct ShareJoinView: View {
             WPColor.background.ignoresSafeArea()
 
             switch model.state {
-            case .failed(let message):
-                FailedCard(message: message) {
-                    Task { await model.join(env: env, guest: guest) }
-                } onClose: {
+            case let .failed(message, refused):
+                JoinFailedCard(message: message, refused: refused) {
+                    model.abandon(guest: guest)
                     onClose()
+                } onRetry: {
+                    Task { await model.join(env: env, guest: guest) }
                 }
 
             case .loginRequired:
                 LoginRequiredCard(
                     // 로그인 전 초대 화면에도 같은 사실을 **미리** 단다.
-                    // 로그인하고 나면 곧바로 참여가 끝나 되돌아볼 자리가 없다.
-                    // 거기서는 그 사람에게 플랜이 있는지 알 수 없으므로 **개수를
-                    // 말하지 않는다.**
                     spouseNotice: model.asSpouse,
                     onLogin: onLoginRequested,
                     onClose: onClose
                 )
 
-            case .askingSpouse(let count):
-                SpouseJoinWarningCard(myScheduleCount: count) {
+            case let .askingSpouse(count, seat, owner, joining):
+                // 경고는 떠 있는 창이다 — 뒤는 어둡게(안드로이드 Dialog)
+                Color.black.opacity(0.4).ignoresSafeArea()
+                SpouseJoinWarningCard(myPlanCount: count, hasSpouseSeat: seat, currentSpouseOwnerName: owner, loading: joining) {
                     Task { await model.confirmSpouseJoin(env: env, guest: guest) }
                 } onCancel: {
+                    // 초대는 링크에 남아 있으니 언제든 다시 들어올 수 있다
+                    model.abandon(guest: guest)
                     onClose()
                 }
 
-            case .askingMove:
-                VStack(spacing: 20) {
-                    Text("지금 함께하는 플랜을 떠날까요?").font(WPFont.hak(20, .bold))
-                    Text("기존 신랑·신부 자리에서 나와 새 플랜에 함께하게 됩니다. 기존 대화와 일정은 남아요.").font(WPFont.hak(14))
-                    Button("기존 플랜을 떠나 참여하기") { Task { await model.confirmMove(env: env, guest: guest) } }
-                    Button("취소", action: onClose)
-                }.padding(24).background(.white, in: RoundedRectangle(cornerRadius: 24)).padding(24)
             case .joining, .joined:
                 VStack(spacing: 16) {
                     ProgressView()
@@ -210,58 +215,42 @@ struct ShareJoinView: View {
 
 // MARK: - 부품
 
-private struct FailedCard: View {
+/// 참여 실패 카드 — 안드로이드 `JoinFailedCard`. 상태를 들지 않아 화면 없이 찍는다.
+struct JoinFailedCard: View {
     var message: String
+    var refused: Bool
+    var onHome: () -> Void
     var onRetry: () -> Void
-    var onClose: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("플랜에 참여하지 못했어요")
-                .font(WPFont.hak(18, .bold))
-                .foregroundStyle(WPColor.textPrimary)
-
-            Spacer().frame(height: 8)
-
-            Text(message)
-                .font(WPFont.hak(14))
-                .lineSpacing(6)
-                .foregroundStyle(WPColor.gray500)
-                .multilineTextAlignment(.center)
-
-            Spacer().frame(height: 20)
-
+            Text("플랜에 참여하지 못했어요").wpTypography(18, .bold).foregroundStyle(WPColor.textPrimary)
+            // 거절 문장은 두 줄이 넘어 단어 중간에서 끊기지 않게 한다("링크/를")
+            Text(message.wpKeepAll).wpTypography(14, lineHeight: 20).foregroundStyle(WPColor.gray500)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
             HStack(spacing: 8) {
-                Button(action: onClose) {
-                    Text("닫기")
-                        .font(WPFont.hak(14, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(WPColor.gray200, lineWidth: 1)
-                        )
+                Button(action: onHome) {
+                    Text("홈으로").wpTypography(14, .bold).foregroundStyle(WPColor.textPrimary)
+                        .frame(maxWidth: .infinity).frame(height: 48)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(WPColor.gray200, lineWidth: 1))
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("share.close")
-
-                Button(action: onRetry) {
-                    Text("다시 시도")
-                        .font(WPFont.hak(14, .bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .buttonStyle(.plain).accessibilityIdentifier("share.close")
+                // 까닭이 있는 거절은 다시 눌러도 같은 답이다
+                if !refused {
+                    Button(action: onRetry) {
+                        Text("다시 시도").wpTypography(14, .bold).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).frame(height: 48)
+                            .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    .buttonStyle(.plain).accessibilityIdentifier("share.retry")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("share.retry")
             }
+            .padding(.top, 20)
         }
         .padding(24)
         .frame(maxWidth: 384)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 24))
         .padding(.horizontal, 24)
     }
 }
@@ -328,76 +317,75 @@ private struct LoginRequiredCard: View {
 }
 
 
-/// 배우자 초대를 수락하기 전에 묻는다.
-///
-/// 예전에는 `/share/[code]` 가 열자마자 참여시켜서, 눌러 보고 나서야 자기 플랜이
-/// 안 보이는 걸 알았다.
-///
-/// **"사라집니다" 라고 쓰지 말 것.** 초대 전에 만들어 둔 개인 플랜은 화면에서
-/// 내려갈 뿐 지워지지 않는다 — DB 에 그대로 있고 방에서 나가면 다시 홈에 뜬다.
-/// 나중에 "사라진다더니 남아 있네" 가 되면 다음 경고까지 못 믿는다.
-private struct SpouseJoinWarningCard: View {
-    var myScheduleCount: Int
+/// 신랑·신부 초대를 수락하기 **전에** 무슨 일이 일어나는지 알린다 — 안드로이드 `SpouseJoinWarningDialog`
+/// (웹 `SpouseJoinWarningModal`). **지워진다고 쓰지 않는다** — 그대로 있고 그만두면 다시 보인다.
+/// 초대한 사람 이름은 알 길이 없어 "초대한 사람의" 로 적는다.
+struct SpouseJoinWarningCard: View {
+    var myPlanCount: Int?
+    var hasSpouseSeat: Bool = false
+    var currentSpouseOwnerName: String?
+    var loading: Bool = false
     var onConfirm: () -> Void
     var onCancel: () -> Void
 
+    private var seatBody: String {
+        let owner = currentSpouseOwnerName?.trimmingCharacters(in: .whitespaces) ?? ""
+        return owner.isEmpty
+            ? "지금 신랑 · 신부로 함께하는 플랜이 있어요. 다른 플랜에 신랑 · 신부로 참여하면 그 플랜에서는 빠지게 돼요."
+            : "지금은 \(owner)님 플랜의 신랑 · 신부예요. 다른 플랜에 신랑 · 신부로 참여하면 \(owner)님 플랜에서는 빠지게 돼요."
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            Text("신랑·신부로 참여할까요?")
-                .font(WPFont.hak(18, .bold))
-                .foregroundStyle(WPColor.textPrimary)
-
-            Spacer().frame(height: 10)
-
-            Text("수락하면 **이 방이 내 플랜이 됩니다.** 홈·캘린더·예산이 전부 이 방을 보게 돼요.")
-                .font(WPFont.hak(14))
-                .lineSpacing(6)
-                .foregroundStyle(WPColor.gray500)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            // **일정이 있을 때만 개수를 말한다.** 0 건인 사람에게 "일정이 안 보이게
-            // 된다" 고 하면 없는 손해를 지어내는 셈이다.
-            if myScheduleCount > 0 {
-                Spacer().frame(height: 12)
-                Text("지금 만들어 둔 일정 \(myScheduleCount)건은 화면에서 내려가요. 지워지지는 않고, 방에서 나가면 다시 보입니다.")
-                    .font(WPFont.hak(13))
-                    .lineSpacing(5)
-                    .foregroundStyle(WPColor.fgSubtle)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
+            ScrollView {
+                VStack(spacing: 0) {
+                    Text("지금부터 초대한 사람의 플랜을\n같이 쓰게 돼요").wpTypography(16, .bold, lineHeight: 23)
+                        .foregroundStyle(WPColor.stone900).multilineTextAlignment(.center)
+                    Text("신랑 · 신부는 플랜 하나를 함께 씁니다. 홈 · 플랜 보드 · 예산이 모두 초대한 사람의 플랜으로 바뀌고, 같이 고칠 수 있어요.".wpKeepAll)
+                        .wpTypography(14, lineHeight: 22).foregroundStyle(WPColor.stone700).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+                    // 내가 만든 게 실제로 있을 때만 개수를 말한다
+                    if let myPlanCount, myPlanCount > 0 {
+                        warn("내가 만들어 둔 일정 \(myPlanCount)건은 화면에서 보이지 않게 돼요", "지워지는 건 아니에요. 함께하기를 그만두면 다시 보여요.")
+                    }
+                    if hasSpouseSeat { warn("신랑 · 신부는 한 플랜에서만 할 수 있어요", seatBody) }
+                }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = ceil($0) }
             }
-
-            Spacer().frame(height: 22)
-
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: contentHeight)
             Button(action: onConfirm) {
-                Text("신랑·신부로 참여하기")
-                    .font(WPFont.hak(15, .bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Text(loading ? "참여하는 중..." : "네, 같이 준비할게요").wpTypography(14, .semibold).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).frame(height: 44)
+                    .background(WPColor.primary.opacity(loading ? 0.7 : 1), in: Capsule())
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("share.spouse.confirm")
-
-            Spacer().frame(height: 10)
-
-            // 거절하면 **참여 요청이 나가지 않는다.**
+            .buttonStyle(.plain).allowsHitTesting(!loading).padding(.top, 24).accessibilityIdentifier("share.spouse.confirm")
             Button(action: onCancel) {
-                Text("아니요, 돌아갈게요")
-                    .font(WPFont.hak(14))
-                    .foregroundStyle(WPColor.gray400)
-                    .padding(8)
+                Text("아직 아니요").wpTypography(14, .semibold).foregroundStyle(WPColor.stone700)
+                    .frame(maxWidth: .infinity).frame(height: 44)
+                    .background(Color.white, in: Capsule())
+                    .overlay(Capsule().stroke(WPColor.stone300, lineWidth: 2))
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("share.spouse.cancel")
+            .buttonStyle(.plain).allowsHitTesting(!loading).padding(.top, 10).accessibilityIdentifier("share.spouse.cancel")
         }
-        .padding(24)
-        .frame(maxWidth: 340)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 20, y: 8)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 20).padding(.vertical, 24)
+        .frame(maxWidth: 384)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 16)
+    }
+
+    @State private var contentHeight: CGFloat = 400
+
+    private func warn(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.wpKeepAll).wpTypography(13, .bold, lineHeight: 20).foregroundStyle(WPColor.warnTitle)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(body.wpKeepAll).wpTypography(12, lineHeight: 18).foregroundStyle(WPColor.warnBody)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .background(WPColor.warnBg, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.top, 16)
     }
 }

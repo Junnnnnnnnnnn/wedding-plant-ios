@@ -28,6 +28,9 @@ final class SettingViewModel: ObservableObject {
         /// 한 명만 들어와도 사라졌다. 온보딩은 이미 한 번에 하나씩 묻는 연출이라,
         /// 여기에 한 칸을 더하면 초대가 부탁이 아니라 **절차**로 읽힌다.
         case invite
+
+        /// 뒤로가기를 달지 않는 단계 — 축하·날짜(처음), 권한·초대(약관에서 저장이 이미 끝남)
+        static let noBack: Set<Step> = [.celebration, .date, .permissions, .invite]
     }
 
     /// 초대 단계에서 고른 것. 고르기 전에는 기본 버튼이 잠긴다.
@@ -53,6 +56,9 @@ final class SettingViewModel: ObservableObject {
     @Published var inviteChoice: InviteChoice = .none
     /// 초대 링크. 초대 단계에 들어올 때 받아 둔다.
     @Published var inviteURL: String?
+    /// 이 링크로 누가 신랑·신부로 들어올 수 있는가(`share-code` 의 canInvite). 이미 신랑·신부와
+    /// 함께 쓰는 플랜이 있으면 false — 보낸 링크로는 아무도 못 들어와서(서버 409) 부를 카드를 잠근다.
+    @Published var canInvite = true
     @Published var inviteLoading = false
     @Published var skipToMain = false
     @Published var ready = false
@@ -66,7 +72,8 @@ final class SettingViewModel: ObservableObject {
     /// 이미 완성된 플랜이면 main 으로 보낸다.
     func prefill(env: AppEnvironment, guest: GuestStore) async {
         if !guest.name.isEmpty { name = guest.name }
-        if let saved = guest.budget { budget = "\(saved)" }
+        // 저장소 값은 Double 이라 그대로 넣으면 "5000.0" 이 칸에 보였습니다 — 금액(만원)은 정수 숫자 칸입니다
+        if let saved = guest.budget, saved.isFinite { budget = String(Int(saved.rounded())) }
         if let saved = guest.weddingDate { date = saved }
 
         let token = await env.tokenStore.currentToken()
@@ -197,8 +204,8 @@ final class SettingViewModel: ObservableObject {
         do {
             try await env.api.sendIgnoringData(Endpoint.createSetting(request))
         } catch {
-            // Keep the filled form available for retry; consent/profile was not saved.
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            // 저장에 실패하면 **이동하지 않는다**(안드로이드와 같은 문장). 적은 값은 그대로 두고 다시 시도하게 한다.
+            errorMessage = "설정을 저장하지 못했습니다. 네트워크 확인 후 다시 시도해 주세요."
             return
         }
 
@@ -210,6 +217,8 @@ final class SettingViewModel: ObservableObject {
         // 저장된다. 앞에 두면 (1) 초대받은 사람이 빈 플랜에 들어오고,
         // (2) 필수·제3자 제공 동의를 받기 전에 접근 권한을 주는 링크가 나가고,
         // (3) 초대만 보내고 약관에서 이탈하면 상대가 영영 빈 플랜에 남는다.
+        // 앞서 저장이 한 번 실패했었다면 그 문구가 다음 단계에 남지 않게 걷는다.
+        errorMessage = nil
         step = .permissions
         await loadInviteURL(env: env)
     }
@@ -221,14 +230,39 @@ final class SettingViewModel: ObservableObject {
     func loadInviteURL(env: AppEnvironment) async {
         inviteLoading = true
         defer { inviteLoading = false }
-        guard let code = try? await env.api.send(Endpoint.shareCode(), decoding: ShareCode.self)
-        else { return }
-        guard code.canInvite else { errorMessage = "이미 신랑 · 신부와 함께 쓰는 플랜이 있어요."; inviteURL = nil; return }
-        inviteURL = ShareLink.inviteURL(
+        let code = try? await env.api.send(Endpoint.shareCode(), decoding: ShareCode.self)
+        let trimmed = code?.shareCode.trimmingCharacters(in: .whitespaces) ?? ""
+        canInvite = code?.canInvite ?? true
+        inviteURL = trimmed.isEmpty ? nil : ShareLink.inviteURL(
             webBaseURL: AppConfig.webBaseURL,
-            code: code.shareCode,
+            code: trimmed,
             // **`?as=spouse` 가 빠지면 배우자로 부르고도 상대가 READ 로 들어온다.**
             asSpouse: true
         )
+        // 다시 받아 링크가 생겼으면 "링크를 불러오지 못했습니다" 를 걷는다 — 다른 까닭의 오류는 남긴다
+        if inviteURL != nil, let current = errorMessage, Self.inviteLinkErrors.contains(current) { errorMessage = nil }
+        // 이미 골라 둔 '부를게요' 는 풀어 둔다 — 잠긴 카드를 고른 채로 두면 버튼이 보낼 수 없는 초대를 보낸다
+        if !canInvite, inviteChoice == .invite { inviteChoice = .none }
     }
+
+    /// '초대장 보내기' 를 눌렀는데 링크가 없을 때 — 웹 `useSpouseInvite` 와 같은 문장을 띄우고 머문다.
+    /// 받는 중이 아니면 한 번 더 받아 본다(잠깐 끊겼던 경우 다음 누름에 보낼 수 있게).
+    func onInviteLinkMissing(env: AppEnvironment) async {
+        let loading = inviteLoading
+        errorMessage = loading ? Self.inviteLinkPreparing : Self.inviteLinkFailed
+        if !loading { await loadInviteURL(env: env) }
+    }
+
+    func setInviteChoice(_ choice: InviteChoice) {
+        inviteChoice = choice
+        errorMessage = nil
+    }
+
+    /// 이미 신랑·신부가 있는 플랜(안드로이드 `SpouseRules.COUPLE_ALREADY_MESSAGE`)
+    static let coupleAlreadyMessage = "이미 신랑 · 신부와 함께 쓰는 플랜이 있어요."
+    /// 초대 링크를 받는 중에 '초대장 보내기' 를 눌렀을 때(웹 `useSpouseInvite` 와 같은 문장)
+    static let inviteLinkPreparing = "준비 중입니다."
+    /// 초대 링크를 못 받았을 때(웹 `useSpouseInvite` 와 같은 문장)
+    static let inviteLinkFailed = "링크를 불러오지 못했습니다."
+    private static let inviteLinkErrors: Set<String> = [inviteLinkPreparing, inviteLinkFailed]
 }

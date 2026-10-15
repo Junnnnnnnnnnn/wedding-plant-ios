@@ -16,7 +16,7 @@ struct InvitationLandingDetails: View {
     private var filled: Int { 1 + (planDate == nil ? 0 : 1) + (planVenue == nil ? 0 : 1) }
     private var slots: [(String, String, String, Bool, String)] { [
         ("couple", "두 사람 이름", "신부 · 신랑", false, "cover"),
-        ("date", "결혼식 날짜", planDate?.replacingOccurrences(of: "-", with: ".") ?? "날짜 고르기", planDate != nil, "calendar"),
+        ("date", "결혼식 날짜", planDate?.replacingOccurrences(of: "-", with: ". ") ?? "날짜 고르기", planDate != nil, "calendar"),
         ("album", "사진", "0 / 20", false, "gallery"),
         ("info", "예식 장소", planVenue ?? "예식장 이름", planVenue != nil, "location"),
         ("letter", "초대의 말", "예시로 채워 둠", true, "message"),
@@ -50,7 +50,10 @@ struct InvitationLandingDetails: View {
                     HStack(spacing: 12) {
                         Text(empty ? "청첩장 만들기" : "준비 패스로 시작하기").font(font(13, bold: true))
                         if empty, planDate != nil || planVenue != nil {
-                            Text([planDate == nil ? nil : "날짜", planVenue == nil ? nil : "장소"].compactMap { $0 }.joined(separator: "·") + "는 채워 뒀어요").font(font(11))
+                            Text([planDate == nil ? nil : "날짜", planVenue == nil ? nil : "장소"].compactMap { $0 }.joined(separator: "·") + "는 채워 뒀어요").font(font(11)).opacity(0.85)
+                        } else if !empty {
+                            // 안드로이드 `PassPlans.FROM_LABEL`
+                            Text("월 7,900원부터").font(font(11)).opacity(0.85)
                         }
                     }
                 }.buttonStyle(InvitationLandingButton(primary: true)).accessibilityIdentifier("invitation.primary")
@@ -81,10 +84,14 @@ struct InvitationLandingDetails: View {
                 Button { onEdit(focus) } label: {
                     VStack(spacing: 6) {
                         if filled { InvitationPixelIcon(name: icon).frame(width: 24, height: 24) }
-                        else { Image(systemName: "plus").font(.system(size: 17, weight: .light)).frame(height: 24).foregroundStyle(Color(hex: 0x9AA58E)) }
+                        else {
+                            // 안드로이드 `PlusMark` — 24 칸에 굵기 4 의 가로·세로
+                            ZStack { Rectangle().frame(width: 16, height: 4); Rectangle().frame(width: 4, height: 16) }
+                                .foregroundStyle(Color(hex: 0x9AA58E)).frame(width: 24, height: 24)
+                        }
                         Text(title).font(font(12)).foregroundStyle(filled ? ink : muted)
                         Text(note).font(font(10.5)).foregroundStyle(filled ? accent : muted).multilineTextAlignment(.center)
-                    }.padding(.horizontal, 6).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 96)
+                    }.padding(.horizontal, 6).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 76)
                         .background(filled ? Color(hex: 0xE8EEDF) : .clear, in: RoundedRectangle(cornerRadius: 10))
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(filled ? line : Color(hex: 0xB9C4AD), style: StrokeStyle(lineWidth: 1, dash: filled ? [] : [3, 3])))
                 }.buttonStyle(.plain).accessibilityIdentifier("invitation.slot.\(focus)")

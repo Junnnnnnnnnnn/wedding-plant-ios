@@ -54,14 +54,15 @@ final class BudgetDetailViewModel: ObservableObject {
         detail.map(BudgetDonutSegments.init) ?? BudgetDonutSegments(capital: 0, used: 0, planned: 0)
     }
 
-    /// usedAmount 큰 순 내림차순 (웹과 동일).
+    /// usedAmount 큰 순 내림차순 (웹·안드로이드 `sortedByDescending` 과 동일).
     ///
-    /// 같은 금액끼리는 이름순으로 고정한다 — 게스트 쪽은 Dictionary 로 묶어서
-    /// 순서가 매번 달라지는데, 그러면 화면이 새로고침마다 바뀌어 보인다.
+    /// **같은 금액끼리는 서버가 준 순서를 지킨다**(안정 정렬). 예전에는 이름순으로 갈라
+    /// 안드로이드(웨딩홀 · 본식스냅 · 스튜디오 · 신혼여행 · 예물 …)와 줄 순서가 달랐다.
+    /// 게스트 쪽도 처음 나온 순서로 묶어(`loadGuest`) 새로고침마다 바뀌지 않는다.
     var sortedCategories: [CategoryChartItem] {
-        categories.sorted {
-            $0.used == $1.used ? $0.categoryName < $1.categoryName : $0.used > $1.used
-        }
+        categories.enumerated()
+            .sorted { $0.element.used == $1.element.used ? $0.offset < $1.offset : $0.element.used > $1.element.used }
+            .map(\.element)
     }
 
     // MARK: - 로딩
@@ -76,7 +77,10 @@ final class BudgetDetailViewModel: ObservableObject {
         }
 
         isGuest = false
-        loading = true
+        // 다시 받을 때는 본문을 뼈대로 바꾸지 않는다(안드로이드와 같음) — 결제창에서 돌아올 때도
+        // 여기가 불려, 엑셀 버튼의 요금제 화면 뒤에서 본문이 깜빡였다.
+        let hadDetail = detail != nil
+        loading = !hadDetail
         errorMessage = nil
         defer { loading = false }
 
@@ -95,30 +99,25 @@ final class BudgetDetailViewModel: ObservableObject {
             roomId = user?.roomId.map(String.init)
         }
 
-        async let detailTask = env.api.send(
+        async let detailTask = try? env.api.send(
             Endpoint.amountDetail(roomId: roomId),
             decoding: AmountDetail.self
         )
-        async let chartTask = env.api.send(
+        async let chartTask = try? env.api.send(
             Endpoint.amountCategoryChart(roomId: roomId),
             decoding: CategoryChartPage.self
         )
+        async let listTask = fetchList(env: env)
 
-        do {
-            // 요약이 없으면 화면에 보여줄 게 없다. 막대·목록은 실패해도 빈 채로 그린다.
-            let fetchedDetail = try await detailTask
-            let chart = try? await chartTask
-
-            detail = fetchedDetail
-            categories = chart?.list ?? []
-            items = await fetchList(env: env)
-        } catch {
-            // 문구는 웹과 동일하게 맞춘다.
-            errorMessage = "데이터를 불러오지 못했습니다."
-            detail = nil
-            categories = []
-            items = []
-        }
+        let fetchedDetail = await detailTask
+        let chart = await chartTask
+        let list = await listTask
+        // 다시 받기에 실패하면 직전 값을 둔다(안드로이드와 같음).
+        detail = fetchedDetail ?? detail
+        if let chart { categories = chart.list }
+        if let list { items = list }
+        // 문구는 안드로이드 `BudgetDetailViewModel` 과 같다.
+        if detail == nil { errorMessage = "예산 정보를 불러오지 못했습니다." }
     }
 
     /// 웹: 비로그인은 로컬 게스트 플랜으로 같은 화면을 계산해 보여 준다 (블러 처리됨).
@@ -126,17 +125,24 @@ final class BudgetDetailViewModel: ObservableObject {
         let all = guest.schedules
         // 웹: `Number(weddingData.budget) || 1000` — 예산이 없으면 1000만원으로 본다
         let initial = (guest.budget ?? 0) > 0 ? (guest.budget ?? 0) : 1000
-        let planned = all.filter { !($0.status?.isCompleted ?? false) }.reduce(0) { $0 + ($1.amount ?? 0) }
-        let used = all.filter { $0.status?.isCompleted ?? false }.reduce(0) { $0 + ($1.amount ?? 0) }
+        // 게스트도 같은 규칙으로 센다 — 결제했으면 사용, 아니면 예정(안드로이드 결제 축)
+        let planned = all.filter { !$0.isPaid }.reduce(0) { $0 + ($1.amount ?? 0) }
+        let used = all.filter { $0.isPaid }.reduce(0) { $0 + ($1.amount ?? 0) }
 
-        let grouped = Dictionary(grouping: all) { item in
-            item.categoryName.isEmpty ? "Others" : item.categoryName
+        // 처음 나온 순서로 묶는다(안드로이드 `groupBy`) — Dictionary 는 순서가 매번 달라진다.
+        var order: [String] = []
+        var grouped: [String: [ScheduleItem]] = [:]
+        for item in all {
+            let name = item.categoryName.isEmpty ? "Others" : item.categoryName
+            if grouped[name] == nil { order.append(name) }
+            grouped[name, default: []].append(item)
         }
-        categories = grouped.map { name, list in
-            CategoryChartItem(
+        categories = order.map { name in
+            let list = grouped[name] ?? []
+            return CategoryChartItem(
                 categoryName: name,
                 totalAmount: list.reduce(0) { $0 + ($1.amount ?? 0) },
-                usedAmount: list.filter { $0.status?.isCompleted ?? false }.reduce(0) { $0 + ($1.amount ?? 0) }
+                usedAmount: list.filter { $0.isPaid }.reduce(0) { $0 + ($1.amount ?? 0) }
             )
         }
 
@@ -179,32 +185,59 @@ final class BudgetDetailViewModel: ObservableObject {
             items = filterGuest(guest.schedules)
             return
         }
-        items = await fetchList(env: env)
+        // 탭·카테고리를 빨리 바꾸면 늦게 온 응답이 지금 탭 목록을 덮었다 — 마지막 요청의 답만 쓴다.
+        listSeq += 1
+        let seq = listSeq
+        guard let list = await fetchList(env: env), seq == listSeq else { return }
+        items = list
     }
+
+    private var listSeq = 0
 
     private func filterGuest(_ all: [ScheduleItem]) -> [ScheduleItem] {
         all.filter { item in
-            let completed = item.status?.isCompleted ?? false
-            let tabOk = tab == .planned ? !completed : completed
+            // 탭도 결제 기준이다. 미리 낸 계약금은 "사용" 에 있어야 한다.
+            let tabOk = tab == .planned ? !item.isPaid : item.isPaid
             let categoryOk = selectedCategory == nil || item.categoryName == selectedCategory
             return tabOk && categoryOk
         }
     }
 
-    private func fetchList(env: AppEnvironment) async -> [ScheduleItem] {
+    /// - Returns: 못 받았으면 nil — **실패를 빈 목록으로 캐시하지 않는다**(돌아오면 다시 받게).
+    ///
+    /// **서버에 상태로 거르지 않는다**(안드로이드와 같음). 예정/사용은 결제 기준이라 일정 상태로는
+    /// 못 가른다 — 미리 낸 계약금은 예정 상태인데 "사용" 에 있어야 한다. 둘 다 받아 앱이 가른다.
+    private func fetchList(env: AppEnvironment) async -> [ScheduleItem]? {
         let key = "\(roomId ?? "")|\(tab.rawValue)|\(selectedCategory ?? "")"
         if let cached = cache[key] { return cached }
 
-        var request = Endpoint.scheduleList(
-            status: tab == .planned ? .normal : .completed,
-            roomId: roomId
-        )
-        if let selectedCategory {
-            request.query["categoryName"] = selectedCategory
+        func request(_ status: Endpoint.ScheduleListStatus) -> HTTPRequest {
+            var request = Endpoint.scheduleList(status: status, roomId: roomId)
+            if let selectedCategory { request.query["categoryName"] = selectedCategory }
+            return request
         }
+        async let normal = try? env.api.send(request(.normal), decoding: SchedulePage.self)
+        async let completed = try? env.api.send(request(.completed), decoding: SchedulePage.self)
+        // 하나라도 못 받았으면 절반만 찬 목록을 만들지 않는다.
+        guard let normalPage = await normal, let completedPage = await completed else { return nil }
 
-        let page = try? await env.api.send(request, decoding: SchedulePage.self)
-        let list = page?.list ?? []
+        let wantPaid = tab == .used
+        // 탭 목록 전체가 **시작일 내림차순 하나**다(웹·안드로이드). 상태별로 이어 붙이면
+        // '예정 묶음 → 완료 묶음' 순서가 되어 날짜가 뒤섞인다. 날짜 없는 것은 뒤로.
+        let list = (normalPage.list + completedPage.list)
+            .filter { $0.isPaid == wantPaid }
+            .enumerated()
+            .sorted { lhs, rhs in
+                let a = KstDate(dateString: lhs.element.startDate ?? "")
+                let b = KstDate(dateString: rhs.element.startDate ?? "")
+                switch (a, b) {
+                case let (a?, b?): return a == b ? lhs.offset < rhs.offset : b < a
+                case (nil, nil): return lhs.offset < rhs.offset
+                case (nil, _): return false
+                case (_, nil): return true
+                }
+            }
+            .map(\.element)
         cache[key] = list
         return list
     }

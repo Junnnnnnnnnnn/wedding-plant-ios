@@ -4,6 +4,8 @@ import WPModels
 struct InvitationPalette {
     let forest, ink, paper, soft, gold, bright, muted, rule, placeholder: Color
     let deep, night: Color
+    /// 안드로이드 `InvitationPalette.placeholderDark` — 지도 자리의 핀·글
+    let placeholderDark: Color
     init(_ template: String) {
         let values: [UInt32]
         switch template {
@@ -13,6 +15,7 @@ struct InvitationPalette {
         }
         deep = Color(hex: template == "ivory" ? 0x3F342A : template == "rose" ? 0x5A2E38 : 0x112B25)
         night = Color(hex: template == "ivory" ? 0x4A3D31 : template == "rose" ? 0x64343F : 0x162C30)
+        placeholderDark = Color(hex: template == "ivory" ? 0x7C6F60 : template == "rose" ? 0x876A70 : 0x737A73)
         forest = Color(hex: values[0]); ink = Color(hex: values[1]); paper = Color(hex: values[2]); soft = Color(hex: values[3]); gold = Color(hex: values[4]); bright = Color(hex: values[5]); muted = Color(hex: values[6]); rule = Color(hex: values[7]); placeholder = Color(hex: values[8])
     }
 }
@@ -54,11 +57,11 @@ struct InvitationHero: View {
                 Text(content.title.isEmpty ? "우리, 결혼합니다" : content.title).font(.custom("KakaoSmallSans-Light", size: min(40, max(30, width * 0.08)))).tracking(-1.7)
                 HStack(spacing: 12) {
                     Text(content.groom.isEmpty ? "신랑" : content.groom).tracking(4)
-                    Image(systemName: "heart.fill").font(.system(size: 11)).foregroundStyle(p.bright)
+                    InvHeartFilled(size: 11, color: p.bright)
                     Text(content.bride.isEmpty ? "신부" : content.bride).tracking(4)
                 }.font(.custom("KakaoSmallSans-Regular", size: 15)).padding(.top, 24)
                 Text("소중한 당신을, 우리의 시작에 초대합니다.").font(.custom("KakaoSmallSans-Regular", size: 11)).tracking(0.4).padding(.top, 12)
-                Image(systemName: "arrow.down").font(.system(size: 17)).foregroundStyle(p.bright).frame(height: 44).padding(.top, 32)
+                InvIconView(InvIcon.arrowDown, size: 17, color: p.bright).frame(width: 44, height: 44, alignment: .leading).padding(.top, 32)
             }.frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(cream).padding(.horizontal, 32).padding(.bottom, 40).opacity(copy).offset(y: (1 - copy) * 12)
             if progress < 1 {
                 HStack(spacing: 0) {
@@ -70,14 +73,20 @@ struct InvitationHero: View {
             if !reduceMotion { sparkle(time: max(0, elapsed) * 1000, burst: progress >= 1) }
             VStack {
                 HStack {
-                    Button(action: replay) { Text("W").font(.custom("NotoSerif", size: 26)).foregroundStyle(p.bright).frame(width: 44, height: 44).background(Color(hex: 0x112B25).opacity(0.3), in: Circle()).overlay(Circle().stroke(p.bright.opacity(0.35), lineWidth: 1)) }.accessibilityLabel("문 열림 다시 보기")
+                    Button(action: replay) { HStack(alignment: .top, spacing: 0) { Text("W").font(.custom("NotoSerif", size: 26)); Text("⋆").font(.custom("NotoSerif", size: 13)).offset(x: -3, y: -2) }.foregroundStyle(p.bright).frame(width: 44, height: 44).background(Color(hex: 0x112B25).opacity(0.3), in: Circle()).overlay(Circle().stroke(p.bright.opacity(0.35), lineWidth: 1)) }.accessibilityLabel("문 열림 다시 보기")
                     Spacer()
-                    Button(action: share) { Image(systemName: "square.and.arrow.up").font(.system(size: 17)).foregroundStyle(cream).frame(width: 44, height: 44) }.accessibilityLabel("청첩장 전하기")
+                    Button(action: share) { InvIconView(InvIcon.share, size: 17, color: cream).frame(width: 44, height: 44).contentShape(Circle()) }.accessibilityLabel("청첩장 전하기")
                 }.padding(.horizontal, 24).padding(.vertical, 20)
                 if let edit {
                     VStack(alignment: .trailing, spacing: 10) {
-                    InvitationEditBadge(selected: selected)
-                    Button(action: edit) { Label(content.photos.isEmpty ? "표지 사진 올리기" : "표지 사진 바꾸기", systemImage: "camera").font(.custom("KakaoSmallSans-Bold", size: 12)).padding(10).background(cream, in: Capsule()).foregroundStyle(p.forest) } }.frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 30).padding(.top, 10)
+                    InvitationEditBadge(selected: selected, onDark: true)
+                    // 안드로이드 `CoverPhotoChip` — 카메라 14 · 12 bold · 좌우 12 위아래 8 · 크림 94%
+                    Button(action: edit) {
+                        HStack(spacing: 6) {
+                            InvIconView(InvIcon.camera, size: 14, color: Color(hex: 0x183E32))
+                            Text(content.photos.isEmpty ? "표지 사진 올리기" : "표지 사진 바꾸기").font(.custom("KakaoSmallSans-Bold", size: 12)).frame(minHeight: 16)
+                        }.padding(.horizontal, 12).padding(.vertical, 8).background(cream.opacity(0.94), in: Capsule()).foregroundStyle(Color(hex: 0x183E32))
+                    }.buttonStyle(.plain).accessibilityIdentifier("invitation.coverPhoto") }.frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 30).padding(.top, 18)
                 }
                 Spacer()
             }

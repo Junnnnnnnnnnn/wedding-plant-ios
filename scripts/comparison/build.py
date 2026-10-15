@@ -73,7 +73,7 @@ for platform,index,prefix in [('android',android,'garden-landing-drop-'),('ios',
     motion.append({'platform':platform,'frames':frames})
 summary={'total':len(rows),'paired':sum(r['capture']=='양쪽 캡처' for r in rows),'single':sum(r['capture']=='한쪽 캡처' for r in rows),'missing':sum(r['capture']=='미캡처' for r in rows),'sameFixture':sum(r['same'] and r['capture']=='양쪽 캡처' for r in rows),'issues':sum(r['issue'] for r in rows)}
 tests=json.loads((root/'verification.json').read_text()) if (root/'verification.json').exists() else {'note':'검증 결과 수집 중'}
-data={'created':'2026-10-14','androidRevision':'9a6e1c2','iosBaseRevision':'814defc','summary':summary,'cases':rows,'motion':motion,'verification':tests}
+data={'created':'2026-10-14 (iOS 미커밋 작업본 기준 재캡처)','androidRevision':'9a6e1c2','iosBaseRevision':'814defc','iosCapture':'814defc 이후 미커밋 작업본 — WeddingPlantTests(final-unit) · WeddingPlantUITests(final-ui) 재실행 캡처','summary':summary,'cases':rows,'motion':motion,'verification':tests}
 (out/'manifest.json').write_text(json.dumps(data,ensure_ascii=False,indent=2))
 template=Path(__file__).with_name('template.html').read_text()
 (out/'index.html').write_text(template.replace('__DATA__',json.dumps(data,ensure_ascii=False).replace('</','<\\/')))

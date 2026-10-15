@@ -36,6 +36,11 @@ actor DemoTransport: HTTPTransport {
             if path.hasSuffix("/check") {
                 let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: String]
                 json = body?["email"]?.hasPrefix("new") == true ? "{\"result\":true,\"data\":{\"exists\":false}}" : "{\"result\":true,\"data\":{\"exists\":true}}"
+            } else if path.hasSuffix("/login"),
+                      let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: String],
+                      body["password"] == "wrong-password" {
+                // Android `PortingUiTest` 의 비밀번호 오류 화면과 같은 상태를 찍기 위한 거절.
+                json = "{\"result\":false,\"message\":\"이메일 또는 비밀번호가 맞지 않아요.\"}"
             } else if path.hasSuffix("/login") || path.hasSuffix("/signup") {
                 json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
             } else { json = "{\"result\":true}" }
@@ -70,7 +75,10 @@ actor DemoTransport: HTTPTransport {
             json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
         } else if path.contains("total-amount") {
             // `/plan/user/total-amount` 와 `/plan/room/total-amount/{roomId}` 둘 다.
-            json = DemoData.totalAmount
+            // `-WPOverBudget` — 안드로이드 `home-budget-over` 와 같은 예산 초과(4,200 중 4,700)
+            json = ProcessInfo.processInfo.arguments.contains("-WPOverBudget")
+                ? "{\"result\":true,\"data\":{\"totalAmount\":4200,\"usedAmount\":4700,\"remainingAmount\":-500}}"
+                : DemoData.totalAmount
         } else if path.contains("/amount/detail") {
             // 개인(`/plan/user/amount/detail`)과 방(`/plan/room/amount/detail/{id}`) 둘 다.
             json = DemoData.amountDetail
@@ -93,7 +101,10 @@ actor DemoTransport: HTTPTransport {
             // 예산 상세는 카테고리로 좁혀서 요청한다. 데모에서도 실제로 걸러줘야
             // 필터가 동작하는지 화면으로 확인할 수 있다.
             let category = request.url.queryValue("categoryName")
-            json = DemoData.schedules(completed: isCompleted, categoryName: category)
+            // `-WPHomeEmpty` — 일정이 하나도 없는 홈(안드로이드 `home-empty-rest` 의 새싹 빈 자리)
+            json = ProcessInfo.processInfo.arguments.contains("-WPHomeEmpty")
+                ? "{\"result\":true,\"data\":{\"total\":0,\"list\":[]}}"
+                : DemoData.schedules(completed: isCompleted, categoryName: category)
         } else if path.contains("/plan/category") {
             // `/plan/category/list`, `/user/list`, `/room/{id}/list` 모두 같은 목록을 준다.
             json = DemoData.categories
@@ -110,13 +121,17 @@ actor DemoTransport: HTTPTransport {
             // 후기 목록의 카테고리 키는 `category` 다(서버 `GetPlanFeedListRequest`, Endpoint.feedList)
             json = DemoData.feed(categoryName: request.url.queryValue("category"))
         } else if path.hasSuffix("/plan/feed/postable") {
-            json = DemoData.feedPostable
+            // `-WPDetailFeedReady`: 상세(id 3)를 완료했을 때 피드 줄이 열린 모습(안드로이드 detail-actions-ready)을 찍는다.
+            json = ProcessInfo.processInfo.arguments.contains("-WPDetailFeedReady")
+                ? DemoData.feedPostable.replacingOccurrences(of: "\"scheduleId\":11", with: "\"scheduleId\":3")
+                : DemoData.feedPostable
         } else if path.hasSuffix("/plan/feed/my/status") {
             json = DemoData.feedMyStatus
         } else if path.hasSuffix("/plan/brag/my") {
             json = DemoData.bragMy
         } else if path.hasSuffix("/plan/brag/list") {
-            if ProcessInfo.processInfo.arguments.contains("-WPAdPreview"),
+            // 자랑하기 광고는 2번째 카드 **다음에 글이 더 있을 때만** 끼므로(AdRules.adAfter) 견본 때 한 장 더 둔다.
+            if AdPreview.requested,
                var envelope = try JSONSerialization.jsonObject(with: Data(DemoData.bragList.utf8)) as? [String: Any],
                var data = envelope["data"] as? [String: Any], var list = data["list"] as? [[String: Any]], var extra = list.last {
                 extra["bragId"] = 3; list.append(extra); data["list"] = list; data["total"] = list.count; envelope["data"] = data
@@ -267,15 +282,17 @@ enum DemoData {
     /// 도는지 확인할 수 있다.
     static func calendar(query: String?) -> String {
         let today = KstDate.today()
-        let entries: [(KstDate, String, String)] = [
-            (today.adding(days: -20), "더채플앳청담 본식 계약", "COMPLETED"),
-            (today.adding(days: -6), "본식 스냅 촬영 예약", "COMPLETED"),
-            (today.adding(days: -2), "드레스 1차 피팅", "NORMAL"),
-            (today, "헤어·메이크업 리허설", "NORMAL"),
-            (today, "청첩장 시안 확인", "NORMAL"),
-            (today, "예식 리허설", "NORMAL"),
-            (today.adding(days: 3), "항공권 예약", "NORMAL"),
-            (today.adding(days: 40), "반지 상담", "NORMAL"),
+        // (날짜, 제목, 상태, 카테고리, 금액, 미리 냄, 시각) — 달 머리 면의 예정/지출 합계와
+        // 그날 목록의 `결제함` · 시각이 실제로 보이도록 서버가 주는 필드를 함께 싣는다.
+        let entries: [(KstDate, String, String, String, Int, Bool, String?)] = [
+            (today.adding(days: -20), "더채플앳청담 본식 계약", "COMPLETED", "웨딩홀", 500, true, nil),
+            (today.adding(days: -6), "본식 스냅 촬영 예약", "COMPLETED", "본식스냅", 120, true, nil),
+            (today.adding(days: -2), "드레스 1차 피팅", "NORMAL", "드레스", 0, false, "15:00"),
+            (today, "헤어·메이크업 리허설", "NORMAL", "메이크업", 300, true, "11:00"),
+            (today, "청첩장 시안 확인", "NORMAL", "청첩장", 30, false, nil),
+            (today, "예식 리허설", "NORMAL", "웨딩홀", 0, false, "14:30"),
+            (today.adding(days: 3), "항공권 예약", "NORMAL", "신혼여행", 450, false, nil),
+            (today.adding(days: 40), "반지 상담", "NORMAL", "예물", 0, false, nil),
         ]
 
         // 요청한 연·월과 같은 날짜만 남긴다.
@@ -291,12 +308,13 @@ enum DemoData {
         var byDay: [String: [String]] = [:]
         var order: [String] = []
         for (index, entry) in entries.enumerated() {
-            let (date, title, status) = entry
+            let (date, title, status, category, amount, paid, time) = entry
             if let year, let month, date.year != year || date.month != month { continue }
             let key = date.dateString
             if byDay[key] == nil { order.append(key) }
+            let timeField = time.map { ",\"startTime\":\"\($0)\"" } ?? ""
             byDay[key, default: []].append(
-                "{\"id\":\(index + 1),\"title\":\"\(title)\",\"status\":\"\(status)\"}"
+                "{\"id\":\(index + 1),\"title\":\"\(title)\",\"status\":\"\(status)\",\"categoryName\":\"\(category)\",\"amount\":\(amount),\"isPaid\":\(paid)\(timeField)}"
             )
         }
 

@@ -15,8 +15,12 @@ final class AddPlanViewModel: ObservableObject {
 
     // MARK: 입력
 
-    @Published var title = ""
+    /// 제목을 고치면 추천 칩이 다시 돈다(Android `setTitle` · 웹 handleTitleChange).
+    @Published var title = "" { didSet { if title != oldValue { categorySelectedByUser = false } } }
     @Published var category: PlanCategory?
+    /// 사용자가 칩·선택기로 카테고리를 **직접** 골랐다 — 추천 칩 줄을 접는다
+    /// (Android `categorySelectedByUser`). 피드에서 채워 온 값·수정 화면의 원래 값은 고른 것이 아니라 칩이 남는다.
+    @Published var categorySelectedByUser = false
     @Published var payType: PlanPayType?
     @Published var amount = ""
     @Published var date: KstDate = KstDate.today()
@@ -39,11 +43,15 @@ final class AddPlanViewModel: ObservableObject {
     @Published var categories: [PlanCategory] = WeddingCategories.merge([])
     /// 이번 세션에서 사용자가 새로 만든 카테고리 (저장 시 `addCategoryNameList` 로 전송)
     @Published var addedCategories: [String] = []
+    /// 선택기에서 최근 확정한 이름(화면 메모리뿐, Android `recentCategoryNames`)
+    @Published var recentCategoryNames: [String] = []
     @Published var loadingDetail = false
     @Published var saving = false
     @Published var saved = false
     @Published var remainingBudget: Double?
     private var resolvedRoomId: Int?
+    /// 영수증 자물쇠에서 여는 준비 패스의 방 — 저장할 방과 같다.
+    var receiptRoomId: Int? { resolvedRoomId }
     /// 게스트가 플랜 3개를 이미 채웠음 → 로그인 안내 (웹 `GuestPlanLimitModal`)
     @Published var guestLimitReached = false
     @Published var errorMessage: String?
@@ -56,6 +64,12 @@ final class AddPlanViewModel: ObservableObject {
     @Published var hasSearched = false
     /// 백엔드에 `/plan/place/search` 가 아직 없으면 true
     @Published var searchUnavailable = false
+    /// 검색이 실패했다(5xx·네트워크) — 검색칸 바로 아래에 말한다(Android `searchError`).
+    /// 실패는 "결과 없음" 이 아니라 `hasSearched` 를 켜지 않는다.
+    @Published var searchError: String?
+    /// 영수증 줄 — `nil` 받는 중·방 모름(줄 없음) / `true` 패스 있음(안내 줄) / `false` 없음(잠금 + 소개).
+    /// Android `receiptPass` 와 같은 판정(`hasPass && !expired`).
+    @Published var receiptPass: Bool?
 
     let isEditMode: Bool
     let editId: Int?
@@ -129,7 +143,8 @@ final class AddPlanViewModel: ObservableObject {
     /// 제목으로 추천되는 카테고리 (웹 `searchResults`).
     /// 제목이 비었거나 맞는 게 없으면 빈 목록.
     var suggestedCategories: [String] {
-        PlanRules.suggestCategories(
+        if categorySelectedByUser { return [] }
+        return PlanRules.suggestCategories(
             title: title,
             categories: categories.map(\.name) + addedCategories
         )
@@ -150,6 +165,18 @@ final class AddPlanViewModel: ObservableObject {
         await loadCategories(env: env)
         if let editId {
             await loadDetail(id: editId, env: env, guest: guest)
+        }
+        await loadReceiptPass(env: env)
+    }
+
+    /// 영수증 줄의 패스 판정 — 저장할 방(`resolvedRoomId`)의 패스. 방을 모르거나 못 받았으면 줄을 내지 않는다
+    /// (산 사람에게 자물쇠를 보이지 않게, Android `passState.loading || roomUnknown -> null`).
+    func loadReceiptPass(env: AppEnvironment) async {
+        guard let room = resolvedRoomId else { receiptPass = nil; return }
+        if let pass: PassState = try? await env.api.send(Endpoint.pass(roomId: room)) {
+            receiptPass = pass.hasPass && !pass.expired
+        } else {
+            receiptPass = nil
         }
     }
 
@@ -275,7 +302,9 @@ final class AddPlanViewModel: ObservableObject {
 
     /// 제목 추천 칩을 눌렀을 때 — 이름으로 실제 카테고리를 찾아 선택한다.
     func selectCategory(named name: String) {
-        category = categories.first { $0.name == name } ?? PlanCategory(name: name, type: "USER")
+        category = categories.first { WeddingCategories.normalize($0.name) == WeddingCategories.normalize(name) }
+            ?? PlanCategory(name: name, type: "USER")
+        categorySelectedByUser = true
     }
 
     /// 모달에서 새 카테고리를 만든 경우 — 서버에 미리 만들지 않고 저장 시 함께 보낸다(웹과 동일).
@@ -293,6 +322,7 @@ final class AddPlanViewModel: ObservableObject {
 
     func setLocation(_ value: String) {
         locationError = false
+        searchError = nil
         if value.trimmingCharacters(in: .whitespaces).isEmpty {
             // 웹과 동일: 입력을 비우면 검색 결과와 좌표도 초기화
             selectedPlaceName = ""
@@ -312,6 +342,14 @@ final class AddPlanViewModel: ObservableObject {
             locationLng = 0
         }
         location = value
+    }
+
+    /// 지도를 눌러 고른 좌표(Android `setCoords`). 직접 찍은 좌표는 지금 적힌 이름의 것으로 본다 —
+    /// 안 그러면 다음 `setLocation` 에서 방금 찍은 좌표가 지워진다.
+    func setCoords(lat: Double, lng: Double) {
+        selectedPlaceName = location.trimmingCharacters(in: .whitespaces)
+        locationLat = lat
+        locationLng = lng
     }
 
     func selectPlace(_ place: PlaceSearchResult) {
@@ -336,6 +374,7 @@ final class AddPlanViewModel: ObservableObject {
         // 엉뚱한 좌표가 저장될 수 있다.
         searching = true
         searchUnavailable = false
+        searchError = nil
         searchResults = []
 
         searchSequence += 1
@@ -355,12 +394,13 @@ final class AddPlanViewModel: ObservableObject {
             guard sequence == searchSequence else { return }
             searching = false
             searchResults = []
-            hasSearched = true
-            // 404 = 백엔드에 프록시가 아직 없음. 그 외는 일반 에러로 표시.
+            // 실패는 "결과 없음" 이 아니다(Android) — 켜면 "검색 결과가 없습니다." 가 진짜 오류를 가린다.
+            hasSearched = false
+            // 404 = 백엔드에 프록시가 아직 없음. 그 외는 검색칸 바로 아래에 오류로 표시.
             if case .http(let status, _) = error as? APIError, status == 404 {
                 searchUnavailable = true
             } else {
-                errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+                searchError = (error as? APIError)?.errorDescription ?? error.localizedDescription
             }
         }
     }

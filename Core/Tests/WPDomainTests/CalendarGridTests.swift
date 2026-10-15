@@ -1,5 +1,6 @@
 import XCTest
 import WPUtils
+import WPModels
 @testable import WPDomain
 
 /// 달력 격자. 한 칸만 밀려도 화면 전체가 틀어지므로 경계를 촘촘히 본다.
@@ -129,5 +130,42 @@ final class KstMonthTests: XCTestCase {
     func test_그_달의_1일() {
         XCTAssertEqual(date("2026-08-14").firstOfMonth, date("2026-08-01"))
         XCTAssertEqual(date("2026-08-01").firstOfMonth, date("2026-08-01"))
+    }
+}
+
+/// 달 합계·보드 묶음 — 안드로이드 `CalendarViewModel.UiState.monthTotals` · `groupForBoard` 와 같은 규칙.
+final class CalendarMonthAndBoardTests: XCTestCase {
+
+    func test_합계는_그_달_날짜만_결제기준으로_센다() {
+        let byDay: [String: [CalendarPlanItem]] = [
+            "2026-10-13": [CalendarPlanItem(id: 1, amount: 300, status: .planned, isPaidRaw: true)],
+            "2026-10-20": [CalendarPlanItem(id: 2, amount: 100, status: .planned),
+                           CalendarPlanItem(id: 3, amount: 50, status: .completed, isPaidRaw: false)],
+            "2026-11-01": [CalendarPlanItem(id: 4, amount: 999, status: .planned)],
+        ]
+        let totals = CalendarGrid.monthTotals(byDay: byDay, year: 2026, month: 10)
+        XCTAssertEqual(totals, CalendarGrid.MonthTotals(spent: 350, planned: 100, count: 3))
+    }
+
+    func test_고른_날의_달도_받는다() {
+        let cursor = KstDate(dateString: "2026-10-01")!
+        let months = CalendarGrid.monthsToFetch(cursor: cursor, selected: KstDate(dateString: "2026-12-05")!)
+        XCTAssertEqual(months.map { "\($0.year)-\($0.month)" }, ["2026-9", "2026-10", "2026-11", "2026-12"])
+        XCTAssertEqual(CalendarGrid.monthsToFetch(cursor: cursor, selected: cursor).count, 3)
+    }
+
+    func test_보드는_날짜미정이_맨앞_완료는_아래() {
+        func item(_ id: Int, _ date: String?, _ done: Bool = false) -> ScheduleItem {
+            var value = try! JSONDecoder().decode(ScheduleItem.self, from: Data("{\"id\":\(id)}".utf8))
+            value.startDate = date
+            value.status = done ? .completed : .planned
+            return value
+        }
+        let groups = CalendarGrid.boardGroups([
+            item(1, "2026-11-02"), item(2, "2026-10-20", true), item(3, nil),
+            item(4, "2026-10-25"), item(5, "2026-10-03"),
+        ])
+        XCTAssertEqual(groups.map(\.label), ["날짜 미정", "2026년 10월", "2026년 11월"])
+        XCTAssertEqual(groups[1].items.map(\.id), [5, 4, 2])
     }
 }

@@ -1,4 +1,6 @@
+import Observation
 import SwiftUI
+import UIKit
 import WPDomain
 import WPModels
 import WPUtils
@@ -7,27 +9,30 @@ import WPUtils
 /// 안드로이드 `ui/main/MainScreen.kt` 와 같은 화면이다.
 ///
 /// ```
-/// [분홍 머리 면]  이름 · 이니셜 아바타
+/// [분홍 머리 면]  이름 · 이니셜 아바타 ›
 ///                 결혼식까지 / N일 남았어요        ← 32pt, 이 화면에서 사람이 보는 값
 ///                 2026년 11월 14일 (토) · 예식장
-///                 [남은 예산 N만 원 / M만 원 중 K만 원 지출·예정  >]
+///                 ┌ 남은 예산 · 1,400 만 원 · M만 원 중 K만 원 지출·예정  > ┐  ← 면에 걸친 흰 카드
+///                 └ (패스 없음) 모바일 청첩장 줄                              ┘
+/// (패스 있음) 축하의 정원 카드
+/// 이번 주 결제할 것
 /// 이번 달에 할 일 N                               추가
-///   회색 채움 카드 (체크 · 제목 · 태그 · 날짜 · 금액)
-/// 그 다음  계획 중 N · 완료 M                      전체
-///   구분선 목록
+///   회색 채움 카드 (체크 · 제목 · 태그 · 날짜 · 금액)  / 비면 새싹 그림
+/// 지난 일정 · 그 다음  계획 중 N                   전체
+///   날짜 타일 카드
+/// ─ 자랑하기 (탭바 바로 위 고정)
 /// ```
 ///
-/// **걷어낸 것**: "플랜 리스트" 제목, 카테고리 칩, 정렬 버튼, 계획 중/완료 탭,
-/// 56pt 아이콘 타일, 예정/임박 배지, 떠 있는 예산 카드. 카테고리로 좁혀 보기와
-/// 완료 되짚기는 `전체`(캘린더)가 맡는다.
+/// - **두 자리에 멈춘다**(안드로이드 `HeadSnap` · 웹 `snap-y snap-mandatory`) — 머리 면이 다 보이는 자리와,
+///   머리 면이 상태바 밑까지 빠져 첫 묶음이 상태바 바로 아래 붙는 자리. 목록이 짧아도 그 자리까지 오르게
+///   맨 끝을 채운다(`fill`).
+/// - 머리 면은 굴리는 0→200pt 동안 위쪽 기준으로 1→0.9 로 줄고, 50→200pt 에 투명도가 1→0.2 로 빠진다.
+/// - 머리 면이 지나가면 상태바 뒤에 흰 띠를 깐다(안드로이드 `BrandStatusBar`).
+/// - 글자 줄 높이는 Compose 기본(글자 × 1.5) 또는 안드로이드에 적힌 `lineHeight` 를 `wpTypography` 로 맞춘다.
+///   Tmoney 굵은 글자는 안드로이드처럼 Regular 파일에 굵기를 합성한다(`HomeTmoneyLabel`).
 ///
-/// **아직 안 옮긴 것** — 각각 iOS 에 없는 부품에 묶여 있다.
-/// 가이드 오버레이(머리 면의 `?`), 초대 띠(`SoloPlanBanner`), 자랑하기 토글.
-/// 눌러도 아무 일이 없는 버튼을 미리 두지 않는다.
-/// 웹 `MOBILE_GUIDE_STEPS` 와 **문구·순서가 같아야 한다.**
-///
-/// **앵커를 지우거나 이름을 바꾸지 말 것.** 대상을 못 찾으면 스팟라이트가 0×0 으로
-/// 붕괴해 화면만 까맣게 덮인다(웹에서 실제로 그랬다).
+/// 웹 `MOBILE_GUIDE_STEPS` 는 안드로이드에서 앱 내 가이드를 걷어낸(2026-09-24) 뒤로 쓰이지 않지만,
+/// 가이드 오버레이가 이 이름을 읽어 남겨 둔다.
 let mainGuideSteps: [GuideStep] = [
     GuideStep(
         id: "main-header-info",
@@ -66,6 +71,8 @@ struct MainView: View {
     @StateObject private var invitation = InvitationStore()
     @State private var path = NavigationPath()
     @State private var showAddPlan = false
+    /// 탭 셸 위에 플랜 추가를 연다(탭바가 남음 — Android `ADD_PLAN`). 셸 밖이면 예전처럼 전체 화면.
+    @Environment(\.addPlanPresenter) private var addPlanPresenter
     /// `/plan/brag/my` 를 홈이 다시 그릴 때마다 또 부르지 않도록 하나로 들고 있는다.
     @StateObject private var bragToggle = BragToggleViewModel()
     @State private var showInvite = false
@@ -75,91 +82,102 @@ struct MainView: View {
     /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
     @State private var today = KstDate.today()
 
+    /// 굴린 거리 — 머리 면의 줄어듦·흰 띠만 읽는다(이 화면 전체가 매 프레임 다시 그려지지 않게 `@Observable`).
+    @State private var scroll = HomeScrollState()
+    /// 머리 면(정원 카드 포함) · 그 아래 내용 · 스크롤 창의 높이 — 두 자리 스냅과 맨 끝 채움을 잰다.
+    @State private var headHeight: CGFloat = 0
+    @State private var restHeight: CGFloat = 0
+    @State private var viewportHeight: CGFloat = 0
+
+    /// 목록 아래 여백 — 맨 끝 채움을 잴 때도 쓴다(안드로이드 `LIST_BOTTOM_PAD`)
+    private let listBottomPad: CGFloat = 24
+
     var body: some View {
         NavigationStack(path: $path) {
             content
         }
     }
 
+    // MARK: - 판정
+
+    /// 첫 로딩 실패 — 빈 값 대신 뼈대와 '다시 시도' 를 낸다(안드로이드 `loadFailed`)
+    private var loadFailed: Bool { model.errorMessage != nil && !model.listLoaded }
+
+    /// 패스를 쓰는 내 방이면 머리 면이 패스 면(분홍→주황)이 된다.
+    private var memberPass: Bool { invitation.result?.hasPass == true && env.isMyAdRoom(model.roomIdValue) }
+
+    /// 제목 자리(anchor) — 머리 면이 상태바 밑까지 빠진 자리
+    private var snapAnchor: CGFloat { max(0, headHeight - wpStatusBarHeight) }
+
+    /// 목록이 짧아도 anchor 까지 오르게 채울 높이(안드로이드 `fillPx`)
+    private var fillHeight: CGFloat {
+        guard viewportHeight > 0 else { return 0 }
+        return max(0, viewportHeight - wpStatusBarHeight - listBottomPad - restHeight)
+    }
+
+    /// 이 높이보다 낮으면 가로 모드 폰으로 보고 고정 요소를 줄인다(안드로이드 `COMPACT_HEIGHT_DP`)
+    private var compactHeight: Bool { UIScreen.main.bounds.height < 480 }
+
+    // MARK: - 화면
+
     private var content: some View {
         let buckets = model.timeBuckets(today: today)
 
         return VStack(spacing: 0) {
             ScrollView {
-                // 높이가 비동기로 바뀌는 정원·결제 카드와 가이드 좌표를 함께 배치한다.
-                // LazyVStack은 작은 화면의 스크롤 중 배치 계산이 반복될 수 있어 전체 높이를 확정한다.
                 VStack(alignment: .leading, spacing: 0) {
-                    head
-                    if (invitation.homeState == .empty || invitation.homeState == .mine), env.isMyAdRoom(model.roomIdValue) {
-                        HomeInvitationEntry(model: invitation).padding(.horizontal, 16).padding(.top, 16)
+                    HomeHeadFade(scroll: scroll) {
+                        headBlock
                     }
-                    if !model.planLoading && model.errorMessage == nil && !model.isGuest {
-                        PayThisWeekView(schedules: model.planned + model.completed, today: today,
-                            roomId: model.roomIdValue,
-                            showReminder: !model.isRoomView || ["OWNER", "SPOUSE"].contains(model.myPermission?.rawValue.uppercased() ?? ""),
-                            onSelect: { path.append($0) })
+                    // 크기는 `onGeometryChange` 로 잰다 — iOS 26 에서 스크롤 안 GeometryReader 의 preference 는
+                    // 화면 밖 `onPreferenceChange` 까지 올라오지 않았다(재 보니 0).
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headHeight = $0 }
+                    // 머리 면이 다음 줄(이번 주 결제할 것)보다 위에 그려진다 — 카드 그림자가 잘리지 않게
+                    .zIndex(1)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        rest(buckets)
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { restHeight = $0 }
 
-
-                    SectionHeader(
-                        title: "이번 달에 할 일",
-                        meta: model.planLoading ? nil : "\(buckets.thisMonth.count)",
-                        // READ 권한이면 추가를 감춘다 —
-                        // **눌러야만 실패를 아는 버튼은 두지 않는다.**
-                        actionLabel: model.canWrite ? "추가" : nil,
-                        onAction: { showAddPlan = true }
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
-                    .guideAnchor("main-this-month")
-
-                    listSection(buckets)
-                        .guideAnchor("main-plan-list")
-
-                    // 웹: 비로그인일 때만 목록 아래에 노출
-                    if model.isGuest {
-                        LoginButton { env.isAuthenticated = false }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                    }
-
-                    // 목록 아래 흰 면. 분홍 머리 면에 넣으면 얇은 예산 줄과 겹쳐
-                    // 무엇을 누르는지 알기 어렵다.
-                    if model.canBrag {
-                        BragToggle(model: bragToggle) { path.append(BragRoute()) }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                    }
+                    // 맨 끝 채움 — 목록이 짧아도 제목 자리(anchor)까지 올라가게. **늘 마지막 줄이다.**
+                    Color.clear.frame(height: fillHeight)
                 }
-                .id(model.planLoading)
-                .padding(.bottom, 24)
+                .padding(.bottom, listBottomPad)
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: HomeScrollOffsetKey.self, value: g.frame(in: .named("main.scroll")).minY)
+                })
             }
+            .coordinateSpace(name: "main.scroll")
             .scrollIndicators(.hidden)
+            .scrollTargetBehavior(HomeHeadSnap(anchor: snapAnchor, viewport: viewportHeight, statusBar: wpStatusBarHeight))
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewportHeight = $0 }
+            .modifier(HomeScrollReader { scroll.offset = $0 })
             .accessibilityIdentifier("main.scroll")
 
-            if let message = model.errorMessage {
+            // 로딩 실패는 목록 자리의 안내가 맡는다 — 같은 말을 두 번 하지 않는다
+            if let message = model.errorMessage, !loadFailed {
                 InfoBanner(message: message, actionLabel: "닫기") {
                     model.errorMessage = nil
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
+
+            // 탭바 바로 위 고정 — 낮은 화면이 아닐 때만(웹 `data-home-brag-dock`)
+            if model.canBrag && !compactHeight { bragDock }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
+        // 머리 면이 지나가면 상태바 뒤에 흰 띠 — 첫 줄(이름)이 상태바에 닿는 16pt 에서 바꾼다
+        .overlay(alignment: .top) { HomeStatusStrip(scroll: scroll) }
         // 분홍 머리 면이 상태바 뒤까지 깔리도록 스크롤 영역을 위로 넓힌다.
         // 면은 스크롤 영역 **안**에 있어 내용과 함께 올라간다(웹 `data-mobile-head`).
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
         // **전환하는 동안 가림막으로 덮는다.** 안 덮으면 방을 묻는 사이에 화면이
         // 이미 내 개인 플랜을 그려서, 개인 플랜이 떴다가 방 플랜으로 바뀌는 게
-        // 그대로 보인다.
-        //
-        // **공용 로딩 상태를 쓰지 않는다** — 누구나 끌 수 있어서 "스켈레톤을
-        // 보여 주려고 끄는" 한 줄에 가림막까지 꺼지고, 그 틈으로 개인 예산이
-        // 그대로 보였다. 그리고 **불투명이어야 한다**. 반투명이면 떠 있어도 큰
-        // 숫자가 비친다.
+        // 그대로 보인다. **불투명이어야 한다** — 반투명이면 큰 숫자가 비친다.
         .overlay {
             if env.boundRoom.needsCover {
                 ZStack {
@@ -206,35 +224,134 @@ struct MainView: View {
         }
     }
 
+    private func startAdd() {
+        let opened = addPlanPresenter?.open(AddPlanRequest(roomId: model.roomIdValue) {
+            Task { await model.load(env: env, guest: guest) }
+        }) ?? false
+        if !opened { showAddPlan = true }
+    }
+
+    /// 머리 면 + (패스를 산 사람의) 정원 카드. 안드로이드는 둘이 **같은 목록 줄**이라 두 자리 스냅이
+    /// 정원 카드까지 한 칸으로 잰다 — 그래서 여기서도 함께 잰다.
+    private var headBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            head
+            if (invitation.homeState == .empty || invitation.homeState == .mine), env.isMyAdRoom(model.roomIdValue), !model.isGuest {
+                HomeInvitationEntry(
+                    model: invitation,
+                    planDate: model.weddingDate?.dateString,
+                    planVenue: model.weddingVenue.isEmpty ? nil : model.weddingVenue
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rest(_ buckets: (thisMonth: [ScheduleItem], past: [ScheduleItem], later: [ScheduleItem])) -> some View {
+        /*
+          이번 주 결제할 것 — **이번 달 목록보다 위**다. 돈이 곧 나갈 일이 이번 달 전체보다 급하다.
+          해당 일정이 없으면 띠 자체가 안 나온다("0건" 빈 카드를 만들지 않는다).
+        */
+        if !model.planLoading && !loadFailed && !model.isGuest {
+            PayThisWeekView(schedules: model.planned + model.completed, today: today,
+                roomId: model.roomIdValue,
+                showReminder: !model.isRoomView || ["OWNER", "SPOUSE"].contains(model.myPermission?.rawValue.uppercased() ?? ""),
+                onSelect: { path.append($0) })
+        }
+
+        HomeSectionHeader(
+            title: "이번 달에 할 일",
+            meta: (model.planLoading || loadFailed) ? nil : "\(buckets.thisMonth.count)",
+            // READ 권한이면 추가를 감춘다 — **눌러야만 실패를 아는 버튼은 두지 않는다.**
+            // 방을 모르는 동안(로딩 실패)에도 감춘다 — 어디에 저장될지 모른다.
+            actionLabel: model.canWrite && !loadFailed ? "추가" : nil,
+            onAction: { startAdd() }
+        )
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
+        .guideAnchor("main-this-month")
+
+        listSection(buckets)
+            .guideAnchor("main-plan-list")
+
+        // 웹: 비로그인일 때만 목록 아래에 노출
+        if model.isGuest {
+            LoginButton { env.isAuthenticated = false }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+        }
+
+        // 낮은 화면에서는 도크를 목록 끝에(가로 폰에서 고정 도크 + 탭바가 화면의 절반을 넘었다)
+        if model.canBrag && compactHeight {
+            bragDock.padding(.top, 16)
+        }
+    }
+
+    /// 웹 `BottomTabBar aboveTabs` 의 `data-home-brag-dock` — `border-t border-[#f2eaee] bg-white px-4 py-3`
+    private var bragDock: some View {
+        VStack(spacing: 0) {
+            Color(hex: 0xF2EAEE).frame(height: 1)
+            BragToggle(model: bragToggle, onOpenBrag: { path.append(BragRoute()) }, locked: model.bragLocked, compact: true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+        }
+        .background(Color.white)
+        // 도크는 제 높이만 — 남는 높이를 목록과 나눠 가지지 않게
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
     // MARK: - 머리 면
 
     private var head: some View {
-        BrandHead(bottom: 0, overhang: 72, passMember: invitation.result?.hasPass == true && env.isMyAdRoom(model.roomIdValue)) {
-            HStack(spacing: 8) {
-                if model.planLoading {
+        BrandHead(bottom: 0, overhang: 72, passMember: memberPass) {
+            HStack(spacing: 0) {
+                // 이름·아바타가 남는 폭을 쓰고, 배지는 늘 오른쪽 끝에 붙는다.
+                // 내 홈이면 이름·아바타가 프로필로 가는 길이다(하단 탭에서 빠졌다).
+                // **받는 중·실패여도 눌린다** — 프로필(로그아웃·탈퇴·차단 관리)로 가는 유일한 길이다.
+                if model.planLoading && !loadFailed {
                     SkeletonBox(width: 110, height: 22, onBrand: true)
                 } else {
                     NavigationLink { UserView() } label: {
-                        HStack(spacing: 8) {
-                            Text(model.displayName.isEmpty ? "이름" : model.displayName).font(WPFont.tmoney(18, .bold)).tracking(-0.36).lineLimit(1)
+                        HStack(spacing: 0) {
+                            HomeTmoneyLabel(
+                                runs: [.init(loadFailed ? "내 프로필" : (model.displayName.isEmpty ? "이름" : model.displayName), size: 18, tracking: -0.36)],
+                                color: .white,
+                                lineHeight: 27
+                            )
+                            Spacer().frame(width: 8)
                             HeadAvatars(initials: model.headerInitials)
-                            Image(systemName: "chevron.right").font(.system(size: 14, weight: .medium))
-                        }.foregroundStyle(.white).frame(minHeight: 44)
-                    }.accessibilityLabel("내 정보").accessibilityIdentifier("main.profile")
+                            // 눌린다는 표시 — 프로필 탭이 없어져 이 줄이 그 자리를 대신한다
+                            WPLucideIcon(paths: WPIconPaths.chevronRight, size: 18, color: .white.opacity(0.75))
+                                .padding(.leading, 2)
+                        }
+                        // 보이는 줄은 안드로이드처럼 27pt, 누르는 자리만 위아래로 넓힌다
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                        .padding(.vertical, -8)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("내 정보")
+                    .accessibilityIdentifier("main.profile")
                 }
                 Spacer(minLength: 0)
-                if invitation.result?.hasPass == true && env.isMyAdRoom(model.roomIdValue) {
+                // 웹 폰 트리에는 초대 아이콘이 없다 — 초대는 아래 초대 띠가 맡는다. 패스를 쓰는 방이면 노란 배지.
+                if memberPass {
+                    Spacer().frame(width: 8)
                     HStack(spacing: 4) {
-                        Image(systemName: "leaf").font(.system(size: 13))
+                        // 안드로이드 `PassMemberBadge` — Material `Icons.Outlined.LocalFlorist`
+                        WPMaterialPathIcon(paths: HomeColor.florist, size: 13, color: Color(hex: 0x875022))
                         Text("준비 패스").font(WPFont.hak(9, .bold))
-                        Image(systemName: "checkmark").font(.system(size: 10))
+                        WPMaterialPathIcon(paths: WPIconPaths.check, size: 10, color: Color(hex: 0x875022))
                     }.foregroundStyle(Color(hex: 0x875022)).padding(.horizontal, 8).padding(.vertical, 5)
                         .background(Color(hex: 0xFFF1B8), in: Capsule())
                 }
             }
             .guideAnchor("main-header-info")
 
-            if model.planLoading {
+            if model.planLoading || loadFailed {
                 Spacer().frame(height: 16)
                 SkeletonBox(width: 240, height: 74, onBrand: true)
                 Spacer().frame(height: 8)
@@ -244,14 +361,16 @@ struct MainView: View {
                 Spacer().frame(height: 16)
                 Text("\(sentence.0)\n\(sentence.1)")
                     .font(WPFont.hak(32, .bold))
-                    .tracking(-0.045 * 32)
-                    .lineSpacing(37 - 32)
+                    .tracking(-1.44)
                     .foregroundStyle(.white)
+                    .lineSpacing(0)
                     .fixedSize(horizontal: false, vertical: true)
+                    // 안드로이드 `lineHeight = 37.sp` 두 줄 = 74
+                    .frame(height: 74, alignment: .leading)
 
                 Spacer().frame(height: 8)
                 Text(subtitleText)
-                    .font(WPFont.hak(14))
+                    .wpTypography(14)
                     .foregroundStyle(.white.opacity(0.8))
                     .lineLimit(1)
             }
@@ -263,32 +382,73 @@ struct MainView: View {
             }
 
             Spacer().frame(height: 16)
-
-            VStack(spacing: 0) {
-                Button { path.append(BudgetRoute(roomId: model.roomIdValue)) } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            if !model.amountsLoaded {
-                                SkeletonBox(width: 64, height: 18); SkeletonBox(width: 144, height: 32)
-                                SkeletonBox(width: 208, height: 18).padding(.top, 4)
-                            } else {
-                                Text(model.remainingBudget < 0 ? "예산 초과" : "남은 예산").font(WPFont.hak(13, .bold)).foregroundStyle(Color(hex: 0x847880))
-                                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text(withThousands(abs(model.remainingBudget))).font(WPFont.tmoney(32, .bold)).tracking(-1.44)
-                                    Text("만 원").font(WPFont.tmoney(15, .bold))
-                                }.foregroundStyle(model.remainingBudget < 0 ? Color.red : WPColor.textPrimary)
-                                Text("\(withThousands(model.totalBudget))만 원 중 \(withThousands(model.usedBudget))만 원 지출·예정").font(WPFont.hak(12.5)).foregroundStyle(Color(hex: 0x847880)).padding(.top, 4)
-                            }
-                        }
-                        Spacer()
-                        if model.amountsLoaded { Image(systemName: "chevron.right").font(.system(size: 20)).foregroundStyle(WPColor.gray400) }
-                    }.padding(.horizontal, 20).padding(.vertical, 16).contentShape(Rectangle())
-                }.buttonStyle(.plain).disabled(!model.amountsLoaded).accessibilityIdentifier("main.budget")
-                HomeInvitationEntry(model: invitation, rowOnly: true)
-            }.background(.white, in: RoundedRectangle(cornerRadius: 20)).clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(color: Color(hex: 0x1B0D14).opacity(0.08), radius: 10, y: 6)
-
+            budgetCard
+                .guideAnchor("main-budget-card")
         }
+    }
+
+    /// 홈 예산 카드 — 분홍 면 아래 가장자리에 걸쳐 뜬 흰 카드(안드로이드 `BudgetCard`).
+    /// 넘었으면 **넘은 금액**(양수)을 `예산 초과` 와 빨강으로 — `-500만 원` 을 크게 세우지 않는다.
+    /// 받는 동안은 **같은 크기**의 뼈대(받는 순간 아래 목록이 튀지 않게). 흰 카드 위라 회색 시머다.
+    private var budgetCard: some View {
+        let loading = model.planLoading || loadFailed || !model.amountsLoaded
+        let over = model.remainingBudget < 0
+        let ink = over ? HomeColor.over : WPColor.textPrimary
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        return VStack(spacing: 0) {
+            Button { path.append(BudgetRoute(roomId: model.roomIdValue)) } label: {
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if loading {
+                            SkeletonBox(width: 64, height: 18)
+                            Spacer().frame(height: 4)
+                            SkeletonBox(width: 144, height: 32)
+                            Spacer().frame(height: 8)
+                            SkeletonBox(width: 208, height: 18)
+                        } else {
+                            Text(over ? "예산 초과" : "남은 예산")
+                                .wpTypography(13, .bold, lineHeight: 18)
+                                .foregroundStyle(HomeInviteColor.muted)
+                            Spacer().frame(height: 4)
+                            HomeTmoneyLabel(
+                                runs: [
+                                    // 숫자와 `만 원` 사이는 안드로이드 `Spacer(4.dp)`
+                                    .init(withThousands(abs(model.remainingBudget)), size: 32, tracking: -0.045 * 32, trailingGap: 4),
+                                    .init("만 원", size: 15, tracking: -0.3),
+                                ],
+                                color: UIColor(ink),
+                                lineHeight: 32
+                            )
+                            Spacer().frame(height: 8)
+                            Text("\(withThousands(model.totalBudget))만 원 중 \(withThousands(model.usedBudget))만 원 지출·예정".wpKeepAll)
+                                .wpTypography(12.5, lineHeight: 18)
+                                .foregroundStyle(HomeInviteColor.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityLabel("\(withThousands(model.totalBudget))만 원 중 \(withThousands(model.usedBudget))만 원 지출·예정")
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if !loading {
+                        Spacer().frame(width: 12)
+                        WPLucideIcon(paths: WPIconPaths.chevronRight, size: 20, color: HomeInviteColor.chevron)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(loading)
+            .accessibilityIdentifier("main.budget")
+            // 패스 없음 — 예산 카드 안의 한 줄. 예산 줄과 따로 눌린다
+            if !model.isGuest {
+                HomeInvitationEntry(model: invitation, rowOnly: true)
+            }
+        }
+        .background(Color.white, in: shape)
+        .clipShape(shape)
+        // 안드로이드 `shadow(10.dp, HomeBudgetShadow)` — 따뜻한 잉크로 옅게 번지게
+        .shadow(color: Color(hex: 0x1B0D14).opacity(0.08), radius: 10, y: 6)
     }
 
     private var subtitleText: String {
@@ -303,19 +463,28 @@ struct MainView: View {
     // MARK: - 목록
 
     @ViewBuilder
-    private func listSection(
-        _ buckets: (thisMonth: [ScheduleItem], later: [ScheduleItem])
-    ) -> some View {
+    private func listSection(_ buckets: (thisMonth: [ScheduleItem], past: [ScheduleItem], later: [ScheduleItem])) -> some View {
+        // 빈 자리의 `플랜 추가하기` — 머리글의 `추가` 와 같은 조건(읽기 전용·방을 모를 때는 없음)
+        let addFromEmpty: (() -> Void)? = model.canWrite && !loadFailed ? { startAdd() } : nil
+        let lowScreen = UIScreen.main.bounds.height <= 639
+
         if model.planLoading {
             // 받기 전에 "없다" 고 말하지 않는다 — 빈 상태 대신 뼈대를 낸다.
             ForEach(0..<5, id: \.self) { _ in SkeletonCard() }
-        } else if model.isCompletelyEmpty {
-            // 웹: 전체 플랜이 0개일 때만 "텅~"
-            Text("텅~")
-                .font(WPFont.hak(36, .semibold))
-                .foregroundStyle(WPColor.stone400)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 64)
+        } else if loadFailed {
+            LoadFailed(message: model.errorMessage) {
+                model.errorMessage = nil
+                Task { await model.load(env: env, guest: guest) }
+            }
+        } else if model.planned.isEmpty {
+            // 예정 플랜이 없으면(완료 기록과 관계없이) 빈 자리. 웹의 `텅~` 대신 새싹이 자라는 그림과
+            // `플랜 추가하기` 로 첫 플랜을 권한다(안드로이드 2026-10-07 — **웹과 다름**).
+            PlanSproutEmpty(
+                title: addFromEmpty == nil ? "아직 플랜이 없어요"
+                    : (model.completed.isEmpty ? "첫 플랜을 심어 볼까요?" : "남은 플랜을 다 끝냈어요"),
+                onAdd: addFromEmpty,
+                lowScreen: lowScreen
+            )
         } else {
             ForEach(buckets.thisMonth) { item in
                 TaskCard(
@@ -327,45 +496,45 @@ struct MainView: View {
             }
 
             if buckets.thisMonth.isEmpty {
-                Text(buckets.later.isEmpty ? "할 일을 추가해 볼까요?" : "이번 달은 비어 있어요")
-                    .font(WPFont.hak(15))
-                    .foregroundStyle(WPColor.fgSubtle)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 64)
+                // 다른 달 일정은 아래 묶음에 있고 이번 달만 비었다 — 같은 새싹 그림을 줄여서 권한다.
+                PlanSproutEmpty(title: "이번 달 할 일이 아직 없어요", onAdd: addFromEmpty, lowScreen: lowScreen, compact: true)
             }
 
-            // 앞으로 할 일은 구분선 목록으로 낮춘다 — 지금 당장이 아니라 카드만큼의
-            // 무게가 필요 없고, 같은 화면에 훨씬 많이 들어온다.
+            // 광고 ① — 「이번 달에 할 일」 블록 다음 한 칸(광고 담당이 자리를 정한다).
             if AdRules.homeAdVisible(gate: env.adGate, isMyPlan: env.isMyAdRoom(model.roomIdValue) && !model.isGuest,
-                                      thisMonthCount: buckets.thisMonth.count, hasMoreBelow: !buckets.later.isEmpty), model.errorMessage == nil {
-                NativeAdSlot(placement: "home", style: .home)
+                                      thisMonthCount: buckets.thisMonth.count,
+                                      hasMoreBelow: !buckets.past.isEmpty || !buckets.later.isEmpty), model.errorMessage == nil {
+                // 안드로이드 `MainScreen` 과 같은 바깥 여백(위 14 · 아래 6). 받기 전에는 여백도 없다(NativeAdSlot).
+                NativeAdSlot(placement: "home", style: .home, top: 14, bottom: 6)
             }
-            if !buckets.later.isEmpty {
-                SectionHeader(
-                    title: "그 다음",
-                    meta: laterMeta(buckets.later.count),
-                    actionLabel: "전체",
-                    onAction: {
-                        path.append(
-                            CalendarRoute(roomId: model.roomIdValue, readOnly: model.readOnly)
-                        )
-                    }
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 4)
 
-                ForEach(buckets.later) { item in
-                    LaterRow(item: item) { path.append(item.id) }
+            // 웹과 같은 두 묶음 — `지난 일정`(지난달까지 못 끝낸 것), `그 다음`(다음 달 이후·날짜 미정).
+            // 줄은 날짜 타일 카드(`PlanDateTileItem`)다.
+            ForEach(0..<2, id: \.self) { index in
+                let title = index == 0 ? "지난 일정" : "그 다음"
+                let items = index == 0 ? buckets.past : buckets.later
+                if !items.isEmpty {
+                    HomeSectionHeader(
+                        title: title,
+                        // 묶음마다 자기 개수만 — 전체 완료 수를 두 묶음에 똑같이 붙이던 것을 웹(f6f0405)처럼 뺐다
+                        meta: "계획 중 \(items.count)",
+                        actionLabel: "전체",
+                        onAction: {
+                            path.append(CalendarRoute(roomId: model.roomIdValue, readOnly: model.readOnly))
+                        }
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 24)
+                    .padding(.bottom, 12)
+
+                    ForEach(items) { item in
+                        HomeDateTileRow(item: item) { path.append(item.id) }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+                    }
                 }
             }
         }
-    }
-
-    private func laterMeta(_ count: Int) -> String {
-        var text = "계획 중 \(count)"
-        if model.completedTotal > 0 { text += " · 완료 \(model.completedTotal)" }
-        return text
     }
 }
 
@@ -380,10 +549,212 @@ struct CalendarRoute: Hashable {
     var readOnly: Bool
 }
 
-/// 자랑하기 목록. **레일에만 있고 하단 탭바에는 없다** — 탭 6개는 폰에서 좁고,
-/// 자랑하기는 홈에서 들어가는 곳이다. 폰에는 레일이 없으므로 홈의 토글 아래
+/// 자랑하기 목록. **레일에만 있고 하단 탭바에는 없다** — 폰에는 레일이 없으므로 홈의 토글 아래
 /// `보러 가기` 줄이 유일한 문이다.
 struct BragRoute: Hashable {}
+
+// MARK: - 굴림 · 두 자리 스냅
+
+@Observable
+private final class HomeScrollState {
+    var offset: CGFloat = 0
+}
+
+private struct HomeScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// 굴린 거리. iOS 18 부터는 스크롤 뷰가 직접 알려 주는 값을 쓴다 — 내용 안의 GeometryReader 기준은
+/// 굴리는 동안 갱신되지 않을 때가 있었다.
+private struct HomeScrollReader: ViewModifier {
+    let onChange: (CGFloat) -> Void
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in onChange(y) }
+        } else {
+            content.onPreferenceChange(HomeScrollOffsetKey.self) { onChange(-$0) }
+        }
+    }
+}
+
+/// 안드로이드 `HeadSnap` — 두 자리(0 · anchor = 머리 면 높이 − 상태바)를 지킨다.
+///
+/// - 머리 면 구간(anchor 이하)에서 시작한 끌기는 anchor 를 못 넘고, 놓으면 굴린 방향·가까운 쪽으로 간다.
+/// - 목록에서 올라오는 굴림은 anchor 에서 한 번 선다.
+/// - 머리 면이 창보다 크면(가로 · 큰 글꼴) 머리 면 구간은 붙지 않는다.
+private struct HomeHeadSnap: ScrollTargetBehavior {
+    var anchor: CGFloat
+    var viewport: CGFloat
+    var statusBar: CGFloat
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        guard anchor > 1, viewport <= 0 || anchor + statusBar < viewport else { return }
+        let y = target.rect.minY
+        // `originalTarget` 은 끌기를 시작한 자리다
+        let start = context.originalTarget.rect.minY
+        let atAnchor = abs(start - anchor) <= 0.5
+        if start > anchor + 0.5 || (atAnchor && y >= anchor) {
+            // 목록 구간 — 자유롭게 구르되, 위로 올라오는 굴림은 anchor 에서 한 번 선다
+            if y < anchor { target.rect.origin.y = anchor }
+            return
+        }
+        // 머리 면 구간 — anchor 를 못 넘고, 놓으면 굴린 방향(없으면 가까운 쪽)으로 간다
+        if y >= anchor { target.rect.origin.y = anchor; return }
+        if y > start + 0.5 { target.rect.origin.y = anchor }
+        else if y < start - 0.5 { target.rect.origin.y = 0 }
+        else { target.rect.origin.y = y < anchor / 2 ? 0 : anchor }
+    }
+}
+
+/// 웹 `headerScale`·`headerOpacity` — 굴리는 0→200pt 에 1→0.9 로 **위쪽을 기준으로** 줄고,
+/// 50→200pt 에 투명도가 1→0.2 로 빠진다. 굴린 값은 **여기서만** 읽는다(화면 전체가 매 프레임 다시 그려지지 않게).
+private struct HomeHeadFade<Content: View>: View {
+    let scroll: HomeScrollState
+    let content: Content
+
+    init(scroll: HomeScrollState, @ViewBuilder content: () -> Content) {
+        self.scroll = scroll
+        self.content = content()
+    }
+
+    var body: some View {
+        let y: CGFloat = max(0, scroll.offset)
+        let scale: CGFloat = 1 - 0.1 * min(1, y / 200)
+        let fade: CGFloat = min(1, max(0, (y - 50) / 150))
+        let alpha: Double = Double(1 - 0.8 * fade)
+        content
+            .scaleEffect(scale, anchor: .top)
+            .opacity(alpha)
+    }
+}
+
+/// 안드로이드 `BrandStatusBar` — 머리 면이 지나간 뒤 상태바 뒤의 흰 띠
+private struct HomeStatusStrip: View {
+    let scroll: HomeScrollState
+    var body: some View {
+        if scroll.offset > 16 {
+            BrandStatusStrip()
+        }
+    }
+}
+
+// MARK: - 색 · 글자
+
+/// 안드로이드 `WpColors.HomeBudgetOver` 등 — 홈에서만 쓰는 값
+private enum HomeColor {
+    static let over = Color(hex: 0xE5484D)
+    static let mismatchText = Color(hex: 0x05795F)
+    static let mismatchBackground = Color(hex: 0xEEF6F2)
+    static let tileBorder = Color(hex: 0xEEE8ED)
+    static let tileFill = Color(hex: 0xFFF0F7)
+    static let tileMutedFill = Color(hex: 0xF4F2F5)
+    static let tileInk = Color(hex: 0xC1367C)
+    static let tileMutedInk = Color(hex: 0xA799A5)
+    static let tileDoneTitle = Color(hex: 0x91818B)
+    static let tileCategory = Color(hex: 0xBF2E77)
+    static let tileStatus = Color(hex: 0x958791)
+    static let tileNoAmount = Color(hex: 0x9A8D97)
+    static let sproutStem = Color(hex: 0xE05A96)
+    static let sproutLeafLight = Color(hex: 0xFF8FB8)
+    static let ghostLine = Color(hex: 0xE3DDE0)
+    static let ghostMark = Color(hex: 0xD9D4D7)
+    static let ghostBar = Color(hex: 0xEBE7E9)
+    /// Material `Icons.Outlined.LocalFlorist`(준비 패스 배지)
+    static let florist = ["M8.66 13.07c.15 0 .29-.01.43-.03C9.56 14.19 10.69 15 12 15s2.44-.81 2.91-1.96c.14.02.29.03.43.03 1.73 0 3.14-1.41 3.14-3.14 0-.71-.25-1.39-.67-1.93.43-.54.67-1.22.67-1.93 0-1.73-1.41-3.14-3.14-3.14-.15 0-.29.01-.43.03C14.44 1.81 13.31 1 12 1s-2.44.81-2.91 1.96c-.14-.02-.29-.03-.43-.03-1.73 0-3.14 1.41-3.14 3.14 0 .71.25 1.39.67 1.93-.43.54-.67 1.22-.67 1.93 0 1.73 1.41 3.14 3.14 3.14zM12 13c-.62 0-1.12-.49-1.14-1.1l.12-1.09c.32.12.66.19 1.02.19s.71-.07 1.03-.19l.11 1.09c-.02.61-.52 1.1-1.14 1.1zm3.34-1.93c-.24 0-.46-.07-.64-.2l-.81-.57c.55-.45.94-1.07 1.06-1.79l.88.38c.4.18.66.59.66 1.03 0 .63-.51 1.15-1.15 1.15zm-.65-4.43c.2-.13.41-.2.64-.2.63 0 1.14.51 1.14 1.14 0 .44-.25.85-.66 1.03l-.88.38c-.12-.72-.51-1.34-1.06-1.79l.82-.56zM12 3c.62 0 1.12.49 1.14 1.1l-.11 1.09C12.71 5.07 12.36 5 12 5s-.7.07-1.02.19l-.12-1.09c.02-.61.52-1.1 1.14-1.1zM8.66 4.93c.24 0 .46.07.64.2l.81.56c-.55.45-.94 1.07-1.06 1.79l-.88-.38c-.4-.17-.66-.58-.66-1.02 0-.63.52-1.15 1.15-1.15zM8.17 9.9l.88-.38c.12.72.51 1.34 1.06 1.79l-.81.56c-.18.13-.41.2-.64.2-.63 0-1.14-.51-1.14-1.14-.01-.44.25-.85.65-1.03zM12 22c4.97 0 9-4.03 9-9-4.97 0-9 4.03-9 9zm2.44-2.44c.71-1.9 2.22-3.42 4.12-4.12-.71 1.9-2.22 3.41-4.12 4.12zM3 13c0 4.97 4.03 9 9 9 0-4.97-4.03-9-9-9zm2.44 2.44c1.9.71 3.42 2.22 4.12 4.12-1.9-.71-3.41-2.22-4.12-4.12z"]
+}
+
+/// 안드로이드 `Tmoney` + `FontWeight.Bold` — Regular 파일 하나에 굵기를 **합성**한 글자.
+/// 크기가 다른 조각(`2,850` + ` 만 원`)을 한 줄에 기준선으로 맞춰 그린다. 취소선도 받는다(완료 카드).
+private struct HomeTmoneyLabel: UIViewRepresentable {
+    struct Run: Equatable {
+        var text: String
+        var size: CGFloat
+        var tracking: CGFloat = 0
+        /// 다음 조각과의 간격 — 마지막 글자의 자간에 더한다
+        var trailingGap: CGFloat = 0
+        init(_ text: String, size: CGFloat, tracking: CGFloat = 0, trailingGap: CGFloat = 0) {
+            self.text = text; self.size = size; self.tracking = tracking; self.trailingGap = trailingGap
+        }
+    }
+    var runs: [Run]
+    var color: UIColor
+    var lineHeight: CGFloat
+    var bold = true
+    var strike = false
+
+    func makeUIView(context: Context) -> UILabel {
+        let label = UILabel()
+        label.numberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return label
+    }
+
+    func updateUIView(_ label: UILabel, context: Context) {
+        let text = NSMutableAttributedString()
+        for run in runs {
+            let piece = NSMutableAttributedString(string: run.text, attributes: [
+                .font: WPTypeface.tmoney.uiFont(run.size, .regular),
+                .foregroundColor: color,
+                .strokeColor: color,
+                .strokeWidth: bold ? -2.5 : 0,
+                .kern: run.tracking,
+                .strikethroughStyle: strike ? NSUnderlineStyle.single.rawValue : 0,
+            ])
+            if run.trailingGap > 0, piece.length > 0 {
+                piece.addAttribute(.kern, value: run.tracking + run.trailingGap, range: NSRange(location: piece.length - 1, length: 1))
+            }
+            text.append(piece)
+        }
+        label.attributedText = text
+        label.accessibilityLabel = runs.map(\.text).joined()
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
+        let natural = uiView.intrinsicContentSize.width
+        let width = proposal.width.map { min($0, natural) } ?? natural
+        return CGSize(width: width, height: lineHeight)
+    }
+}
+
+/// 묶음 머리글 — 안드로이드 `SectionHeader`(제목 18 굵게 · 개수 13 · 오른쪽 분홍 글자 버튼, 아래 맞춤).
+/// 공용 `SectionHeader` 는 SwiftUI 기본 줄 높이라 안드로이드보다 낮아 이 화면에서는 따로 둔다.
+private struct HomeSectionHeader: View {
+    var title: String
+    var meta: String?
+    var actionLabel: String?
+    var onAction: () -> Void
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Text(title)
+                .wpTypography(18, .bold)
+                .tracking(-0.36)
+                .foregroundStyle(WPColor.fgNeutral)
+            if let meta, !meta.isEmpty {
+                Text(meta)
+                    .wpTypography(13)
+                    .foregroundStyle(WPColor.fgSubtle)
+                    .padding(.bottom, 2)
+            }
+            Spacer(minLength: 0)
+            if let actionLabel {
+                Button(action: onAction) {
+                    Text(actionLabel)
+                        .wpTypography(13, .bold)
+                        .foregroundStyle(WPColor.primary)
+                        .padding(2)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(actionLabel == "추가" ? "main.add" : "main.all")
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
 
 // MARK: - 머리 면 조각
 
@@ -429,23 +800,30 @@ private struct TaskCard: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.title)
-                    .font(WPFont.tmoney(16, .bold))
-                    .tracking(-0.01 * 16)
-                    .foregroundStyle(checked ? WPColor.fgSubtle : WPColor.fgNeutral)
-                    .strikethrough(checked)
-                    .lineLimit(1)
+                HomeTmoneyLabel(
+                    runs: [.init(item.title, size: 16, tracking: -0.16)],
+                    color: UIColor(checked ? WPColor.fgSubtle : WPColor.fgNeutral),
+                    lineHeight: 24,
+                    strike: checked
+                )
 
-                HStack(spacing: 8) {
+                HStack(spacing: 0) {
                     if !item.categoryName.isEmpty {
-                        CategoryTag(name: item.categoryName, done: checked)
+                        HomeCategoryTag(name: item.categoryName)
+                        Spacer().frame(width: 8)
+                    }
+                    // 결제가 완료와 어긋날 때만(웹 폰 홈 카드와 같음)
+                    if let mismatch = item.paymentMismatch {
+                        HomeMismatchBadge(label: mismatch.label, size: 11)
+                        Spacer().frame(width: 8)
                     }
                     Text(dateLabel)
-                        .font(WPFont.hak(13))
+                        .wpTypography(13)
                         .foregroundStyle(WPColor.fgMuted)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    AmountText(amount: Double(item.amount ?? 0))
+                    Spacer().frame(width: 8)
+                    HomeAmountText(amount: Double(item.amount ?? 0))
                 }
             }
         }
@@ -457,41 +835,143 @@ private struct TaskCard: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
+        .accessibilityIdentifier("main.task.\(item.id)")
     }
 }
 
-/// 웹 `flex items-center border-b border-[#0000000c] px-1 py-3.5`
-private struct LaterRow: View {
+/// 안드로이드 `CategoryTag` — 11 굵게(줄 16.5) · `#fff1f7` · 모서리 4
+private struct HomeCategoryTag: View {
+    var name: String
+    var body: some View {
+        Text(name)
+            .wpTypography(11, .bold)
+            .foregroundStyle(WPColor.brand700)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(WPColor.brand100, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+    }
+}
+
+/// 안드로이드 `PaymentMismatchBadge` — 결제가 완료와 어긋날 때만(`결제함` · `미결제`)
+private struct HomeMismatchBadge: View {
+    var label: String
+    var size: CGFloat
+    var body: some View {
+        Text(label)
+            .wpTypography(size, .bold)
+            .foregroundStyle(HomeColor.mismatchText)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(HomeColor.mismatchBackground, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+    }
+}
+
+/// 웹: 금액이 있으면 `14px bold #1a1c20`, 없으면 `13px #868b94` "미정"
+private struct HomeAmountText: View {
+    var amount: Double
+    var body: some View {
+        if amount > 0 {
+            Text("\(withThousands(amount))만 원")
+                .wpTypography(14, .bold)
+                .foregroundStyle(WPColor.fgNeutral)
+                .lineLimit(1)
+                .fixedSize()
+        } else {
+            Text("미정")
+                .wpTypography(13)
+                .foregroundStyle(WPColor.fgSubtle)
+                .lineLimit(1)
+                .fixedSize()
+        }
+    }
+}
+
+/// 웹 `app/components/PlanDateTileItem.tsx` — 날짜 타일 + 제목 · 칩 · 상태 + 금액(안드로이드 `DateTileRow`).
+/// `min-h-20 rounded-[15px] border-[#eee8ed] bg-white px-3 py-3 gap-3`
+private struct HomeDateTileRow: View {
     var item: ScheduleItem
     var onOpen: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(WPFont.hak(14))
-                        .foregroundStyle(WPColor.fgNeutral)
-                        .lineLimit(1)
-                    Text(item.categoryName)
-                        .font(WPFont.hak(12))
-                        .foregroundStyle(WPColor.fgSubtle)
-                        .lineLimit(1)
+        let date = KstDate(dateString: item.startDate ?? "")
+        let completed = item.status?.isCompleted ?? false
+        let amount = Double(item.amount ?? 0)
+        let muted = completed || date == nil
+        let ink = muted ? HomeColor.tileMutedInk : HomeColor.tileInk
+        let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+
+        HStack(spacing: 12) {
+            // 날짜 타일 `min-h-14 w-11 rounded-[10px] py-1 text-[10px]` — 세로로 꽉 찬다(self-stretch)
+            VStack(spacing: 0) {
+                Text(date.map { "\($0.month)월" } ?? "날짜")
+                    .wpTypography(10, lineHeight: 15)
+                    .foregroundStyle(ink)
+                HomeTmoneyLabel(
+                    runs: [.init(date.map { String(format: "%02d", $0.day) } ?? "—", size: 21)],
+                    color: UIColor(ink),
+                    lineHeight: 21
+                )
+                .fixedSize()
+                .padding(.vertical, 2)
+                if date == nil {
+                    Text("미정").wpTypography(10, lineHeight: 15).foregroundStyle(ink)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text(KstDate(dateString: item.startDate ?? "")?.monthDayText ?? "날짜 미정")
-                    .font(WPFont.hak(13))
-                    .foregroundStyle(WPColor.fgSubtle)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onOpen)
+            .padding(.vertical, 4)
+            .frame(width: 44)
+            .frame(minHeight: 56, maxHeight: .infinity)
+            .background(muted ? HomeColor.tileMutedFill : HomeColor.tileFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            Hairline()
+            VStack(alignment: .leading, spacing: 6) {
+                HomeTmoneyLabel(
+                    runs: [.init(item.title, size: 15)],
+                    color: UIColor(completed ? HomeColor.tileDoneTitle : WPColor.fgNeutral),
+                    lineHeight: 20.6
+                )
+                HStack(spacing: 0) {
+                    if !item.categoryName.isEmpty {
+                        Text(item.categoryName)
+                            .wpTypography(10, lineHeight: 12.5)
+                            .foregroundStyle(HomeColor.tileCategory)
+                            .lineLimit(1)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(HomeColor.tileFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        Spacer().frame(width: 6)
+                    }
+                    Text(completed ? "완료" : (date != nil ? "예정" : "계획 중"))
+                        .wpTypography(11)
+                        .foregroundStyle(HomeColor.tileStatus)
+                    if let mismatch = item.paymentMismatch {
+                        HomeMismatchBadge(label: mismatch.label, size: 10)
+                            .padding(.leading, 6)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if amount > 0 {
+                HomeTmoneyLabel(runs: [.init("\(withThousands(amount))만 원", size: 16)], color: UIColor(WPColor.fgNeutral), lineHeight: 24)
+                    .fixedSize()
+            } else {
+                Text("금액 미정")
+                    .wpTypography(13)
+                    .foregroundStyle(HomeColor.tileNoAmount)
+                    .fixedSize()
+            }
         }
-        .padding(.horizontal, 16)
+        .padding(12)
+        .frame(minHeight: 80)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(Color.white, in: shape)
+        .overlay(shape.strokeBorder(HomeColor.tileBorder, lineWidth: 1))
+        .contentShape(shape)
+        .onTapGesture(perform: onOpen)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("main.later.\(item.id)")
     }
 }
 
@@ -518,6 +998,42 @@ private struct SkeletonCard: View {
     }
 }
 
+/// 첫 로딩이 실패했을 때 목록 자리. '텅~' 처럼 **없다고** 말하지 않고, 불러오지 못했다고
+/// 말한 뒤 다시 시도할 길을 둔다(안드로이드 `LoadFailed`).
+private struct LoadFailed: View {
+    var message: String?
+    var onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("플랜을 불러오지 못했어요")
+                .wpTypography(16, .bold)
+                .foregroundStyle(WPColor.fgNeutral)
+            if let message, !message.isEmpty {
+                Spacer().frame(height: 6)
+                Text(message)
+                    .wpTypography(13, lineHeight: 20)
+                    .foregroundStyle(WPColor.fgSubtle)
+                    .multilineTextAlignment(.center)
+            }
+            Spacer().frame(height: 16)
+            Button(action: onRetry) {
+                Text("다시 시도")
+                    .wpTypography(14, .bold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("main.retry")
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 48)
+    }
+}
+
 /// 웹: `w-full h-16 bg-[#ee2b8c] rounded-2xl font-bold text-lg shadow-xl shadow-[#ee2b8c44]`
 private struct LoginButton: View {
     var action: () -> Void
@@ -536,5 +1052,203 @@ private struct LoginButton: View {
                 .shadow(color: WPColor.primary.opacity(0.27), radius: 12, y: 6)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 빈 자리 — 새싹
+
+/// 홈 '이번 달에 할 일' 이 비었을 때 — `텅~` 대신 **새싹이 자라는 그림**으로 첫 플랜을 권한다
+/// (안드로이드 `PlanSproutEmpty`, 2026-10-07 사용자 요청 — 웹은 아직 `텅~` 이라 **웹과 다르다**).
+///
+/// - 처음 그릴 때 줄기가 자라고 잎 두 장이 차례로 핀다(한 번). 그 뒤로 새싹이 살랑이고, 빈 카드의 `+` 가
+///   떠오르고, 잎 빛 점이 올라가고, 버튼 뒤로 물결이 퍼진다(계속).
+/// - 그림·버튼 어디를 눌러도 플랜 추가다. `onAdd` 가 없으면(읽기 전용) 버튼도 분홍 `+` 도 없다.
+/// - 좌표는 시안(SVG)의 pt 그대로 — 무대 230×136 안에 빈 카드(210×64)를 아래에, 새싹을 그 위 가운데에 둔다.
+/// - **데모 모드(UI 테스트)에서는 다 자란 모습으로 멈춘다** — XCUITest 는 앱이 쉴 때까지 기다리는데,
+///   끝나지 않는 움직임이면 캡처가 시간 초과로 죽는다(`SkeletonBox` 와 같은 이유).
+private struct PlanSproutEmpty: View {
+    var title: String
+    var onAdd: (() -> Void)?
+    var lowScreen = false
+    var compact = false
+
+    @State private var start = Date()
+    private static let frozen = ProcessInfo.processInfo.arguments.contains("-WPDemoMode")
+
+    var body: some View {
+        let scale: CGFloat = compact ? 0.72 : 1
+        let tight = lowScreen || compact
+        VStack(spacing: 0) {
+            TimelineView(.animation(paused: Self.frozen)) { context in
+                let t = Self.frozen ? 0 : context.date.timeIntervalSince(start)
+                Canvas { ctx, _ in
+                    ctx.scaleBy(x: scale, y: scale)
+                    Self.drawStage(&ctx, clock: SproutClock(t: t, frozen: Self.frozen), showPlus: onAdd != nil)
+                }
+            }
+            .frame(width: 230 * scale, height: 136 * scale)
+            .contentShape(Rectangle())
+            .onTapGesture { onAdd?() }
+            .accessibilityHidden(true)
+
+            Text(title.wpKeepAll)
+                .wpTypography(17, .bold)
+                .foregroundStyle(WPColor.fgNeutral)
+                .multilineTextAlignment(.center)
+                .padding(.top, 16)
+                .accessibilityLabel(title)
+
+            if let onAdd {
+                Button(action: onAdd) {
+                    HStack(spacing: 6) {
+                        WPLucideIcon(paths: ["M5 12h14", "M12 5v14"], size: 16, color: .white, strokeWidth: 3)
+                        Text("플랜 추가하기")
+                            .wpTypography(14.5, .bold)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 11)
+                    .frame(minHeight: 44)
+                    .background(WPColor.primary, in: Capsule())
+                    .background {
+                        // 버튼 뒤로 퍼지는 물결 — 자리를 차지하지 않게 그림자처럼 바깥에 그린다
+                        if !Self.frozen {
+                            TimelineView(.animation) { context in
+                                let p = Self.easeOut(context.date.timeIntervalSince(start).truncatingRemainder(dividingBy: 2.2) / 2.2)
+                                let fade = min(1, max(0, 1 - p / 0.7))
+                                Capsule()
+                                    .fill(WPColor.primary.opacity(0.32 * fade))
+                                    .scaleEffect(x: 1 + 0.22 * p, y: 1 + 0.5 * p)
+                            }
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 18)
+                .accessibilityIdentifier("main.sproutAdd")
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.top, tight ? 4 : 12)
+        .padding(.bottom, tight ? 16 : 40)
+    }
+
+    /// 움직이는 값 — 안드로이드 `rememberInfiniteTransition` 의 네 박자와 한 번의 자람
+    private struct SproutClock {
+        var grow: CGFloat
+        var sway: CGFloat
+        var bob: CGFloat
+        var sparks: CGFloat
+
+        init(t: TimeInterval, frozen: Bool) {
+            guard !frozen else {
+                grow = 1; sway = 0; bob = 0.5; sparks = -1
+                return
+            }
+            grow = CGFloat(min(1, t / 1.1))
+            sway = -3 + 6 * Self.pingPong(t, period: 1.6)
+            bob = Self.pingPong(t, period: 1.2)
+            sparks = CGFloat((t / 3.2).truncatingRemainder(dividingBy: 1))
+        }
+
+        /// `tween(FastOutSlowIn)` + `RepeatMode.Reverse` — 0→1→0
+        private static func pingPong(_ t: TimeInterval, period: Double) -> CGFloat {
+            let phase = t / period
+            let frac = phase.truncatingRemainder(dividingBy: 1)
+            let eased = 0.5 - 0.5 * cos(Double.pi * frac)
+            return CGFloat(Int(phase) % 2 == 0 ? eased : 1 - eased)
+        }
+    }
+
+    private static func easeOut(_ x: Double) -> Double {
+        let t = 1 - min(1, max(0, x))
+        return 1 - t * t * t
+    }
+
+    /// easeOutBack — 잎이 살짝 넘쳤다가 자리를 잡는다
+    private static func overshoot(_ x: CGFloat) -> CGFloat {
+        let t = min(1, max(0, x)) - 1
+        return 1 + 2.70158 * t * t * t + 1.70158 * t * t
+    }
+
+    private static func leafPath(mirror: Bool) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: mirror ? 64 - x : x, y: y) }
+        var path = Path()
+        path.move(to: p(32, 40))
+        path.addCurve(to: p(10, 22), control1: p(22, 40), control2: p(10, 33))
+        path.addCurve(to: p(21, 14), control1: p(10, 15), control2: p(16, 12))
+        path.addCurve(to: p(32, 40), control1: p(27, 16), control2: p(32, 26))
+        path.closeSubpath()
+        return path
+    }
+
+    private static func drawStage(_ ctx: inout GraphicsContext, clock: SproutClock, showPlus: Bool) {
+        let cardLeft: CGFloat = 10, cardTop: CGFloat = 72, cardW: CGFloat = 210, cardH: CGFloat = 64
+        let centerX = cardLeft + cardW / 2
+
+        // 잎 빛 점 — 3.2초마다 세 개가 차례로 올라가며 사라진다
+        if clock.sparks >= 0 {
+            for (x, delay, r) in [(centerX - 31, 0.41, 3.0), (centerX + 23, 0.66, 2.5), (centerX - 5, 0.91, 2.0)] as [(CGFloat, CGFloat, CGFloat)] {
+                let t = (clock.sparks - delay + 1).truncatingRemainder(dividingBy: 1)
+                if t > 0.6 { continue }
+                let k = t / 0.6
+                let alpha = k < 0.15 ? k / 0.15 * 0.9 : 0.9 * (1 - (k - 0.15) / 0.85)
+                let radius = r * (0.6 + 0.4 * k)
+                let center = CGPoint(x: x, y: 40 - 46 * k)
+                ctx.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)),
+                         with: .color(HomeColor.sproutLeafLight.opacity(alpha)))
+            }
+        }
+
+        // 새싹 — 줄기가 자라고(0~0.55) 잎이 차례로 핀다(왼 0.45~0.85, 오른 0.6~1). 다 자란 뒤로 살랑인다
+        var sprout = ctx
+        sprout.translateBy(x: centerX - 32, y: cardTop + 6 - 76)
+        let swayDeg = clock.sway * CGFloat(easeOut(Double((clock.grow - 0.85) / 0.15)))
+        sprout.translateBy(x: 32, y: 76)
+        sprout.rotate(by: .degrees(Double(swayDeg)))
+        sprout.translateBy(x: -32, y: -76)
+
+        let stem = CGFloat(easeOut(Double(clock.grow / 0.55)))
+        if stem > 0 {
+            var stemCtx = sprout
+            stemCtx.translateBy(x: 32, y: 76)
+            stemCtx.scaleBy(x: 1, y: stem)
+            stemCtx.translateBy(x: -32, y: -76)
+            var path = Path()
+            path.move(to: CGPoint(x: 32, y: 76))
+            path.addCurve(to: CGPoint(x: 32, y: 40), control1: CGPoint(x: 32, y: 64), control2: CGPoint(x: 31, y: 52))
+            stemCtx.stroke(path, with: .color(HomeColor.sproutStem), style: StrokeStyle(lineWidth: 3.2, lineCap: .round))
+        }
+        let left = clock.grow > 0.45 ? overshoot((clock.grow - 0.45) / 0.4) : 0
+        let right = clock.grow > 0.6 ? overshoot((clock.grow - 0.6) / 0.4) : 0
+        for (amount, mirror, color) in [(left, false, WPColor.primary), (right, true, HomeColor.sproutLeafLight)] where amount > 0 {
+            var leaf = sprout
+            leaf.translateBy(x: 32, y: 40)
+            leaf.scaleBy(x: amount, y: amount)
+            leaf.translateBy(x: -32, y: -40)
+            leaf.fill(leafPath(mirror: mirror), with: .color(color))
+        }
+
+        // 빈 카드 — 점선 테두리 · 동그라미 · 막대 둘(이번 달 할 일 카드의 자리)
+        let card = Path(roundedRect: CGRect(x: cardLeft, y: cardTop, width: cardW, height: cardH), cornerRadius: 16)
+        ctx.fill(card, with: .color(WPColor.fill))
+        ctx.stroke(card, with: .color(HomeColor.ghostLine), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+        ctx.stroke(Path(ellipseIn: CGRect(x: cardLeft + 23 - 9, y: cardTop + cardH / 2 - 9, width: 18, height: 18)),
+                   with: .color(HomeColor.ghostMark), lineWidth: 1.5)
+        let barLeft = cardLeft + 42, barW = cardW - 42 - 18
+        ctx.fill(Path(roundedRect: CGRect(x: barLeft, y: cardTop + 21, width: barW, height: 8), cornerRadius: 4), with: .color(HomeColor.ghostBar))
+        ctx.fill(Path(roundedRect: CGRect(x: barLeft, y: cardTop + 36, width: barW * 0.55, height: 8), cornerRadius: 4), with: .color(HomeColor.ghostBar))
+
+        // `+` 단추 — 카드 오른쪽 위에 걸쳐 떠오른다. 누를 곳이 없으면(읽기 전용) 그리지 않는다
+        guard showPlus else { return }
+        let plus = CGPoint(x: cardLeft + cardW - 4, y: cardTop + 4 - 4 * clock.bob)
+        ctx.fill(Path(ellipseIn: CGRect(x: plus.x - 13, y: plus.y - 13, width: 26, height: 26)), with: .color(WPColor.primary))
+        var cross = Path()
+        cross.move(to: CGPoint(x: plus.x - 5, y: plus.y)); cross.addLine(to: CGPoint(x: plus.x + 5, y: plus.y))
+        cross.move(to: CGPoint(x: plus.x, y: plus.y - 5)); cross.addLine(to: CGPoint(x: plus.x, y: plus.y + 5))
+        ctx.stroke(cross, with: .color(.white), style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
     }
 }

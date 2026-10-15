@@ -52,7 +52,7 @@ final class InvitationAdsUITests: XCTestCase {
         scroll(app, to: app.otherElements["ad.brag.1"])
         capture(app, "ads-brag")
         app.buttons["tab.schedule"].tap()
-        XCTAssertTrue(app.buttons["calendar.export"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["calendar.add"].waitForExistence(timeout: 5))
         scroll(app, to: app.descendants(matching: .any)["ad.calendar"].firstMatch)
         capture(app, "ads-calendar")
     }
@@ -96,7 +96,7 @@ final class InvitationAdsUITests: XCTestCase {
         XCTAssertTrue(ad.waitForExistence(timeout: 60))
         scroll(app, to: ad); app.swipeUp(); capture(app, "google-test-native")
         app.buttons["tab.schedule"].tap()
-        XCTAssertTrue(app.buttons["calendar.export"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["calendar.add"].waitForExistence(timeout: 5))
         let banner = app.descendants(matching: .any)["ad.calendar"].firstMatch
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["광고"].firstMatch.waitForExistence(timeout: 45))

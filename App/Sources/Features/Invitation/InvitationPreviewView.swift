@@ -12,6 +12,13 @@ struct InvitationPreviewView: View {
     var motionEnabled = true
     var onCoverPhoto: (() -> Void)? = nil
     var onAddPhotos: (() -> Void)? = nil
+    /// 편집기 전용 — 꺼 둔 칸 칩(안드로이드 `HiddenSections`)을 누르면 켜고 그 칸을 엽니다
+    var onTurnOn: ((String) -> Void)? = nil
+    /// 편집기 전용 — 아래 패널·단추 높이만큼 비워 마지막 칸도 패널 위로 올라오게(안드로이드 `bottomSpace + 24`)
+    var bottomSpace: CGFloat = 0
+    /// 머리 제목·안내 — 안드로이드 `GuestPreview(title, notice)`
+    var title = "하객이 보는 화면"
+    var notice: String? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var started: Date? = nil
     @State private var replayID = 0
@@ -24,14 +31,19 @@ struct InvitationPreviewView: View {
     var body: some View {
         VStack(spacing: 0) {
             if !embedded {
-                HStack {
-                    Button { dismiss() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("미리보기 닫기")
-                    Spacer()
-                    Text("하객이 보는 화면").font(.custom("KakaoSmallSans-Bold", size: 14))
-                    Spacer()
-                    Button { replayID += 1 } label: { Label("처음부터", systemImage: "arrow.counterclockwise").font(.custom("KakaoSmallSans-Bold", size: 12)) }.frame(minHeight: 44).accessibilityIdentifier("invitation.replay")
-                }.padding(.horizontal, 12).frame(height: 56).foregroundStyle(forest).background(Color(hex: 0xFFFDF9))
-                Divider()
+                // 안드로이드 `GuestPreview` 머리 — x 20 ink · 제목 14 bold forest · 처음부터(초록, 돌림 14)
+                HStack(spacing: 0) {
+                    Button { dismiss() } label: { InvIconView(InvIcon.x, size: 20, color: WPColor.invInk).frame(width: 44, height: 44).contentShape(Circle()) }.accessibilityLabel("미리보기 닫기")
+                    VStack(spacing: 0) {
+                        Text(title).font(.custom("KakaoSmallSans-Bold", size: 14)).foregroundStyle(WPColor.invForest)
+                        if let notice { Text(notice).font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(WPColor.invMuted) }
+                    }.multilineTextAlignment(.center).frame(maxWidth: .infinity)
+                    Button { replayID += 1 } label: {
+                        HStack(spacing: 4) { InvIconView(InvIcon.rotateCcw, size: 14, color: WPColor.invAccent); Text("처음부터").font(.custom("KakaoSmallSans-Bold", size: 12)) }
+                            .foregroundStyle(WPColor.invAccent).padding(.horizontal, 10).frame(minHeight: 44).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityIdentifier("invitation.replay")
+                }.padding(.horizontal, 6).frame(minHeight: 56).background(WPColor.invWhite)
+                WPColor.invLine.frame(height: 1)
             }
             GeometryReader { geometry in
                 ScrollViewReader { proxy in
@@ -44,6 +56,7 @@ struct InvitationPreviewView: View {
                                 sectionView(section.type).modifier(InvitationEditSelection(enabled: embedded, selected: selectedSection == section.type)).id(section.type).contentShape(Rectangle()).onTapGesture { onSelect?(section.type) }
                             }
                             footer
+                            if embedded { hiddenSections; Color.clear.frame(height: bottomSpace + 24) }
                         }.foregroundStyle(palette.ink)
                     }.background(paper)
                         .onChange(of: selectedSection) { _, value in
@@ -61,6 +74,25 @@ struct InvitationPreviewView: View {
                 photoViewer
             }
     }
+    /// 안드로이드 `HiddenSections` — "꺼 둔 칸 — 누르면 켜고 바로 고쳐요" + `+ 칸 이름` 알약
+    @ViewBuilder private var hiddenSections: some View {
+        let hidden = design.sections.filter { !$0.visible }.map(\.type)
+        if !hidden.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("꺼 둔 칸 — 누르면 켜고 바로 고쳐요").font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(WPColor.invMuted)
+                HiddenChipFlow(spacing: 8) {
+                    ForEach(hidden, id: \.self) { type in
+                        let name = InvitationRules.sectionTypes.firstIndex(of: type).map { InvitationRules.sectionLabels[$0] } ?? type
+                        Button { onTurnOn?(type) } label: {
+                            Text("+ \(name)").font(.custom("KakaoSmallSans-Bold", size: 12)).foregroundStyle(WPColor.invAccent).lineLimit(1).fixedSize()
+                                .padding(.horizontal, 14).frame(minHeight: 36)
+                                .background(WPColor.invWhite, in: Capsule()).overlay(Capsule().stroke(WPColor.invLine))
+                        }.buttonStyle(.plain).accessibilityLabel("\(name) 칸 켜기").accessibilityIdentifier("invitation.turnOn.\(type)")
+                    }
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.top, 20).background(WPColor.invPaper)
+        }
+    }
     private func shareNotice() { toast = "저장하고 공개하면 링크로 보낼 수 있어요" }
     private func hasContent(_ type: String) -> Bool {
         switch type {
@@ -75,15 +107,21 @@ struct InvitationPreviewView: View {
     }
     private var footer: some View {
         VStack(spacing: 0) {
-            InvitationFlower().stroke(palette.gold, lineWidth: 1).frame(width: 30, height: 30).frame(maxWidth: .infinity, alignment: .leading)
+            InvitationFlower().stroke(palette.gold, lineWidth: 0.8 * 30 / 24).frame(width: 30, height: 30).frame(maxWidth: .infinity, alignment: .leading)
             Color.clear.frame(height: 24)
             VStack(spacing: 0) {
                 Text("Love grows").font(.custom("NotoSerif", size: 56)).foregroundStyle(palette.ink)
                 Text("with you.").font(.custom("NotoSerif-Italic", size: 56)).foregroundStyle(palette.gold)
             }.tracking(-2).padding(.bottom, 24)
             Text("우리의 시작을 함께해 주셔서 고맙습니다.").wpTypography(11, face: .kakao, lineHeight: 19.8).foregroundStyle(palette.muted).padding(.bottom, 28)
-            Button(action: shareNotice) { Label("청첩장 전하기", systemImage: "square.and.arrow.up").wpTypography(12, face: .kakao, lineHeight: 18).frame(maxWidth: .infinity).frame(height: 48).overlay(Rectangle().stroke(palette.rule)) }.padding(.bottom, 12)
-            Button { replayID += 1 } label: { Label("문 열림 다시 보기", systemImage: "arrow.counterclockwise").wpTypography(10, face: .kakao, lineHeight: 15).frame(minHeight: 44) }.foregroundStyle(palette.muted)
+            Button(action: shareNotice) {
+                HStack(spacing: 8) { InvIconView(InvIcon.share, size: 14, color: palette.ink); Text("청첩장 전하기").wpTypography(12, face: .kakao, lineHeight: 18) }
+                    .frame(maxWidth: .infinity).frame(height: 48).overlay(Rectangle().stroke(palette.rule)).contentShape(Rectangle())
+            }.buttonStyle(.plain).padding(.bottom, 12)
+            Button { replayID += 1 } label: {
+                HStack(spacing: 8) { InvIconView(InvIcon.rotateCcw, size: 12, color: palette.muted); Text("문 열림 다시 보기").wpTypography(10, face: .kakao, lineHeight: 15) }
+                    .padding(8).frame(minHeight: 44).contentShape(Rectangle())
+            }.buttonStyle(.plain).foregroundStyle(palette.muted)
             Rectangle().fill(palette.rule).frame(height: 1).padding(.top, 40).padding(.bottom, 24)
             VStack(spacing: 8) {
                 Text("MADE WITH LOVE").wpTypography(7, face: .kakao, lineHeight: 10.5).tracking(2)
@@ -151,5 +189,29 @@ struct InvitationPreviewView: View {
         VStack(spacing: 24) {
             Text(title).font(.custom("KakaoSmallSans-Bold", size: 24)); content()
         }.wpTypography(15, face: .kakao, lineHeight: 22.5).frame(maxWidth: .infinity).padding(.horizontal, 24).padding(.vertical, 48)
+    }
+}
+
+/// 줄이 넘치면 다음 줄로 — 안드로이드 `FlowRow(spacedBy 8)`.
+private struct HiddenChipFlow: Layout {
+    var spacing: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, row: CGFloat = 0, widest: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > width { y += row + spacing; x = 0; row = 0 }
+            x += size.width + spacing; row = max(row, size.height); widest = max(widest, x - spacing)
+        }
+        return CGSize(width: proposal.width ?? widest, height: y + row)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, row: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > bounds.minX && x + size.width > bounds.maxX { y += row + spacing; x = bounds.minX; row = 0 }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing; row = max(row, size.height)
+        }
     }
 }

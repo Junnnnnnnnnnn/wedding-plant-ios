@@ -18,25 +18,34 @@ struct UserView: View {
     @State private var showDatePicker = false
     @State private var confirmSignOut = false
     @State private var confirmWithdraw = false
+    @State private var coupleOpen = false
+
+    /// 신랑·신부로 귀속됐다 — 날짜·예식장·예산은 방장 플랜을 따르고 여기서는 이름만 고친다(안드로이드와 같음)
+    private var bound: Bool { env.boundRoomId != nil }
+    private var boundOwnerName: String? { bound ? (env.boundRoomPlan?.ownerName.trimmingCharacters(in: .whitespaces) ?? "") : nil }
+    private var shownDate: KstDate { bound ? (env.boundRoomPlan.flatMap { KstDate(dateString: $0.weddingDate) } ?? model.date) : model.date }
 
     var body: some View {
-        ZStack {
-            WPScreenBackground()
-
-            ScrollView {
+        ScrollView {
+            VStack(spacing: 0) {
+                ProfileHeader(name: model.name, date: shownDate, loading: model.loading)
                 if model.loading {
-                    ProgressView()
-                        .tint(WPColor.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 240)
-                } else {
-                    VStack(spacing: 0) {
-                        ProfileHeader(name: model.name, date: model.date)
-                        content.padding(.horizontal, 16).padding(.vertical, 16)
+                    // 받는 동안 폼 모양 그대로 뼈대를 낸다
+                    VStack(alignment: .leading, spacing: 0) {
+                        SkeletonBox(width: 80, height: 22)
+                        ForEach(0..<4, id: \.self) { _ in
+                            SkeletonBox(width: 64, height: 14).padding(.top, 20)
+                            SkeletonBox(height: 48, corner: 12).padding(.top, 8)
+                        }
                     }
+                    .padding(16)
+                } else {
+                    content.padding(16)
                 }
             }
+            .padding(.bottom, 24)
         }
+        .background(WPColor.background)
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load(env: env, guest: guest) }
@@ -44,114 +53,119 @@ struct UserView: View {
             guard model.saved else { return }
             await model.startSavedResetTimer()
         }
+        .sheet(isPresented: $coupleOpen, onDismiss: { Task { await model.load(env: env, guest: guest) } }) { SpouseInviteSheet() }
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // 준비 패스 카드는 **폼 위** — 로그인한 사람에게만(게스트는 붙일 방이 없다)
             if model.loggedIn {
                 UserPassCard(loggedIn: model.loggedIn)
                 Spacer().frame(height: 20)
             }
 
-            SettingsSectionHeader(symbol: "person.fill", label: "기본 정보")
+            Text("정보 수정").tracking(-0.36).wpTypography(18, .bold).foregroundStyle(WPColor.fgNeutral)
             Spacer().frame(height: 16)
 
-            LabeledField(label: "이름") {
-                BareInput(
-                    text: Binding(get: { model.name }, set: { model.setName($0) }),
-                    placeholder: "이름을 적어 주세요"
-                )
-                .accessibilityIdentifier("user.name")
-            }
-
-            Spacer().frame(height: 16)
-
-            if env.boundRoomId == nil {
-                LabeledField(label: "예식장") {
-                    BareInput(text: $model.weddingVenue, placeholder: "예식장을 적어 주세요")
-                }
+            if let owner = boundOwnerName {
+                let who = owner.isEmpty ? "초대한 사람" : owner
+                (Text(who).font(Font(WPTypeface.hak.uiFont(12.5, .bold)))
+                    + Text(" 님과 함께 준비하고 있어요. 결혼식 날짜 · 예식장 · 예산은 ")
+                    + Text(who).font(Font(WPTypeface.hak.uiFont(12.5, .bold)))
+                    + Text(" 님의 플랜을 따라가고, 여기서는 바꿀 수 없어요."))
+                    .wpTypography(12.5, lineHeight: 20)
+                    .foregroundStyle(Color(hex: 0x96296A))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(Color(hex: 0xFFF5FA), in: RoundedRectangle(cornerRadius: 16))
                 Spacer().frame(height: 16)
             }
-            // 칸 자체가 눌린다 — 옆에 있던 보라색 캘린더 버튼은 하는 일이 같았고
-            // **이 앱에 없는 색**이었다.
-            if env.boundRoomId == nil {
+
+            LabeledField(label: "이름") {
+                BareInput(text: Binding(get: { model.name }, set: { model.setName($0) }), placeholder: "이름을 입력해 주세요")
+                    .accessibilityIdentifier("user.name")
+            }
+
+            Spacer().frame(height: 16)
+
+            // 날짜는 칸 자체가 눌린다. 고칠 수 없는 값(귀속)은 같은 자리·크기로 두되 색을 한 단계 낮춘다.
             LabeledField(label: "결혼식 날짜") {
-                Text(model.date.weddingDateText)
-                    .font(WPFont.hak(16, .medium))
-                    .foregroundStyle(WPColor.fgNeutral)
+                Text(shownDate.weddingDateText)
+                    .tracking(-0.16).wpTypography(16)
+                    .foregroundStyle(bound ? WPColor.fgMuted : WPColor.fgNeutral)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
-                    .onTapGesture { showDatePicker.toggle() }
+                    .onTapGesture { if !bound { showDatePicker.toggle() } }
                     .accessibilityIdentifier("user.date")
             }
-
-            if showDatePicker {
+            if showDatePicker && !bound {
                 Spacer().frame(height: 12)
                 // 이미 지난 결혼식 날짜도 그대로 보여줘야 하므로 하한을 두지 않는다.
-                DateWheelPicker(value: $model.date)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                DateWheelPicker(value: $model.date).frame(maxWidth: .infinity, alignment: .center)
             }
 
-            Spacer().frame(height: 28)
+            // 예식장 — 비워 둘 수 있다. 게스트는 저장할 곳이 없어 입력을 내지 않는다.
+            if model.loggedIn {
+                Spacer().frame(height: 16)
+                LabeledField(label: "예식장", labelHint: bound ? nil : "(선택)") {
+                    if bound {
+                        ReadOnlyValue(text: model.weddingVenue.isEmpty ? "아직 안 정했어요" : model.weddingVenue)
+                    } else {
+                        BareInput(text: $model.weddingVenue, placeholder: "아직 안 정했어요")
+                    }
+                }
+            }
 
-            SettingsSectionHeader(symbol: "wallet.pass.fill", label: "예산 설정")
             Spacer().frame(height: 16)
 
             LabeledField(label: "예산", unit: "만 원") {
-                BareInput(
-                    text: Binding(get: { model.budget }, set: { model.setBudget($0) }),
-                    // **값이 0 이라는 사실은 칸을 비우고 placeholder 가 말한다.**
-                    placeholder: "0",
-                    numeric: true
-                )
-                .accessibilityIdentifier("user.budget")
+                if bound {
+                    ReadOnlyValue(text: wpThousands(env.boundRoomPlan?.budget ?? (Double(model.budget) ?? 0)), tmoney: true)
+                } else {
+                    BareInput(
+                        text: Binding(get: { model.budget }, set: { model.setBudget($0) }),
+                        // **값이 0 이라는 사실은 칸을 비우고 placeholder 가 말한다.**
+                        placeholder: "0",
+                        numeric: true,
+                        tmoney: true
+                    )
+                    .accessibilityIdentifier("user.budget")
+                }
             }
-
-            }
-
-            Spacer().frame(height: 24)
 
             if let message = model.errorMessage {
-                InfoBanner(message: message, actionLabel: "닫기") {
-                    model.errorMessage = nil
-                }
-                Spacer().frame(height: 12)
+                Spacer().frame(height: 16)
+                Text(message).wpTypography(13, .bold).foregroundStyle(Self.withdrawRed)
+                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(Self.withdrawRed.opacity(0.07), in: RoundedRectangle(cornerRadius: 16))
+                    .onTapGesture { model.errorMessage = nil }
             }
+
+            Spacer().frame(height: 20)
 
             SaveButton(saved: model.saved, saving: model.saving) {
                 Task { await model.save(env: env, guest: guest) }
             }
 
-            Spacer().frame(height: 18)
-
-            // 문의하기 · 개인정보처리방침.
-            //
-            // 방침은 **로그인 여부와 상관없이 항상** 보여야 한다 — 앱 안에 접근
-            // 경로가 있는지를 심사에서 본다. 문의는 쓰다가 막힌 사람이 닿는
-            // 유일한 자리다. 모양과 문구는 `SupportLinks` 에 있고 웹·안드로이드와
-            // 같은 시안(B안)이다.
-            NavigationLink("차단 관리") { BlockListView() }.font(WPFont.hak(14)).padding(.vertical, 14)
-            NavigationLink("결제일 알림 설정") { ReminderSettingsView() }.font(WPFont.hak(14)).padding(.vertical, 14)
-            AdPrivacyOptionsRow()
-            SupportLinks()
+            Spacer().frame(height: 16)
+            SupportLinks(onOpenCouple: model.loggedIn ? { coupleOpen = true } : nil)
 
             Spacer().frame(height: 16)
+            Rectangle().fill(WPColor.strokeSubtle).frame(height: 1)
+            Spacer().frame(height: 20)
 
             if model.loggedIn {
                 // 한 번에 하나만 묻는다. 로그아웃을 확인하는 중에는 탈퇴 줄이,
                 // 탈퇴를 확인하는 중에는 로그아웃 버튼이 사라진다 (웹·안드로이드와 동일).
                 if confirmWithdraw {
-                    WithdrawConfirm(
-                        withdrawing: model.withdrawing,
-                        error: model.withdrawError
-                    ) {
+                    WithdrawConfirm(withdrawing: model.withdrawing, error: model.withdrawError) {
                         confirmWithdraw = false
                         model.withdrawError = nil
                     } onConfirm: {
                         Task {
                             let ok = await model.withdraw(env: env, push: push, guest: guest)
                             // 성공하면 로그인 화면으로 돌아가 이 화면이 사라진다.
-                            // 실패했을 때만 확인 상태를 유지해 다시 시도하게 둔다.
                             if ok { confirmWithdraw = false }
                         }
                     }
@@ -162,34 +176,27 @@ struct UserView: View {
                         confirmSignOut = false
                         Task {
                             // 기기 토큰 해제는 **JWT 를 지우기 전에**.
-                            // DELETE /plan/user/device-token 은 Authorization 이 필요하다.
-                            // 안 하면 로그아웃해도 그 기기로 알림이 계속 간다.
                             await push.unregisterBeforeSignOut(env: env)
                             await env.signOut()
                             guest.clear()
                         }
                     }
                 } else {
-                    SoftActionButton(label: "로그아웃", symbol: "rectangle.portrait.and.arrow.right") {
-                        confirmSignOut = true
-                    }
-                    .accessibilityIdentifier("user.signOut")
-
+                    OutlineDangerButton(label: "로그아웃", paths: WPIconPaths.logout) { confirmSignOut = true }
+                        .accessibilityIdentifier("user.signOut")
+                    Spacer().frame(height: 12)
+                    Rectangle().fill(Color(hex: 0xF4EFF2)).frame(height: 1)
                     Spacer().frame(height: 8)
-
                     // 위험한 동작일수록 눈에 덜 띄어야 실수로 눌리지 않는다.
-                    // 로그아웃 버튼 아래 조용한 줄로 둔다 (웹·안드로이드와 동일).
-                    Button("회원 탈퇴") { confirmWithdraw = true }
-                        .font(WPFont.hak(12, .regular))
-                        .underline()
-                        .foregroundStyle(WPColor.gray400)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(8)
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("user.withdraw")
+                    Button { confirmWithdraw = true } label: {
+                        Text("회원 탈퇴").wpTypography(12).underline().foregroundStyle(WPColor.gray400).padding(8)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("user.withdraw")
                 }
             } else {
-                SoftActionButton(label: "카카오로 로그인", symbol: "person.fill") {
+                OutlineDangerButton(label: "카카오로 로그인", paths: WPIconPaths.personFilled, tint: WPColor.primary) {
                     env.isAuthenticated = false
                 }
             }
@@ -197,30 +204,45 @@ struct UserView: View {
             Spacer().frame(height: 40)
         }
     }
+
+    /// 웹 `#c0203c` — 삭제 위험을 뜻하는 붉은색. 브랜드 핑크와 섞이면 안 된다.
+    static let withdrawRed = Color(hex: 0xC0203C)
 }
 
 // MARK: - 프로필 헤더
 
-/// Android ProfileHead: full-width brand header, initial avatar and wedding-day sentence.
+/// 안드로이드 `ProfileHead` — 뒤로(32) · 44 이니셜 원 + 이름 20 + "결혼식까지 N일".
 private struct ProfileHeader: View {
     var name: String
     var date: KstDate
+    var loading: Bool
     @Environment(\.dismiss) private var dismiss
     private var subtitle: String {
         let days = KstDate.today().days(until: date)
         return days > 0 ? "결혼식까지 \(days)일" : days == 0 ? "오늘이 결혼식이에요" : "결혼식이 \(-days)일 지났어요"
     }
     var body: some View {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
         BrandHead(corner: 24, horizontal: 24, top: 20, bottom: 20) {
-            HStack(spacing: 12) {
-                HeadIconButton(systemName: "arrow.left", label: "뒤로가기", size: 32) { dismiss() }
-                Text(String(name.trimmingCharacters(in: .whitespaces).prefix(1)).isEmpty ? "?" : String(name.prefix(1)))
-                    .font(WPFont.hak(18, .black)).foregroundStyle(.white).frame(width: 44, height: 44)
+            HStack(spacing: 0) {
+                Button { dismiss() } label: {
+                    WPMaterialPathIcon(paths: WPIconPaths.arrowBack, size: 20, color: .white)
+                        .frame(width: 32, height: 32).contentShape(Circle())
+                }
+                .buttonStyle(.plain).accessibilityLabel("뒤로가기").padding(.trailing, 8)
+                Text(trimmed.isEmpty ? "?" : String(trimmed.prefix(1)).uppercased())
+                    .wpTypography(18, .black).foregroundStyle(.white).frame(width: 44, height: 44)
                     .background(.white.opacity(0.2), in: Circle()).overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 2))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(name.isEmpty ? "프로필" : name).font(WPFont.hak(20, .bold)).tracking(-0.4).lineLimit(1)
-                    Text(subtitle).font(WPFont.hak(12.5)).foregroundStyle(.white.opacity(0.8))
-                }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .leading)
+                    if loading {
+                        SkeletonBox(width: 96, height: 22, onBrand: true)
+                        SkeletonBox(width: 112, height: 14, onBrand: true).padding(.top, 2)
+                    } else {
+                        Text(trimmed.isEmpty ? "프로필" : trimmed).tracking(-0.4).wpTypography(20, .bold).lineLimit(1)
+                        Text(subtitle).wpTypography(12.5).foregroundStyle(.white.opacity(0.8))
+                    }
+                }
+                .foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 12)
             }
         }
     }
@@ -228,95 +250,63 @@ private struct ProfileHeader: View {
 
 // MARK: - 조각들
 
-/// 웹: `text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]` + 12px 아이콘
-/// `/user` 안의 아이콘 + 라벨 줄.
-///
-/// DesignSystem 의 공용 ``SectionHeader``(C안 묶음 머리글)와는 **다른 것**이라
-/// 이름을 나눈다. 파일 private 이어도 Swift 는 모듈 범위에서 재선언으로 잡는다.
-private struct SettingsSectionHeader: View {
-    var symbol: String
-    var label: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: symbol)
-                .font(.system(size: 11))
-                .foregroundStyle(WPColor.gray400)
-            Text(label)
-                .font(WPFont.hak(11, .black))
-                .tracking(2.2) // tracking-[0.2em]
-                .foregroundStyle(WPColor.gray400)
-        }
-        .padding(.horizontal, 8)
-    }
-}
-
-/// 웹 입력창: `h-16 pl-14 pr-6 bg-white border border-[#ee2b8c0a] rounded-3xl shadow-sm`.
-///
-/// 아이콘은 라벨이 아니라 **입력창 안쪽 왼쪽 20pt** 에 놓인다.
-/// 라벨을 **항상 띄우는** 입력 상자.
-///
-/// 예전에는 placeholder 뿐이라 값을 넣는 순간 무슨 칸인지 사라졌다 — 화면에
-/// `4200`, `2026-11-14` 만 남고 그게 예산인지 날짜인지 알 길이 없었다.
-/// **placeholder 만 있는 칸을 다시 만들지 말 것.**
-///
-/// 폰(시안 C안 09)은 라벨을 상자 **밖 위**로 올리고 상자에는 값만 둔다.
-/// **아이콘도 넣지 않는다** — 라벨이 이미 밖에 있어 같은 말을 두 번 하는 셈이다.
-/// (넓은 화면은 라벨을 상자 안에 넣고 아이콘을 내지만, 그 레이아웃은 앱에 옮기지
-/// 않는다.)
+/// 라벨을 **항상 띄우는** 입력 상자 — 라벨은 상자 **밖 위**, 상자에는 값만(회색 채움). 안드로이드 `Field`.
+/// placeholder 만 있는 칸을 다시 만들지 말 것(값을 넣는 순간 무슨 칸인지 사라진다).
 private struct LabeledField<Content: View>: View {
     var label: String
+    var labelHint: String?
     /// 값 옆에 붙는 단위 ("만 원"). 상자 안 오른쪽 끝이다.
     var unit: String?
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(WPFont.hak(13, .bold))
-                .foregroundStyle(WPColor.fgMuted)
-
+            HStack(alignment: .bottom, spacing: 4) {
+                Text(label).wpTypography(13, .bold).foregroundStyle(WPColor.fgMuted)
+                if let labelHint { Text(labelHint).wpTypography(13, .bold).foregroundStyle(WPColor.gray300) }
+            }
             HStack(spacing: 8) {
-                content
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let unit {
-                    Text(unit)
-                        .font(WPFont.hak(14))
-                        .foregroundStyle(WPColor.fgMuted)
-                }
+                content.frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                if let unit { Text(unit).wpTypography(14).foregroundStyle(WPColor.fgMuted) }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            // SEED 채움 필드 — 테두리 대신 회색 바탕으로 입력 칸임을 알린다.
-            .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 }
 
-/// 배경·테두리 없이 글자만 그리는 입력 — 바깥 `IconField` 가 껍데기를 맡는다.
+/// 배경·테두리 없이 글자만 그리는 입력 — 바깥 `LabeledField` 가 껍데기를 맡는다.
 private struct BareInput: View {
     @Binding var text: String
     var placeholder: String
     var numeric: Bool = false
+    /// 사용자 값(예산)은 Tmoney — 안드로이드 `fontFamily = Tmoney`
+    var tmoney: Bool = false
 
     var body: some View {
-        TextField("", text: $text, prompt: promptText)
-            .font(WPFont.hak(16, .medium))
+        let face: WPTypeface = tmoney ? .tmoney : .hak
+        TextField("", text: $text, prompt: Text(placeholder).font(Font(face.uiFont(16, .regular))).foregroundColor(Color(hex: 0xB0B4BB)))
+            .font(Font(face.uiFont(16, .regular)))
+            .tracking(-0.16)
             .foregroundStyle(WPColor.fgNeutral)
-            .keyboardType(numeric ? .decimalPad : .default)
+            .keyboardType(numeric ? .numberPad : .default)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .tint(WPColor.primary)
     }
+}
 
-    private var promptText: Text {
-        Text(placeholder)
-            .font(WPFont.hak(16))
-            .foregroundColor(Color(hex: 0xB0B4BB))
+/// 고칠 수 없는 값(귀속된 사람) — 같은 자리·크기, 색만 한 단계 낮춘다.
+private struct ReadOnlyValue: View {
+    var text: String
+    var tmoney = false
+    var body: some View {
+        Text(text).tracking(-0.16).wpTypography(16, face: tmoney ? .tmoney : .hak).foregroundStyle(WPColor.fgMuted)
     }
 }
 
-/// 저장 성공 시 2초간 초록 + 체크 (웹과 동일)
+/// 웹 `h-14 rounded-2xl bg-[#ee2b8c] text-[15px] font-bold` — 저장 성공 시 2초간 초록 + 체크
 private struct SaveButton: View {
     var saved: Bool
     var saving: Bool
@@ -324,77 +314,44 @@ private struct SaveButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                if saved {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                Text(label)
-                    .font(WPFont.hak(18, .black))
-                    .foregroundStyle(.white)
+            HStack(spacing: 8) {
+                if saved { WPMaterialPathIcon(paths: WPIconPaths.check, size: 20, color: .white) }
+                Text(saved ? "저장되었어요" : saving ? "저장 중..." : "저장").wpTypography(15, .bold).foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 64)
-            .background(background, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .frame(height: 56)
+            .background(saved ? Color(hex: 0x22C55E) : saving ? WPColor.primary.opacity(0.7) : WPColor.primary,
+                        in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
         .disabled(saved || saving)
         .accessibilityIdentifier("user.save")
     }
-
-    private var label: String {
-        if saved { return "저장되었어요" }
-        if saving { return "저장 중..." }
-        // **`저장` 이다.** 예전에는 검정 배경에 `프로필 수정` 이라, 이미 프로필
-        // 수정 화면인데 무엇이 일어날지 애매했다.
-        return "저장"
-    }
-
-    private var background: Color {
-        if saved { return Color(hex: 0x22C55E) }
-        // **앱 primary 다.** 예전에는 검정 배경이었는데 이 앱의 주 버튼 색이
-        // 아니었다 — 무엇이 주 동작인지 화면에서 읽히지 않았다.
-        if saving { return WPColor.primary.opacity(0.7) }
-        return WPColor.primary
-    }
 }
 
-/// 웹: `bg-[#ee2b8c08] border border-[#ee2b8c11]` 연한 알약 버튼
-private struct SoftActionButton: View {
+/// 웹 `h-11 rounded-xl border border-[#e5484d33] bg-white text-[13px] font-bold text-[#c0203c]`
+private struct OutlineDangerButton: View {
     var label: String
-    var symbol: String
+    var paths: [String]
+    var tint: Color = UserView.withdrawRed
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 14))
-                Text(label)
-                    .font(WPFont.hak(14, .bold))
+            HStack(spacing: 6) {
+                WPMaterialPathIcon(paths: paths, size: 16, color: tint)
+                Text(label).wpTypography(13, .bold).foregroundStyle(tint)
             }
-            .foregroundStyle(WPColor.primary.opacity(0.73))
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(
-                WPColor.primary.opacity(0.03),
-                in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(WPColor.primary.opacity(0.07), lineWidth: 1)
-            )
+            .frame(height: 44)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(tint.opacity(0.2), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 }
 
-/// 회원 탈퇴 확인.
-///
-/// 탈퇴는 되돌릴 수 없다. "정말요?" 만 묻는 확인은 사용자가 답을 모르는 질문이라,
-/// 무엇이 사라지고 무엇이 남는지 먼저 적는다. 후기가 남는 것도 여기서 밝힌다 —
-/// 나중에 알게 되면 속았다고 느낀다. (웹·안드로이드와 같은 문구)
+/// 회원 탈퇴 확인 — 무엇이 사라지고 무엇이 남는지 먼저 적는다 (웹·안드로이드와 같은 문구).
 private struct WithdrawConfirm: View {
     var withdrawing: Bool
     var error: String?
@@ -408,117 +365,73 @@ private struct WithdrawConfirm: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("정말 탈퇴하시겠어요?")
-                .font(WPFont.hak(14, .bold))
-                .foregroundStyle(WPColor.textPrimary)
-
-            VStack(alignment: .leading, spacing: 5) {
-                ForEach(lines, id: \.self) { line in
-                    Text(line)
-                        .font(WPFont.hak(12.5, .regular))
-                        .lineSpacing(6)
-                        .foregroundStyle(WPColor.gray500)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            Text("정말 탈퇴하시겠어요?").wpTypography(14, .bold).foregroundStyle(WPColor.textPrimary)
+            Spacer().frame(height: 10)
+            ForEach(lines, id: \.self) { line in
+                Text(line).wpTypography(12.5, lineHeight: 19).foregroundStyle(WPColor.gray500).padding(.bottom, 5)
             }
-
             if let error {
-                Text(error)
-                    .font(WPFont.hak(12.5, .regular))
-                    .foregroundStyle(WPColor.danger)
+                Text(error).wpTypography(12.5, lineHeight: 19).foregroundStyle(WPColor.danger).padding(.top, 4)
             }
-
             HStack(spacing: 8) {
                 Button(action: onCancel) {
-                    Text("취소")
-                        .font(WPFont.hak(14, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(WPColor.stone200, lineWidth: 1)
-                        )
+                    Text("취소").wpTypography(13, .bold).foregroundStyle(WPColor.textPrimary)
+                        .frame(maxWidth: .infinity).frame(height: 44)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(WPColor.stone200, lineWidth: 1))
+                        .opacity(withdrawing ? 0.5 : 1)
                 }
-                .buttonStyle(.plain)
-                .disabled(withdrawing)
-
+                .buttonStyle(.plain).allowsHitTesting(!withdrawing)
                 Button(action: onConfirm) {
-                    Text(withdrawing ? "탈퇴 중..." : "탈퇴하기")
-                        .font(WPFont.hak(14, .bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(WPColor.danger, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    Text(withdrawing ? "탈퇴 중..." : "탈퇴하기").wpTypography(13, .bold).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).frame(height: 44)
+                        .background(UserView.withdrawRed, in: RoundedRectangle(cornerRadius: 12))
+                        .opacity(withdrawing ? 0.6 : 1)
                 }
-                .buttonStyle(.plain)
-                .disabled(withdrawing)
+                .buttonStyle(.plain).allowsHitTesting(!withdrawing)
                 .accessibilityIdentifier("user.withdrawConfirm")
             }
-            .opacity(withdrawing ? 0.6 : 1)
+            .padding(.top, 14)
         }
         .padding(16)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(WPColor.stone200, lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(WPColor.stone200, lineWidth: 1))
     }
 }
 
-/// 로그아웃 확인.
+/// 로그아웃 확인. 이 버튼은 로그인한 사람에게만 보여 "기기의 플랜이 지워진다" 고 쓰지 않는다(안드로이드와 같은 문구).
 private struct SignOutConfirm: View {
     var onCancel: () -> Void
     var onConfirm: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            // 웹은 "이 기기에 저장된 플랜 정보가 지워집니다" 라고 안내하지만, 이 버튼은
-            // **로그인한 사용자에게만** 보인다. 그 사람의 플랜은 서버에 있어 지워지지 않는데도
-            // 삭제되는 것처럼 읽혀 오해를 부른다. 실제로 지워지는 건 이 기기의 로그인 정보뿐이라
-            // 안드로이드와 같은 문구를 쓴다.
-            Text("로그아웃해도 플랜은 그대로 남아 있어요.\n다시 로그인하면 이어서 볼 수 있습니다.")
-                .font(WPFont.hak(14, .bold))
-                .lineSpacing(6)
+            Text("로그아웃해도 플랜은 그대로 남아 있어요.\n다시 로그인하면 이어서 볼 수 있습니다.".wpKeepAll)
+                .wpTypography(14, .bold, lineHeight: 20)
                 .foregroundStyle(WPColor.textPrimary)
                 .multilineTextAlignment(.center)
-
             HStack(spacing: 8) {
                 Button(action: onCancel) {
-                    Text("취소")
-                        .font(WPFont.hak(14, .bold))
-                        .foregroundStyle(WPColor.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(WPColor.gray200, lineWidth: 1)
-                        )
+                    Text("취소").wpTypography(14, .bold).foregroundStyle(WPColor.textPrimary)
+                        .frame(maxWidth: .infinity).frame(height: 48)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(WPColor.gray200, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-
                 Button(action: onConfirm) {
-                    Text("로그아웃")
-                        .font(WPFont.hak(14, .bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Text("로그아웃").wpTypography(14, .bold).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).frame(height: 48)
+                        .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 16))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("user.signOutConfirm")
             }
         }
         .padding(16)
-        .background(
-            WPColor.primary.opacity(0.03),
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(WPColor.primary.opacity(0.13), lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity)
+        .background(WPColor.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(WPColor.primary.opacity(0.13), lineWidth: 1))
     }
 }

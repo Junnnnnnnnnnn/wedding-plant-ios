@@ -67,6 +67,8 @@ struct BrandHead<Content: View>: View {
                     .clipShape(.rect(bottomLeadingRadius: corner, bottomTrailingRadius: corner, style: .circular))
             }
         }
+        // 분홍 면 위의 상태바는 흰 아이콘(안드로이드 `StatusBarIcons(dark = false)`)
+        .wpLightStatusBar()
     }
 }
 
@@ -127,6 +129,8 @@ struct SectionHeader: View {
     var titleSize: CGFloat = 18
     var actionLabel: String?
     var onAction: (() -> Void)?
+    /// UI 테스트가 오른쪽 글자 버튼을 찾는 이름. 같은 `추가` 가 화면마다 있어 글자로는 못 가른다.
+    var actionIdentifier: String? = nil
 
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 8) {
@@ -151,6 +155,7 @@ struct SectionHeader: View {
                         .padding(2)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(actionIdentifier ?? "")
             }
         }
         .frame(maxWidth: .infinity)
@@ -303,5 +308,87 @@ struct PassMemberBackground: View {
                         .offset(x: 73.5, y: 46.5)
                 }.clipped()
         }
+    }
+}
+
+// MARK: - 상태바 아이콘 색 (안드로이드 `BrandStatusBar` · `StatusBarIcons`)
+
+/// 분홍 머리 면 위에서는 **흰** 상태바 아이콘, 면이 지나가 흰 띠가 깔리면 **어두운** 아이콘.
+///
+/// SwiftUI 에는 화면마다 상태바 글자색을 정하는 API 가 없습니다(`preferredColorScheme` 은 창 전체의
+/// 색 모드를 바꿔 시스템 색을 쓰는 곳까지 어두워집니다). 그래서 창의 맨 아래 컨트롤러가 이 값을
+/// 따르게 하고(`StatusBarStyleCenter.install`), 화면은 나타난 동안만 요청을 올립니다 — 나중에 올린
+/// 요청이 이깁니다. 머리 면이 사라지거나(밀어 넣은 화면·탭 전환) 흰 띠가 걷히면 요청도 내려갑니다.
+@MainActor
+final class StatusBarStyleCenter {
+    static let shared = StatusBarStyleCenter()
+    private var requests: [(id: UUID, style: UIStatusBarStyle)] = []
+    private var installed: Set<ObjectIdentifier> = []
+
+    var style: UIStatusBarStyle { requests.last?.style ?? .darkContent }
+
+    func push(_ id: UUID, _ style: UIStatusBarStyle) {
+        requests.removeAll { $0.id == id }
+        requests.append((id, style))
+        refresh()
+    }
+    func pop(_ id: UUID) {
+        requests.removeAll { $0.id == id }
+        refresh()
+    }
+
+    private func refresh() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let scene = scene as? UIWindowScene else { continue }
+            for window in scene.windows {
+                guard let root = window.rootViewController else { continue }
+                install(on: root)
+                root.setNeedsStatusBarAppearanceUpdate()
+            }
+        }
+    }
+
+    /// SwiftUI 의 바탕 호스팅 컨트롤러(제네릭이라 하위 클래스를 만들 수 없음)의 실제 클래스에만
+    /// `preferredStatusBarStyle` 을 갈아 끼웁니다. `childForStatusBarStyle` 을 비워야 안의
+    /// 내비게이션 컨트롤러가 가져가지 않습니다.
+    private func install(on root: UIViewController) {
+        let cls: AnyClass = type(of: root)
+        guard !installed.contains(ObjectIdentifier(cls)) else { return }
+        installed.insert(ObjectIdentifier(cls))
+        let style: @convention(block) (UIViewController) -> UIStatusBarStyle = { _ in
+            MainActor.assumeIsolated { StatusBarStyleCenter.shared.style }
+        }
+        let child: @convention(block) (UIViewController) -> UIViewController? = { _ in nil }
+        let styleSel = #selector(getter: UIViewController.preferredStatusBarStyle)
+        let childSel = #selector(getter: UIViewController.childForStatusBarStyle)
+        class_replaceMethod(cls, styleSel, imp_implementationWithBlock(style), "q@:")
+        class_replaceMethod(cls, childSel, imp_implementationWithBlock(child), "@@:")
+    }
+}
+
+/// 이 뷰가 화면에 있는 동안 상태바 아이콘 색을 요청합니다.
+private struct StatusBarRequest: ViewModifier {
+    let style: UIStatusBarStyle
+    @State private var id = UUID()
+    func body(content: Content) -> some View {
+        content
+            .onAppear { StatusBarStyleCenter.shared.push(id, style) }
+            .onDisappear { StatusBarStyleCenter.shared.pop(id) }
+    }
+}
+
+extension View {
+    /// 분홍 면 위 — 흰 상태바 아이콘
+    func wpLightStatusBar() -> some View { modifier(StatusBarRequest(style: .lightContent)) }
+    /// 흰 바탕 위 — 어두운 상태바 아이콘
+    func wpDarkStatusBar() -> some View { modifier(StatusBarRequest(style: .darkContent)) }
+}
+
+/// 안드로이드 `BrandStatusBar` — 머리 면이 지나간 뒤 상태바 뒤에 까는 흰 띠. 띠가 있는 동안 아이콘은 어둡게.
+struct BrandStatusStrip: View {
+    var body: some View {
+        Color.white.frame(height: wpStatusBarHeight).frame(maxWidth: .infinity)
+            .allowsHitTesting(false)
+            .wpDarkStatusBar()
     }
 }

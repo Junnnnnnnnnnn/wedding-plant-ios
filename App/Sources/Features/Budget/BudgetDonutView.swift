@@ -91,19 +91,24 @@ struct BudgetDonutView: View {
             .rotationEffect(.degrees(-90))
     }
 
+    /// 안드로이드 줄 높이 그대로 — `남은 금액` 12(줄 18) · 숫자 32(줄 32) · `만 원` 12(줄 18), 사이 2.
     private var center: some View {
         VStack(spacing: 2) {
             Text("남은 금액")
-                .font(WPFont.hak(12))
+                .wpTypography(12)
                 .foregroundStyle(WPColor.fgMuted)
-            Text(withThousands(segments.remaining))
-                .font(WPFont.tmoney(32, .bold))
-                .tracking(-0.04 * 32)
-                .foregroundStyle(segments.remaining < 0 ? Self.overColor : WPColor.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+            // Tmoney 는 Regular 파일 하나 — 안드로이드처럼 굵기를 합성한다(`WPTmoneyText`).
+            WPTmoneyText(
+                text: withThousands(segments.remaining),
+                size: 32,
+                bold: true,
+                color: UIColor(segments.remaining < 0 ? Self.overColor : WPColor.textPrimary),
+                lineHeight: 32,
+                tracking: -1.28
+            )
+            .fixedSize()
             Text("만 원")
-                .font(WPFont.hak(12))
+                .wpTypography(12)
                 .foregroundStyle(WPColor.fgSubtle)
         }
         .padding(.horizontal, 30)
@@ -151,7 +156,7 @@ struct BudgetDonutView: View {
                 .fill(color)
                 .frame(width: isTick ? 3 : 10, height: isTick ? 12 : 10)
             Text(text)
-                .font(WPFont.hak(13))
+                .wpTypography(13)
                 .foregroundStyle(WPColor.fgMuted)
         }
     }
@@ -183,14 +188,14 @@ struct BudgetDonutView: View {
     private func summaryRow(label: String, value: String, valueColor: Color) -> some View {
         VStack(spacing: 0) {
             Hairline()
-            HStack(alignment: .lastTextBaseline) {
+            HStack(alignment: .center) {
                 Text(label)
-                    .font(WPFont.hak(14))
+                    .wpTypography(14)
                     .foregroundStyle(WPColor.fgMuted)
                 Spacer(minLength: 8)
-                Text(value)
-                    .font(WPFont.tmoney(14, .bold))
-                    .foregroundStyle(valueColor)
+                // 안드로이드 `Tmoney` + Bold — Regular 파일에 합성한 굵기
+                WPTmoneyText(text: value, size: 14, bold: true, color: UIColor(valueColor), lineHeight: 21)
+                    .fixedSize()
             }
             .padding(.vertical, 12)
         }
@@ -201,8 +206,7 @@ struct BudgetDonutView: View {
     /// 예산을 넘겼을 때만 문장으로 한 번 더 말한다.
     private var overWarning: some View {
         Text(overWarningText)
-            .font(WPFont.hak(12.5))
-            .lineSpacing(5)
+            .wpTypography(12.5, lineHeight: 20)
             .foregroundStyle(Color(hex: 0x8A3236))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)

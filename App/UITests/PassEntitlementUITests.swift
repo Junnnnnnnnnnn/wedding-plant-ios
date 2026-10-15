@@ -19,11 +19,13 @@ final class PassEntitlementUITests: XCTestCase {
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
     }
-    func testUnpaidExistingInvitationDoesNotShowHomeGarden() {
+    /// Android 와 같게 — 패스가 끝나도 청첩장은 남으므로 홈에 정원 카드가 뜹니다(빈 정원은 아님).
+    func testUnpaidExistingInvitationShowsHomeGarden() {
         let app = launch(["-WPExistingInvitation"])
-        XCTAssertTrue(app.staticTexts["모바일 청첩장"].firstMatch.waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["청첩장이 아직 비공개예요"].exists)
-        XCTAssertFalse(app.staticTexts["하객 자리가 비어 있어요"].exists)
+        let garden = app.descendants(matching: .any)["main.invitationGarden"].firstMatch
+        XCTAssertTrue(garden.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["main.invitationCreate"].exists, "내 청첩장이 있으면 만들기가 아니라 보기")
+        XCTAssertFalse(app.descendants(matching: .any)["main.invitationRow"].exists)
         capture(app, "unpaid-existing-invitation-home")
         openProfile(app)
         XCTAssertTrue(app.buttons["user.pass"].waitForExistence(timeout: 10))
@@ -32,7 +34,7 @@ final class PassEntitlementUITests: XCTestCase {
     }
     func testLifetimeProfileAndCompactPlans() {
         let app = launch(["-WPPassEnabled", "-WPLifetimePass"])
-        XCTAssertTrue(app.staticTexts["하객 자리가 비어 있어요"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["main.invitationGarden"].firstMatch.waitForExistence(timeout: 10))
         openProfile(app)
         XCTAssertTrue(app.buttons["pass.plans"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["기간 제한 없음"].exists)

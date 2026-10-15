@@ -126,7 +126,28 @@ final class VisualParityTests: XCTestCase {
         await snapshot(ReminderSettingsBody(setting: .init(leadDays: [], hour: 18), payments: [],
             showPassBanner: true, phonePermitted: false, today: today, nowHour: 10), name: "matched-reminders-blocked")
     }
-    @MainActor private func snapshot<V: View>(_ view: V, name: String, width: CGFloat = 390, statusInset: CGFloat = 48, bottomInset: CGFloat = 0) async {
+    /// Android `PlanBloomShotTest.deleteNone`(`bloom-delete-none`) — 금액 없는 일정 삭제.
+    @MainActor func testBloomNoAmountReferenceFrame() async {
+        await snapshot(PlanBloomSuccess(title: "스튜디오 촬영", amount: 0, remaining: nil, action: .delete, motionEnabled: false, showsBackdrop: false, onClose: {}), name: "matched-bloom-delete-none", width: 390)
+    }
+    /// Android `DocsPaidShotTest.editHasDocsAndOpensAlbum`(`docs-edit-paid` · `docs-edit`) 와 같은 데이터 —
+    /// 완료한 플랜(결제 칸 아니요)·연간 패스·서류 둘. 결제 칸은 켜진 채 잠기고 영수증 줄이 `아래 서류 칸에 바로 붙여요`.
+    @MainActor func testAddPlanEditDocsReferenceFrames() async {
+        let base = URL(string: "https://example.test")!, store = InMemoryTokenStore(token: DemoData.token)
+        let env = AppEnvironment(api: APIClient(baseURL: base, transport: EditDocsReferenceTransport(), tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)
+        let suite = "visual-addplan-edit-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let guest = GuestStore(defaults: defaults)
+        for (name, anchor) in [("matched-addplan-edit-top", UnitPoint.top), ("matched-addplan-edit-docs", .bottom)] {
+            let model = AddPlanViewModel(editId: 42, roomId: 7)
+            await model.load(env: env, guest: guest)
+            XCTAssertTrue(model.completed)
+            XCTAssertEqual(model.receiptPass, true)
+            await snapshot(AddPlanView(model: model, scrollAnchor: anchor).environmentObject(env).environmentObject(guest), name: name, width: 390, statusInset: 48, bottomInset: 24, settle: 1500)
+        }
+    }
+    @MainActor private func snapshot<V: View>(_ view: V, name: String, width: CGFloat = 390, statusInset: CGFloat = 48, bottomInset: CGFloat = 0, settle: Int = 350) async {
         let size = CGSize(width: width, height: 844)
         let controller = UIHostingController(rootView: view.padding(.bottom, bottomInset).background(.white).environment(\.brandStatusInset, statusInset).environment(\.locale, Locale(identifier: "ko_KR")))
         controller.safeAreaRegions = []
@@ -134,7 +155,7 @@ final class VisualParityTests: XCTestCase {
         window.rootViewController = controller
         window.isHidden = false
         controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
-        try? await Task.sleep(for: .milliseconds(350))
+        try? await Task.sleep(for: .milliseconds(settle))
         let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
         let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true) }
         XCTAssertEqual(image.cgImage?.width, Int((width * 3).rounded()))
@@ -155,6 +176,26 @@ private struct ExploreReferenceTransport: HTTPTransport {
         case "/plan/feed/list": value = #"{"total":128,"list":[{"id":1,"categoryName":"드레스","title":"라움 아트","amount":280,"isAmountPublic":true,"region":"서울 강남구"},{"id":2,"categoryName":"웨딩홀","title":"더채플앳청담","amount":3200,"isAmountPublic":true,"region":"서울 강남구"}]}"#
         case "/plan/feed/my/status": value = #"{"postCount":2,"receivedHelpfulCount":5,"postableScheduleCount":1}"#
         default: value = #"{"total":0,"list":[]}"#
+        }
+        return HTTPResponse(status: 200, body: Data(("{\"result\":true,\"data\":" + value + "}").utf8))
+    }
+}
+
+/// Android `DocsPaidShotTest` 의 목 서버와 같은 응답.
+private struct EditDocsReferenceTransport: HTTPTransport {
+    func send(_ request: PreparedRequest) async throws -> HTTPResponse {
+        let path = request.url.path
+        let value: String
+        if path.hasPrefix("/plan/schedule/42") {
+            value = #"{"id":42,"title":"본식 드레스 잔금","categoryName":"드레스","payType":"CREDIT","amount":280,"startDate":"2026-10-03","memo":"가봉 때 받은 견적서","status":"COMPLETED","isPaid":false}"#
+        } else if path.hasPrefix("/plan/pass/room/7") {
+            value = #"{"hasPass":true,"plan":"YEARLY","expiresAt":"2027-10-01T00:00:00Z"}"#
+        } else if path.hasPrefix("/plan/pass/file/schedule/42") {
+            value = #"{"canOpen":true,"roomId":7,"list":[{"id":1,"fileName":"계약서.pdf","contentType":"application/pdf","sizeBytes":120000},{"id":2,"fileName":"영수증.webp","contentType":"image/webp","sizeBytes":80000}]}"#
+        } else if path.hasPrefix("/plan/user") {
+            value = #"{"name":"지수","weddingDate":"2026-11-14","budget":4200,"roomId":7}"#
+        } else {
+            value = #"{"total":0,"list":[]}"#
         }
         return HTTPResponse(status: 200, body: Data(("{\"result\":true,\"data\":" + value + "}").utf8))
     }

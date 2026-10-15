@@ -13,6 +13,14 @@ final class BragViewModel: ObservableObject {
 
     private static let pageCount = 20
 
+    /// 안드로이드 `BragViewModel.Sort` — 서버 `sort` 값과 칩 글자
+    enum Sort: String, CaseIterable, Identifiable {
+        case recent = "RECENT", liked = "LIKED"
+        var id: String { rawValue }
+        var label: String { self == .recent ? "최신순" : "좋아요순" }
+    }
+
+    @Published var sort: Sort = .recent
     @Published var loading = true
     @Published var loadingMore = false
     @Published var posts: [BragPost] = []
@@ -40,16 +48,46 @@ final class BragViewModel: ObservableObject {
         if replace { myStatus = try? await env.api.send(Endpoint.bragMy(), decoding: BragMyStatus.self) }
         let nextPage = replace ? 1 : page + 1
         do {
-            let result = try await env.api.send(
-                Endpoint.bragList(page: nextPage, count: Self.pageCount),
-                decoding: BragPage.self
-            )
+            var request = Endpoint.bragList(page: nextPage, count: Self.pageCount)
+            request.query["sort"] = sort.rawValue
+            let result = try await env.api.send(request, decoding: BragPage.self)
             posts = replace ? result.list : posts + result.list
             total = result.total
             page = nextPage
         } catch {
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    func setSort(_ next: Sort, env: AppEnvironment) async {
+        guard next != sort else { return }
+        sort = next
+        await load(env: env, replace: true)
+    }
+
+    /// 내 카드의 `내려두기` — 성공하면 목록에서 뺀다. 실패하면 카드가 그대로 남는다(잘못 사라지는 것보다 낫다).
+    func unpublish(_ bragId: Int, env: AppEnvironment) async {
+        do {
+            try await env.api.sendIgnoringData(Endpoint.unpublishBrag())
+            hide(bragId)
+            if myStatus != nil { myStatus?.published = false }
+        } catch {
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    /// 신고·차단한 글을 그 자리에서 치운다. 두 번 불려도 총 개수가 두 번 줄지 않게.
+    func hide(_ bragId: Int) {
+        guard let index = posts.firstIndex(where: { $0.bragId == bragId }) else { return }
+        posts.remove(at: index)
+        total = max(0, total - 1)
+    }
+
+    /// 상세에서 누른 좋아요를 목록 카드에도 맞춘다.
+    func applyLike(bragId: Int, liked: Bool, count: Int) {
+        guard let index = posts.firstIndex(where: { $0.bragId == bragId }) else { return }
+        posts[index].liked = liked
+        posts[index].likeCount = count
     }
 
     /// 좋아요는 **낙관적으로** 그린다(피드의 투표와 같은 규칙). 실패하면 되돌린다.
@@ -126,13 +164,16 @@ final class BragToggleViewModel: ObservableObject {
         status = try? await env.api.send(Endpoint.bragMy(), decoding: BragMyStatus.self)
     }
 
-    /// 올린다. **켜기 전에는 반드시 안내 모달을 거친다** — 호출부가 책임진다.
-    func publish(env: AppEnvironment) async {
+    /// 올린다. **켜기 전에는 반드시 안내 시트를 거친다** — 호출부가 책임진다.
+    /// `title` 은 자랑하기에 보일 이름 — 비우면 서버가 두 사람 이름(`defaultNickname`)으로 만든다.
+    func publish(title: String = "", env: AppEnvironment) async {
         guard !pending else { return }
         pending = true
         defer { pending = false }
+        struct Body: Encodable { let title: String }
         do {
-            try await env.api.sendIgnoringData(Endpoint.publishBrag())
+            try await env.api.sendIgnoringData(HTTPRequest.json(.put, "/plan/brag",
+                body: Body(title: title.trimmingCharacters(in: .whitespacesAndNewlines))))
             await load(env: env)
         } catch {
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription

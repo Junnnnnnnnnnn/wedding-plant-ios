@@ -161,4 +161,17 @@ final class FeedViewModel: ObservableObject {
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
+
+    /// 신고·차단한 글을 **그 자리에서** 치운다 — 서버도 빼 주지만 그건 다음에 받을 때다.
+    func hide(_ id: Int) {
+        guard let index = posts.firstIndex(where: { $0.id == id }) else { return }
+        posts.remove(at: index)
+        total = max(0, total - 1)
+    }
+
+    /// 상세에서 바꾼 투표를 목록에도 맞춘다(안드로이드 `FeedDetailHandoff.put`).
+    func replace(_ post: FeedPost) {
+        guard let index = posts.firstIndex(where: { $0.id == post.id }) else { return }
+        posts[index] = post
+    }
 }

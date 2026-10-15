@@ -1,14 +1,15 @@
 {
-  "created": "2026-10-14",
+  "created": "2026-10-14 (iOS 미커밋 작업본 기준 재캡처)",
   "androidRevision": "9a6e1c2",
   "iosBaseRevision": "814defc",
+  "iosCapture": "814defc 이후 미커밋 작업본 — WeddingPlantTests(final-unit) · WeddingPlantUITests(final-ui) 재실행 캡처",
   "summary": {
-    "total": 172,
-    "paired": 106,
-    "single": 57,
-    "missing": 9,
-    "sameFixture": 42,
-    "issues": 5
+    "total": 179,
+    "paired": 136,
+    "single": 37,
+    "missing": 6,
+    "sameFixture": 43,
+    "issues": 4
   },
   "cases": [
     {
@@ -25,21 +26,21 @@
         "sha256": "98883bfd355606afe951c06fd236b3ba92947fe1cc5bd9614f6d0a241aca041a"
       },
       "ios": {
-        "src": "images/ios-review-native-landing-top.webp",
+        "src": "images/ios-parity-landing.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-landing-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "9107f68c1da3e1ad936a703fdc554f0f59e6e34e6e3627ce4cad52f560e9ca55"
+        "name": "parity-landing",
+        "run": "final2-ui-shots",
+        "test": "AndroidParityUITests/testEmailLoginAndValidation()",
+        "sha256": "3eccb20e24a8844f79eac590fc07942c173a17e03f8ebf8dade9f75f07494608"
       },
       "action": "조회",
-      "note": "차이: iOS에 Apple 로그인 버튼이 추가되어 있고 이메일 버튼 배경·로고 위쪽 여백·하단 버튼 간격이 다르다. 네이티브 전체 화면 캡처로 확인.",
+      "note": "실제 앱 첫 화면 캡처. 차이는 iOS 전용 Apple 로그인 버튼 하나이고(유지), 그 버튼만큼 소셜 버튼 묶음이 위로 올라간다. 맨 아래 「개발용 토큰으로 로그인」은 DEBUG 빌드에서만 보인다(LandingView.swift #if DEBUG).",
       "same": false,
-      "issue": true,
+      "issue": false,
       "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "차이 확인"
+      "status": "대조 가능"
     },
     {
       "id": "case-002",
@@ -59,12 +60,12 @@
         "width": 1170,
         "height": 2532,
         "name": "email-compact-initial",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testEmailLoginAndValidation()",
-        "sha256": "026377c04541df96ab3ba5bdad9f6e947f1c1f88fbd4ee0f330ce2862fd7da5d"
+        "sha256": "0d655544eff3298b4680a265fc0f8236c61889d29b288d23bbad929d0db4004e"
       },
       "action": "등록",
-      "note": "",
+      "note": "Android 는 이메일을 적은 상태, iOS 는 열자마자 빈 칸. 양쪽 모두 키보드는 캡처에 없다. iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -89,12 +90,12 @@
         "width": 1170,
         "height": 2532,
         "name": "parity-email-password",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testEmailLoginAndValidation()",
-        "sha256": "b9fcf5b76923f22756dbccc82df1e2e5b104dfdfbb1ec01f0929da37aaaf5b37"
+        "sha256": "2a7ec073d1a9a6d443a8e9cddf53158bbfa59c4f93f0c55409b3c775be6fa857"
       },
       "action": "조회",
-      "note": "Android는 오류 상태, iOS는 입력 상태. 오류 문구의 일치 여부는 미검증.",
+      "note": "이제 양쪽 모두 오류 상태(「이메일 또는 비밀번호가 맞지 않아요.」). 보안 입력 칸이 비어 보이는 것은 시뮬레이터 캡처가 가린 입력값을 빼고 찍기 때문이다(눈 아이콘으로 보이게 하면 글자가 찍힌다 — email-compact-signup-shown 에서 확인). iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -111,12 +112,12 @@
         "width": 1170,
         "height": 2532,
         "name": "email-compact-signup",
-        "run": "review-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testEmailSignupAndPasswordResetFitSheet()",
-        "sha256": "a542d4e8a09b08718992850f2e8ea1f6817a8e8f1a1b9186fe024927e6f44fed"
+        "sha256": "10fde03067151626388077fa9097d046d0a1e215283359682317adfbe2145831"
       },
       "action": "등록",
-      "note": "",
+      "note": "새 가입자의 비밀번호 단계. 보안 입력 칸이 비어 보이는 것은 시뮬레이터 캡처가 가린 입력값을 빼고 찍기 때문이다(눈 아이콘으로 보이게 하면 글자가 찍힌다 — email-compact-signup-shown 에서 확인). Android 대응 캡처 없음. iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -141,17 +142,17 @@
         "width": 1170,
         "height": 2532,
         "name": "email-compact-reset",
-        "run": "review-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testEmailSignupAndPasswordResetFitSheet()",
-        "sha256": "b2ddae063d65935158346f431415039609e40c3f5273a5453d0c135ff59e3142"
+        "sha256": "925ad5118bddc67a81778168564fe7663ac05a0157b0ccd59cbc37c2e4eeceeb"
       },
       "action": "수정",
-      "note": "iOS 기능 테스트가 두 번 실패. 시뮬레이터의 자동 강력한 암호 덮개가 입력 필드 위에 표시됐다. 앱 결함인지 자동입력·테스트 조작 문제인지 미확정. 완료로 표시하지 않는다.",
+      "note": "해결: 새 비밀번호 칸에 강력한 암호 제안을 꺼서 자동 강력한 암호 덮개가 더 이상 입력 칸을 가리지 않는다(재실행 통과). Android 는 코드 빈 칸·키보드 표시, iOS 는 코드 123456 입력 후·키보드 내림 상태. 보안 입력 칸이 비어 보이는 것은 시뮬레이터 캡처가 가린 입력값을 빼고 찍기 때문이다(눈 아이콘으로 보이게 하면 글자가 찍힌다 — email-compact-signup-shown 에서 확인). iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
-      "issue": true,
+      "issue": false,
       "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "차이 확인"
+      "status": "대조 가능"
     },
     {
       "id": "case-006",
@@ -194,14 +195,22 @@
         "test": "",
         "sha256": "f24519c74ef89dc38a9646b1cec5b387c3842fa51c8208aed5157d896249900c"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-onb-celebration.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "onb-celebration",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "1284c76b3d25147a8133090528229b025f463727f8d53d5ca5d0041134ead992"
+      },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동. iOS 해당 상태의 유효 캡처가 아직 없다.",
+      "note": "종이 가루 위치는 무작위라 프레임마다 다르다.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-009",
@@ -217,16 +226,16 @@
         "sha256": "f860667e710f1864dc7d51c7418382dca0a1f7e6107b8d62be5d1cbbb3aecbe3"
       },
       "ios": {
-        "src": "images/ios-review-onboarding-date.webp",
+        "src": "images/ios-onb-date.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-date",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "d35d805c1323e9bd959af1b820247fc098ed1e5a0423214d851d2ccb217b222f"
+        "name": "onb-date",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "3512605a2525ff34bfd0d4e54fa34418dd1926955fb7f889d17dc9ac579bc875"
       },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동.",
+      "note": "",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -247,16 +256,16 @@
         "sha256": "3989be5dcf0f86da01a4d3271501f064d444c7c12dd8848b12fe552434311bce"
       },
       "ios": {
-        "src": "images/ios-review-onboarding-budget.webp",
+        "src": "images/ios-onb-budget.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-budget",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "311acb4ad0beaa2c0ea57483cebc425e85ea88f808074b64946d1ae2285c1466"
+        "name": "onb-budget",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "a8b63a0a00da46ea00cc56aa40f748d9859364a5a84bcbf38712bea786ff099e"
       },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동.",
+      "note": "고침: 게스트 저장소의 예산(Double)을 정수로 넣어 「5000.0」 대신 「5000」. 남은 값은 이전 실행이 남긴 게스트 예산이라 Android 기본값 1000 과 숫자만 다르다(테스트 데이터).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -277,16 +286,16 @@
         "sha256": "77b12a92c4507a2fdab593c4804c8c4569a8bc9f79f7adc735b14e26a0aac8db"
       },
       "ios": {
-        "src": "images/ios-review-onboarding-name.webp",
+        "src": "images/ios-onb-name.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-name",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "bf79c2382032eb7c3dc88cb240f28947e072593b71f9f168ff11c44a35573224"
+        "name": "onb-name",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "e79d4c67ecaa3ac324729c1a187dcf38b8c4ad9a8b130b30a5bca346b9e97cca"
       },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동.",
+      "note": "iOS 는 이전 실행의 게스트 저장 이름 「지수」가 미리 채워져 있어 다음 버튼이 켜진 상태, Android 는 빈 칸·버튼 꺼짐.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -306,14 +315,22 @@
         "test": "",
         "sha256": "b0a81d2118b6c9c8ede6ab7d51c880aac1039e21fd24d87e6bd8bd18eee46d4e"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-onb-welcome.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "onb-welcome",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "f99543e4fa5d85f62849baf6148629b680e229efa4933643a231f309049c95dc"
+      },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동. iOS 해당 상태의 유효 캡처가 아직 없다.",
+      "note": "iOS 「지수지수 님 환영합니다」는 미리 채워진 「지수」 뒤에 테스트가 「지수」를 한 번 더 적어서 생긴 값(테스트 데이터). Android 캡처는 이름 없이 「님 환영합니다」.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-013",
@@ -329,16 +346,16 @@
         "sha256": "b726402ecec3a104e2a42128be443a2e520bda0a63abaa5624bf12dbd2989b0e"
       },
       "ios": {
-        "src": "images/ios-review-onboarding-terms.webp",
+        "src": "images/ios-onb-terms.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-terms",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "c31abc60c67d2b1424f1efb7a17c0491af9a9e8886a4ae476cf2343e522dfee2"
+        "name": "onb-terms",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "fae5e4afd250c13d07dfb4d3da7a1aedfca90ac95843ed156bb343c60017927a"
       },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동.",
+      "note": "",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -350,25 +367,25 @@
       "group": "처음 설정",
       "title": "권한 안내",
       "android": {
-        "src": "images/android-review-onboarding-permissions.webp",
+        "src": "images/android-permissions-step.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-permissions",
+        "name": "permissions-step",
         "run": "current-20261014",
         "test": "",
-        "sha256": "0230d5d2e0893eb3792a194eb19a7e187b216e93222202428892f027a24880db"
+        "sha256": "57e69b142e312c2a9b021daef3999814cf7139db879f6b35f813add7fb8bf2a6"
       },
       "ios": {
-        "src": "images/ios-parity-onboarding-permissions.webp",
+        "src": "images/ios-onb-permissions.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-onboarding-permissions",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "8b2464a793e2bcb8d5cd6f56f1d3b8560be62a9a5cea679235fa6705f0e88a62"
+        "name": "onb-permissions",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "4c050cb66c9da339dfe98c74c70b39db184a1513ba58d6eaea654f5e555a641b"
       },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동.",
+      "note": "Android 는 PermissionsStep 단독 캡처(상단 단계 막대 없음). 알림 줄 배지·버튼 문구가 다른 것은 시뮬레이터 알림 권한이 이미 허용(「켜져 있어요」·「다음」)이고 Android 는 미허용(「허용이 필요해요」·「알림 허용하고 계속하기」)이라서다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -389,16 +406,16 @@
         "sha256": "f28544506284f09cd91c6523c31c8683d8b89635306817259d819366468b1d1c"
       },
       "ios": {
-        "src": "images/ios-review-onboarding-invite.webp",
+        "src": "images/ios-onb-invite.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-invite",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "d4974edbbff964fea47cab0c99641da0efe19e3ae93f867e71b067f9c9d5a9e4"
+        "name": "onb-invite",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "e42aee894d9608f245ae8a4d77cfbe22ee88a001dc52f8cc5d5fad058bc57ae9"
       },
       "action": "등록",
-      "note": "실제 단계 화면. Android는 단계 상태를 설정해 캡처, iOS는 실제 다음 버튼으로 이동.",
+      "note": "Android 캡처는 단계 교차 페이드 중이라 권한 화면 내용이 6/6 막대와 함께 찍혔다. 같은 상태의 Android 초대 화면 캡처는 아직 없다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -411,16 +428,16 @@
       "title": "이름 입력 · 키보드",
       "android": null,
       "ios": {
-        "src": "images/ios-review-onboarding-name-filled.webp",
+        "src": "images/ios-onb-name-filled.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-name-filled",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "8fb709c4d1c2d881c7febed38b20748db860033967521fbdefcff7819c809e03"
+        "name": "onb-name-filled",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "dc7724d60256e81b5ff19698a875611e32639c4680436fb460f8c1a71de6595a"
       },
       "action": "등록",
-      "note": "",
+      "note": "이름을 적고 키보드를 내린 뒤 찍었다(이 시뮬레이터 캡처에는 키보드가 찍히지 않아 테스트가 먼저 내린다). 값이 「지수지수」인 이유는 「환영」 항목 참고.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -433,13 +450,13 @@
       "title": "약관 전체 동의 후",
       "android": null,
       "ios": {
-        "src": "images/ios-review-onboarding-terms-agreed.webp",
+        "src": "images/ios-onb-terms-agreed.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-onboarding-terms-agreed",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testOnboardingPermissionsCanBeSkipped()",
-        "sha256": "0df8440635057088261f0fb8635a198b254300e325eeab3a5d1220bc18edfe29"
+        "name": "onb-terms-agreed",
+        "run": "final2-ui-shots",
+        "test": "OnboardingParityUITests/testOnboardingStepsMatchAndroid()",
+        "sha256": "231dbd7f56084f8c04ac150114909d22d9795fa70b80d0d924f71e35d1189138"
       },
       "action": "등록",
       "note": "",
@@ -467,12 +484,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-home-top",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "9ce9913873d0a5a065c354ff45460da81d3bac14a35f480e985ba2d21e112589"
+        "sha256": "a66c56e563609344fa2ab22d67c285a1fbd84f2e2bc22a0dd41c95215d9659ba"
       },
       "action": "조회",
-      "note": "테스트 이름·날짜·예산·목록 개수 차이가 있다. 금액 자체는 일치 판정 대상이 아니다.",
+      "note": "양쪽 같은 방식의 화면 단독 렌더(탭바 없음). 테스트 이름·날짜·예산·목록 개수 차이가 있다. 금액 자체는 일치 판정 대상이 아니다. 실제 앱(탭바·상태바 포함) iOS 캡처는 parity-home-top 에 있다 — 상태바 아이콘은 분홍 면 위 흰색, 흰 띠 위 어두운 색.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -497,12 +514,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-home-middle",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "eded0ed535d5d949c539078d3755f1cc5d7f8ecbfa32b63fece41a1e1bd1670f"
+        "sha256": "7800c04afba6ae18dc9195d9d36386b079668ed920f348aecd20c0cf55e8ff98"
       },
       "action": "조회",
-      "note": "테스트 이름·날짜·예산·목록 개수 차이가 있다. 금액 자체는 일치 판정 대상이 아니다.",
+      "note": "양쪽 같은 방식의 화면 단독 렌더(탭바 없음). 테스트 이름·날짜·예산·목록 개수 차이가 있다. 금액 자체는 일치 판정 대상이 아니다. 실제 앱(탭바·상태바 포함) iOS 캡처는 parity-home-middle 에 있다 — 상태바 아이콘은 분홍 면 위 흰색, 흰 띠 위 어두운 색.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -527,12 +544,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-home-bottom",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "eded0ed535d5d949c539078d3755f1cc5d7f8ecbfa32b63fece41a1e1bd1670f"
+        "sha256": "bcf17ef37b6c0c2d22b9600581fe12dbd9e983a79a817c541d312b8953fc1d3f"
       },
       "action": "조회",
-      "note": "테스트 이름·날짜·예산·목록 개수 차이가 있다. 금액 자체는 일치 판정 대상이 아니다.",
+      "note": "양쪽 같은 방식의 화면 단독 렌더(탭바 없음). 테스트 이름·날짜·예산·목록 개수 차이가 있다. 금액 자체는 일치 판정 대상이 아니다. 실제 앱(탭바·상태바 포함) iOS 캡처는 parity-home-bottom 에 있다 — 상태바 아이콘은 분홍 면 위 흰색, 흰 띠 위 어두운 색.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -542,7 +559,7 @@
     {
       "id": "case-021",
       "group": "홈",
-      "title": "미구매 · 개인 정원 숨김",
+      "title": "미구매 · 청첩장 안내 줄",
       "android": {
         "src": "images/android-home-invite-row.webp",
         "width": 1170,
@@ -557,12 +574,12 @@
         "width": 1170,
         "height": 2532,
         "name": "unpaid-home-invitation-row",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testUnpaidInvitationHasCompactFourRowsAndNoHomeGarden()",
-        "sha256": "80e6f55af849c4ee5fec51f7932b6b8b135d006f6017e86005913b1f5ed3e8d5"
+        "sha256": "154dba1e57ab2e0698c0d80a7e0dfb04056abff649e5561edb284e8ec246371a"
       },
       "action": "조회",
-      "note": "청첩장 안내 줄은 표시하며 홈의 픽셀 정원은 숨겨야 한다.",
+      "note": "패스·청첩장이 없으면 예산 카드 안의 「모바일 청첩장 · 구경하기」 줄만 내고 정원 카드는 숨긴다. 양쪽 일치.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -572,24 +589,32 @@
     {
       "id": "case-022",
       "group": "홈",
-      "title": "미구매 · 기존 청첩장이 있어도 정원 숨김",
-      "android": null,
+      "title": "미구매 · 기존 청첩장이 있으면 정원 카드",
+      "android": {
+        "src": "images/android-home-invite-draft.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "home-invite-draft",
+        "run": "current-20261014",
+        "test": "",
+        "sha256": "1d3fb98886cd1b3faf40f364e4cb07012f9c182ddb95175979fb993d23e735dd"
+      },
       "ios": {
         "src": "images/ios-unpaid-existing-invitation-home.webp",
         "width": 1170,
         "height": 2532,
         "name": "unpaid-existing-invitation-home",
-        "run": "flows-shots",
-        "test": "PassEntitlementUITests/testUnpaidExistingInvitationDoesNotShowHomeGarden()",
-        "sha256": "ab75a1f58dfa3699e2170a679019fbf4553aa738cc6909716bab41d8d4b56bed"
+        "run": "final2-ui-shots",
+        "test": "PassEntitlementUITests/testUnpaidExistingInvitationShowsHomeGarden()",
+        "sha256": "8f7181eca59dd4e43c39acb699b1843196f27881c6c30fd860d249f08e74b696"
       },
       "action": "조회",
-      "note": "",
+      "note": "이제 iOS 도 Android 처럼 청첩장이 있으면(패스가 끝나도) 정원 카드 「청첩장이 아직 비공개예요 · 공개하기」를 낸다. Android fixture 는 패스 배지가 켜져 있고 iOS 는 미구매라 머리 면 배지만 다르다.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-023",
@@ -609,12 +634,12 @@
         "width": 1170,
         "height": 2532,
         "name": "paid-home-garden",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testPaidGardenAndSlotsHaveNoAds()",
-        "sha256": "60d548748c7ced352832c964a22408607f5be9f9132e2c33f02279af10a57552"
+        "sha256": "8b745d57e007914199f01a007fefad07db71eb6034d8bd063ddc1f8e3e18b3b7"
       },
       "action": "조회",
-      "note": "",
+      "note": "「하객 자리가 비어 있어요 · 만들기」 정원 카드. 이름·날짜 데이터 차이.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -639,9 +664,9 @@
         "width": 1170,
         "height": 2532,
         "name": "ads-home",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testUnpaidHomeBudgetAndDetailPlacements()",
-        "sha256": "1de86c9c4178091ded432543bb6eb002f04408e72b4d763f3a3ab087c6cc63aa"
+        "sha256": "fe2105e730569d870f60d475e55bda5fb6666143195344272b156c316aae9b03"
       },
       "action": "조회",
       "note": "동일 광고 소재 비교가 아니라 광고 영역의 위치·노출 조건 비교.",
@@ -665,16 +690,16 @@
         "sha256": "70d037d7f79daa2db51bcb1a04b5bb0296068e7a1d402edd3a18c13e2e2362dd"
       },
       "ios": {
-        "src": "images/ios-review-native-home-empty-top.webp",
+        "src": "images/ios-parity-home-empty.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-home-empty-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "7d1005f47f4e215d70a2edc3d745a190076b85ddc3e56a056160d2dc88cc4f22"
+        "name": "parity-home-empty",
+        "run": "final2-ui-shots",
+        "test": "HomeBudgetParityUITests/testHomeStates()",
+        "sha256": "7ab84770f000553a489f466d9dbe6c4dd5a6429bb72c76cab0e0a0423b591efc"
       },
       "action": "조회",
-      "note": "",
+      "note": "새싹 그림·「첫 플랜을 심어 볼까요?」·「플랜 추가하기」. iOS 는 실제 앱 캡처라 자랑하기 도크와 탭바가 함께 보인다(Android 캡처 fixture 에는 자랑하기 없음).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -695,16 +720,16 @@
         "sha256": "0e9b0cec5bad354fb4e9b43f87ab1a80fa53c06d1c05ca1d6bcd69be42750b9f"
       },
       "ios": {
-        "src": "images/ios-review-native-home-over-top.webp",
+        "src": "images/ios-parity-home-over.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-home-over-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "b282f176692be72eb78fca47154801963cd82e5b2c96c16b0e85b82c4cfa1140"
+        "name": "parity-home-over",
+        "run": "final2-ui-shots",
+        "test": "HomeBudgetParityUITests/testHomeStates()",
+        "sha256": "339e407f650cd970a36c068705e4243b7ce1dfa76835cd17d2cb3d41bfc89726"
       },
       "action": "조회",
-      "note": "",
+      "note": "「예산 초과 · 500만 원」 빨강. 데이터 차이 있음.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -725,16 +750,16 @@
         "sha256": "cafdc98401d999b2b9d55ac59fc8ecaa53d3a9ad8aab5ce816f2b4278388e733"
       },
       "ios": {
-        "src": "images/ios-review-calendar-month.webp",
+        "src": "images/ios-cal-month.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-calendar-month",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testFiveTabsAndFilledAddReturnsToSchedule()",
-        "sha256": "4e25bbe49b6c276485304704441c1e17f0a18d11d13227bbda2826d1e5530dc6"
+        "name": "cal-month",
+        "run": "final2-ui-shots",
+        "test": "CalendarParityUITests/testCalendarStates()",
+        "sha256": "40624d43d6502e8a3b99dcc91ac8660e8c6504a372793d5dc1ebf60065b0f5fc"
       },
       "action": "조회",
-      "note": "",
+      "note": "iOS 는 CalendarParityUITests 실제 앱 캡처(탭바 포함). 목록 데이터(일정 수·합계)가 다르다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -747,13 +772,13 @@
       "title": "다음 달 이동",
       "android": null,
       "ios": {
-        "src": "images/ios-review-action-calendar-next.webp",
+        "src": "images/ios-cal-next.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-action-calendar-next",
-        "run": "review-shots",
-        "test": "AllScreenReviewUITests/testCalendarMonthAndDayActions()",
-        "sha256": "c9632e6f282eeb46a714da6fb2a7cad316c0395c17f006d9c574e82e06f99eb8"
+        "name": "cal-next",
+        "run": "final2-ui-shots",
+        "test": "CalendarParityUITests/testCalendarStates()",
+        "sha256": "9cadebefc67712eaf52bef99027d41e09c0f2283458b2fb75cb10521e3a995a3"
       },
       "action": "조회",
       "note": "",
@@ -769,13 +794,13 @@
       "title": "날짜 상세·추가",
       "android": null,
       "ios": {
-        "src": "images/ios-review-action-calendar-day.webp",
+        "src": "images/ios-cal-month-daylist.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-action-calendar-day",
-        "run": "review-shots",
-        "test": "AllScreenReviewUITests/testCalendarMonthAndDayActions()",
-        "sha256": "c6437ecc6a5ea59da7fe93c46d5214174c665c9a139d3d64e1d41469ca713b11"
+        "name": "cal-month-daylist",
+        "run": "final2-ui-shots",
+        "test": "CalendarParityUITests/testCalendarStates()",
+        "sha256": "14c3033c459b077cc7c8d1bbf0ef5a90dc3583ef9cd6142ddf94589f883079f8"
       },
       "action": "조회",
       "note": "",
@@ -791,16 +816,16 @@
       "title": "날짜를 지정한 등록",
       "android": null,
       "ios": {
-        "src": "images/ios-review-action-calendar-add-date.webp",
+        "src": "images/ios-cal-add-date.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-action-calendar-add-date",
-        "run": "review-shots",
-        "test": "AllScreenReviewUITests/testCalendarMonthAndDayActions()",
-        "sha256": "53fe9eaa3a6596992d8bbe620f6edd9c1a794e0d355cc2be6feea76814f8f467"
+        "name": "cal-add-date",
+        "run": "final2-ui-shots",
+        "test": "CalendarParityUITests/testCalendarStates()",
+        "sha256": "8543554b570afcd01ba6d7e37ce925f4e11fdf316f0e8f1cddd0a5be0cbc862d"
       },
       "action": "등록",
-      "note": "",
+      "note": "제목을 적기 전에는 아래 칸이 숨는 단계형 폼이다(Android 도 RevealSection 으로 같음). Android 대응 캡처 없음.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -817,12 +842,12 @@
         "width": 1170,
         "height": 2532,
         "name": "ads-calendar",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testUnpaidFeedBragAndCalendarAdPlacements()",
-        "sha256": "458f63c69a52a7706330e1b19b108f2eb6e9e38cce283d31f1568367e2be1369"
+        "sha256": "aa6491c580ce7f8cc6e3999ab21ef41886e0d2ffb7aa3fe7cb809b6db1a5aa44"
       },
       "action": "조회",
-      "note": "",
+      "note": "테스트 견본이라 소재 없이 「광고」 자리만 찍혔다(실제 테스트 배너는 google-test-banner).",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -839,12 +864,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-create-start",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testCreatePlanShowsBloomBeforeReturning()",
-        "sha256": "46cb2aeb82b76bbe63d751839e642be5d90841e4835cd9998e85f9879a1f07ae"
+        "sha256": "c2af1d09d373f581f77edf86ec1b31eb9ba5d2578d43ff4531622ed3f4e91641"
       },
       "action": "등록",
-      "note": "",
+      "note": "해결: Android 처럼 플랜 추가·수정 화면에도 하단 탭바가 남고 가운데 + 가 켜진다(다른 탭은 꺼짐, Android TabType.fromRoute(ADD_PLAN)=ADD). 탭 셸(MainTabShell)이 내용 자리에 덮어 그리며, 가운데 + · 홈 「추가」 · 달력 「+ 플랜 추가」 · 일정 상세 「수정하기」 · 피드 「담기」(후기 상세 포함) 모두 같은 길이고, 뒤로·저장(꽃 연출 뒤) 모두 누른 화면으로 돌아온다. 다른 탭을 누르면 플랜 추가는 빠진다. 화면에 소프트웨어 키보드가 뜨면 탭바를 내린다(Android showTabBar = onTabScreen && !imeVisible — 「저장 직전」 캡처에서 확인). 남은 것: 달력·채팅·결제 알림에서 전체 화면 창으로 연 일정 상세는 iOS 에서 그 화면부터 탭바가 없어(별도 차이) 거기서 연 수정은 예전처럼 전체 화면이다. Android 쪽 캡처는 화면 단독 렌더라 탭바 비교 이미지는 없다.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -869,12 +894,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-add-title-keyboard",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testFiveTabsAndFilledAddReturnsToSchedule()",
-        "sha256": "9ea85c4cfba329c6cb8d8cf75c89a6f40685b4bd61918f7a152cbea7e1decd2c"
+        "sha256": "63d3592ab5b15aa1cc5054240324a1b2d38001bdee99dccbf78239d78423d0ce"
       },
       "action": "등록",
-      "note": "",
+      "note": "이 iOS 시뮬레이터 캡처에는 키보드가 찍히지 않았다(키보드 자리가 빈 여백으로 보인다). Android 는 키보드가 찍혔다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -895,16 +920,16 @@
         "sha256": "ac4a798f5c6f412b28f4ad1cb292f116e38f0233aafc145dc845af090fc09103"
       },
       "ios": {
-        "src": "images/ios-review-category-default.webp",
+        "src": "images/ios-picker-default.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-category-default",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testCategorySearchAndConfirmPreservesSelection()",
-        "sha256": "0aaad801724a3099fdc651f95d1311ca9de007e4c59de2797135872bc1d7702b"
+        "name": "picker-default",
+        "run": "final2-ui-shots",
+        "test": "CategoryPickerParityUITests/testPickerMatchesAndroidStates()",
+        "sha256": "f9f36945ad4060e8ac189e38ef5ba0e650859bf4d94b2f7366d7a944cc3e1b51"
       },
       "action": "등록",
-      "note": "",
+      "note": "Android 는 선택기 단독 렌더, iOS 는 플랜 추가 위에 뜬 시트. 서버 카테고리 수가 달라 개수가 다르다(43 / 47). iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -925,16 +950,16 @@
         "sha256": "f535eea38f9037bec5e4a861f413d91717312a29b2535bc89b22915ea1090ffc"
       },
       "ios": {
-        "src": "images/ios-parity-category-search.webp",
+        "src": "images/ios-picker-search.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-category-search",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testCategorySearchAndConfirmPreservesSelection()",
-        "sha256": "a2d86cb13c7e8af08bd789ca45084c0717b819992868ce5f61d40c6011d01bc0"
+        "name": "picker-search",
+        "run": "final2-ui-shots",
+        "test": "CategoryPickerParityUITests/testPickerMatchesAndroidStates()",
+        "sha256": "f055321281e958ff216dae2be3d63b9b44ae05d75cf2e23a8e0c15636b67b6a6"
       },
       "action": "등록",
-      "note": "",
+      "note": "iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -955,16 +980,16 @@
         "sha256": "6b6d7db4d92f6c10f511bb44c7ded975b0bd8c9dba7781a886ed2979e3dda4d8"
       },
       "ios": {
-        "src": "images/ios-review-category-create.webp",
+        "src": "images/ios-picker-add.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-category-create",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testCategorySearchAndConfirmPreservesSelection()",
-        "sha256": "46b85fbde3273b96b990431f08b414ac621d42f779ee940199698ccba6b6a46e"
+        "name": "picker-add",
+        "run": "final2-ui-shots",
+        "test": "CategoryPickerParityUITests/testPickerMatchesAndroidStates()",
+        "sha256": "56be9a81a39b89b44e8f5852c949db43a6b37dae8e2693432e38d07435d0063f"
       },
       "action": "등록",
-      "note": "",
+      "note": "iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -989,12 +1014,12 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-addplan-form",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testAddPlanReferenceFrame()",
-        "sha256": "3c1e2febcfc4d8c4cfcb58ab79c48934f879e12d2bd03fb43b612453efe6a0dc"
+        "sha256": "20d6b38a3ae681069606669b071d850dd4b39e1c3be7fcff50e50b8b45d6afc1"
       },
       "action": "등록",
-      "note": "",
+      "note": "같은 fixture. 일자는 캡처한 날이라 하루 차이가 날 수 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1011,12 +1036,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-create-ready",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testCreatePlanShowsBloomBeforeReturning()",
-        "sha256": "adec9a5ed3c8925e5d970cab8db6b9045f155d326b9f47ba4bec05b622b6a839"
+        "sha256": "894efff53ca0020bb4cf44c22c8cd3375bf49398fcb790aba84a5e2f29f6ce84"
       },
       "action": "등록",
-      "note": "",
+      "note": "이 캡처에는 iOS 키보드가 찍혔다. 키보드가 떠 있어 하단 탭바가 내려가 있다(Android showTabBar = onTabScreen && !imeVisible).",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -1041,7 +1066,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-bloom-create",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testBloomReferenceFrames()",
         "sha256": "918e1503abc2a4e5634dd2d823e02214fb3f5858f760d16e0088dc77ca18264c"
       },
@@ -1059,16 +1084,16 @@
       "title": "일정 상세 상단",
       "android": null,
       "ios": {
-        "src": "images/ios-review-detail-top.webp",
+        "src": "images/ios-detail-top-planned.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-detail-top",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testEditAndDeletePlanShowBloom()",
-        "sha256": "b9498ea3e73556a93ff0cbd63ff45039110bc8642a44b925b33f0234fe3274b7"
+        "name": "detail-top-planned",
+        "run": "final2-ui-shots",
+        "test": "ScheduleDetailParityUITests/testDetailTopAndActionsPlannedThenCompleted()",
+        "sha256": "540009c930a80b858d6ef460cc113ba4da866e358740758e49cb22da61468a0e"
       },
       "action": "조회",
-      "note": "",
+      "note": "지도는 Android 와 같은 카카오맵(KakaoMapsSDK) — 장소 카드 위 200. 달력·채팅에서 열어도 탭바가 남는다(Android SCHEDULE_DETAIL). Android 대응 캡처 없음.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -1089,16 +1114,16 @@
         "sha256": "f9717c97d9f67f7158c941292bf73d52ab4b4ccf8102ff6e39cf448b52daf80f"
       },
       "ios": {
-        "src": "images/ios-review-detail-actions.webp",
+        "src": "images/ios-detail-actions-planned.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-detail-actions",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testEditAndDeletePlanShowBloom()",
-        "sha256": "e2b20e33c38129e79ea111b34bfd959ec4522571698c383d9e9f93a869d0f8c3"
+        "name": "detail-actions-planned",
+        "run": "final2-ui-shots",
+        "test": "ScheduleDetailParityUITests/testDetailTopAndActionsPlannedThenCompleted()",
+        "sha256": "5cd481e3b1b938a4fa4166a8addaae2701ed001f3435db1fe7c7687f0467187b"
       },
       "action": "조회",
-      "note": "",
+      "note": "보내기·공유 카드 + 삭제·수정하기. iOS 는 실제 앱이라 탭바가 아래에 있고, Android 도 SCHEDULE_DETAIL 에서 탭바를 둔다(캡처는 화면 단독).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1118,36 +1143,44 @@
         "test": "",
         "sha256": "dec1cade8cf1469fe99d85d1a90a87caaf0e741dfecfa9808c553bfc972f13f7"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-detail-actions-ready.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "detail-actions-ready",
+        "run": "final2-ui-shots",
+        "test": "ScheduleDetailParityUITests/testDetailTopAndActionsPlannedThenCompleted()",
+        "sha256": "ec7414b5c4d282fe8eb94eeac20bdba71eef6e50fbc8a7e2e3d8e397d6c24571"
+      },
       "action": "조회",
-      "note": "",
+      "note": "「예정으로 되돌리기」·「피드에 공유하기」 켜짐. 양쪽 일치.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-043",
       "group": "수정",
       "title": "수정 폼 상단",
       "android": {
-        "src": "images/android-docs-edit.webp",
+        "src": "images/android-docs-edit-paid.webp",
         "width": 1170,
         "height": 2532,
-        "name": "docs-edit",
+        "name": "docs-edit-paid",
         "run": "current-20261014",
         "test": "",
-        "sha256": "261698197150e23e342db4239c15c301bc3db259c9f3fcd2a06efd3c1898b0a7"
+        "sha256": "f23d68dde9524376ccf67a7774162ad35056ee2db1034424ccfbadb92830212b"
       },
       "ios": {
-        "src": "images/ios-review-edit-top.webp",
+        "src": "images/ios-matched-addplan-edit-top.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-edit-top",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testEditAndDeletePlanShowBloom()",
-        "sha256": "1602484c80ad986acc7e41ac53be9d50f4dfac4317a317266ca93751a1f3c243"
+        "name": "matched-addplan-edit-top",
+        "run": "final2-unit-shots",
+        "test": "VisualParityTests/testAddPlanEditDocsReferenceFrames()",
+        "sha256": "8568b9808ba25e29ea9e17b1de52f859acea304b2b923d962a328caae1f9a935"
       },
       "action": "수정",
       "note": "",
@@ -1161,23 +1194,31 @@
       "id": "case-044",
       "group": "수정",
       "title": "수정 폼 하단",
-      "android": null,
-      "ios": {
-        "src": "images/ios-review-native-edit-bottom.webp",
+      "android": {
+        "src": "images/android-docs-edit.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-edit-bottom",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "40a372fce61db7df1465ce97bbe54c0d43ea67d59fdcc81982f9efb3c9c9ddd7"
+        "name": "docs-edit",
+        "run": "current-20261014",
+        "test": "",
+        "sha256": "261698197150e23e342db4239c15c301bc3db259c9f3fcd2a06efd3c1898b0a7"
+      },
+      "ios": {
+        "src": "images/ios-matched-addplan-edit-docs.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-addplan-edit-docs",
+        "run": "final2-unit-shots",
+        "test": "VisualParityTests/testAddPlanEditDocsReferenceFrames()",
+        "sha256": "bc4636430b9f6e95aa4cf70d73b316a30c974b7bb9c6a52d4003a1df51e0fd2d"
       },
       "action": "수정",
-      "note": "",
+      "note": "서류 칸이 붙는 칸(+ · PDF)으로 나온다. 양쪽 일치.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-045",
@@ -1189,9 +1230,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-edit-ready",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testCalendarPDFExportReachesShareSheet()",
-        "sha256": "6fc0f362dc2e15c815a8e752de7348c4b74543ce0b59576d9d63f68afe596559"
+        "run": "final2-ui-shots",
+        "test": "AndroidParityUITests/testEditAndDeletePlanShowBloom()",
+        "sha256": "fd1bd4c7042c5f01b6b2120038fa6c7d7c8cb97e7b92e3deb468ce43563616b0"
       },
       "action": "수정",
       "note": "",
@@ -1219,7 +1260,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-bloom-update",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testBloomReferenceFrames()",
         "sha256": "8ad0e52200588428e2e40542e6b7d877b1f14948801a5c5a84040ca2721a8b12"
       },
@@ -1249,9 +1290,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-delete-confirm",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testEditAndDeletePlanShowBloom()",
-        "sha256": "9939c22dfa7e2ff88597aa825baa550e136d1ca340b66dac52c3575e43aa909d"
+        "sha256": "9c402d012c930f16d4b199f2f190b73cee42a993fab5223e9253dbf00a38fac5"
       },
       "action": "삭제",
       "note": "",
@@ -1279,7 +1320,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-bloom-delete",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testBloomReferenceFrames()",
         "sha256": "23c5f7573a615ad267716407a2f8e4cbe1cb5138f24a1549fa5dffc915c55c7a"
       },
@@ -1304,14 +1345,22 @@
         "test": "",
         "sha256": "bca1cd97ed7798182708498a767bed3d9fbedbcfa3ab12020e85685ec03fd726"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-bloom-delete-none.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-bloom-delete-none",
+        "run": "final2-unit-shots",
+        "test": "VisualParityTests/testBloomNoAmountReferenceFrame()",
+        "sha256": "ebbf378dfbbc58be61cdab8c60681648afb0b850983e1532d2bde52458542a39"
+      },
       "action": "삭제",
       "note": "",
-      "same": false,
+      "same": true,
       "issue": false,
-      "capture": "한쪽 캡처",
-      "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "capture": "양쪽 캡처",
+      "fixture": "동일 데이터",
+      "status": "대조 가능"
     },
     {
       "id": "case-050",
@@ -1331,12 +1380,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-budget-top",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "ef8a76afa3a234c84a72e7e07406f347964c4d942f6a733737867014d9200410"
+        "sha256": "467d45d1fc2e54f22b53db66f995908298d92557228eea576067d4517e8ffcc7"
       },
       "action": "조회",
-      "note": "차트 수치는 공유한 fixture. 사용자 총 예산·일정 목록 데이터는 서로 다르다.",
+      "note": "차트 수치는 공유한 fixture. 스크롤 위치가 플랫폼별 콘텐츠 높이에 따라 조금 다르다. 실제 앱 iOS 캡처는 parity-budget-top.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1361,12 +1410,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-budget-middle",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "0602a669845a88ee83523adfb73890bc37af28ef5c8cf2c90ab9f659b2811d06"
+        "sha256": "a31feecdc811830974c94630efe4fd379bd86c21e161617f998fb5dfe9127403"
       },
       "action": "조회",
-      "note": "차트 수치는 공유한 fixture. 사용자 총 예산·일정 목록 데이터는 서로 다르다.",
+      "note": "차트 수치는 공유한 fixture. 스크롤 위치가 플랫폼별 콘텐츠 높이에 따라 조금 다르다. 실제 앱 iOS 캡처는 parity-budget-middle.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1391,12 +1440,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-budget-bottom",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "bf85a7a5d2cc04ec496aeff5e99d217f9d1f7428de55b7227bc540706679cc09"
+        "sha256": "93ec228cb9913b514a5f2170f02376c81790c642317fbc72de41336ac7b56a22"
       },
       "action": "조회",
-      "note": "차트 수치는 공유한 fixture. 사용자 총 예산·일정 목록 데이터는 서로 다르다.",
+      "note": "차트 수치는 공유한 fixture. 스크롤 위치가 플랫폼별 콘텐츠 높이에 따라 조금 다르다. 실제 앱 iOS 캡처는 parity-budget-bottom.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1413,9 +1462,9 @@
         "width": 1170,
         "height": 2532,
         "name": "ads-budget",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testUnpaidHomeBudgetAndDetailPlacements()",
-        "sha256": "52fd82da724f19bff60f2c27d610c93ab5bd85f24f3c97f4faf742a404eb7f24"
+        "sha256": "896e9ecccf64d4d4b93a999339cb72c55c0ea511f54769e0df4b94131c7f7b15"
       },
       "action": "조회",
       "note": "",
@@ -1430,12 +1479,20 @@
       "group": "예산",
       "title": "필터·예정/사용 전환",
       "android": null,
-      "ios": null,
+      "ios": {
+        "src": "images/ios-parity-budget-filtered.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "parity-budget-filtered",
+        "run": "final2-ui-shots",
+        "test": "HomeBudgetParityUITests/testHomeScrollAndBudget()",
+        "sha256": "b5ab274ab15c1bfc8a637f398c727698307260dfd04bfc739190d57958d2b9a5"
+      },
       "action": "조회",
-      "note": "화면 캡처에서 필터 선택 전후의 대조가 아직 없다.",
+      "note": "카테고리 필터(웨딩홀) + 사용 탭. Android 대응 캡처 없음(사용 탭만은 parity-budget-used-tab).",
       "same": false,
       "issue": false,
-      "capture": "미캡처",
+      "capture": "한쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
       "status": "추가 검증 필요"
     },
@@ -1457,9 +1514,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-explore-feed",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testExploreReferenceFrame()",
-        "sha256": "5691004fec33431475474acb1f14eafab42db82a54650f721b847ca442ab1384"
+        "sha256": "fdd3642d8d4b431ac93442671feea34988de8c18989a4baca51af3e7ae2f9f5e"
       },
       "action": "조회",
       "note": "",
@@ -1487,12 +1544,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-feed-middle",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "6274a318820f4387eec1be64bbe68904a91e0aa488525e9ff0f48cc85bedc19f"
+        "sha256": "8a8acf35c23e000c903dca8f97c03a025bd44ce91e0081bb625ee68c523278ab"
       },
       "action": "조회",
-      "note": "",
+      "note": "스크롤 위치·데이터 차이.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1509,12 +1566,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-feed-detail-top",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "160026b5dfbe8b6cc0c7b3ded574ae4ca31f64d4916bd9028033f4c1bdf7ee0d"
+        "sha256": "d77c7b83505265297d381c7cd2ce3601d85c7eb4213d2245ab83dcc7d5f759d0"
       },
       "action": "조회",
-      "note": "",
+      "note": "지도는 Android 와 같은 카카오맵(KakaoMapsSDK, 168 · 줌 15).",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -1526,12 +1583,20 @@
       "group": "피드",
       "title": "후기 상세 하단",
       "android": null,
-      "ios": null,
+      "ios": {
+        "src": "images/ios-review-native-feed-detail-bottom.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "review-native-feed-detail-bottom",
+        "run": "final2-unit-shots",
+        "test": "AllScreenComparisonTests/testScreenInventory()",
+        "sha256": "1dd5899a5323200b5903ca6ef52dd4182daae3560dde5623bc31b26eb2302cff"
+      },
       "action": "조회",
-      "note": " iOS 해당 상태의 유효 캡처가 아직 없다.",
+      "note": "",
       "same": false,
       "issue": false,
-      "capture": "미캡처",
+      "capture": "한쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
       "status": "추가 검증 필요"
     },
@@ -1539,6 +1604,28 @@
       "id": "case-059",
       "group": "피드",
       "title": "후기 등록 · 일정 선택",
+      "android": null,
+      "ios": {
+        "src": "images/ios-matched-feed-post-pick.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-feed-post-pick",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testFeedPostSheetReferenceFrames()",
+        "sha256": "702f21cffd9bd594487dcc69d78c64a766ab00b65d2c439ecb7cade0361cce16"
+      },
+      "action": "등록",
+      "note": "iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
+      "same": false,
+      "issue": false,
+      "capture": "한쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "추가 검증 필요"
+    },
+    {
+      "id": "case-060",
+      "group": "피드",
+      "title": "후기 등록 · 선택 후",
       "android": {
         "src": "images/android-detail-actions-sheet.webp",
         "width": 1170,
@@ -1549,43 +1636,21 @@
         "sha256": "3df7afc17bbea0d4bb5a88af1fb0663caf7e16db0e350abdc858bacccad2d9ec"
       },
       "ios": {
-        "src": "images/ios-review-native-feed-post-top.webp",
+        "src": "images/ios-matched-feed-post-selected.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-feed-post-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "a695e7f30363729e1cb35e21b449d653440dac441cb1ce10fb19135548621909"
+        "name": "matched-feed-post-selected",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testFeedPostSheetReferenceFrames()",
+        "sha256": "f79000e9d2af33bc4d38f3b67ad1925644d075b5332c46b3af9bd2eb3939bfef"
       },
       "action": "등록",
-      "note": "",
+      "note": "일정 선택·만족도·한 줄 후기·금액 공개. 양쪽 일치. iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
       "status": "대조 가능"
-    },
-    {
-      "id": "case-060",
-      "group": "피드",
-      "title": "후기 등록 · 선택 후",
-      "android": null,
-      "ios": {
-        "src": "images/ios-review-action-feed-post-selected.webp",
-        "width": 1170,
-        "height": 2532,
-        "name": "review-action-feed-post-selected",
-        "run": "states-shots",
-        "test": "AllScreenReviewUITests/testFeedWriteForm()",
-        "sha256": "52f64fbfeb401fef9ec21fe0184f169fa140a1cc8a4c8c5793a7b3688903b411"
-      },
-      "action": "등록",
-      "note": "",
-      "same": false,
-      "issue": false,
-      "capture": "한쪽 캡처",
-      "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
     },
     {
       "id": "case-061",
@@ -1597,9 +1662,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-action-feed-post-ready",
-        "run": "states-shots",
+        "run": "final2-ui-shots",
         "test": "AllScreenReviewUITests/testFeedWriteForm()",
-        "sha256": "52f64fbfeb401fef9ec21fe0184f169fa140a1cc8a4c8c5793a7b3688903b411"
+        "sha256": "0ebce490032a5e31fb0b0d5e5cd0e79de86aeea3226ddfe3a022b350153cd4c0"
       },
       "action": "등록",
       "note": "외부 피드에는 게시하지 않았다. 화면 캡처와 실제 게시 검증은 별개다.",
@@ -1633,9 +1698,9 @@
         "width": 1170,
         "height": 2532,
         "name": "ads-feed",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testUnpaidFeedBragAndCalendarAdPlacements()",
-        "sha256": "2a562a84c6e12280ce484d2ca870318a0556f49871d1d706c61d24cb90cb7334"
+        "sha256": "eac64bdcb4082a5e5c9f2cae80df29b01708f0b8e0d87ae03728a65076fcd55e"
       },
       "action": "조회",
       "note": "",
@@ -1659,13 +1724,13 @@
         "sha256": "9c058961523a289827fcdab38d07a51f1ef425d6ac2abb069471476c5e376f52"
       },
       "ios": {
-        "src": "images/ios-parity-explore-brag.webp",
+        "src": "images/ios-matched-explore-brag.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-explore-brag",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testExploreHeadersAndBragNavigation()",
-        "sha256": "80b28642130ffcbdaff830164755a003f0992cb7c5990975a44f2994d01ab562"
+        "name": "matched-explore-brag",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testExploreBragReferenceFrame()",
+        "sha256": "40259485e82b2414905437f58d8abd15fe41d2c5567a0596b6345047667f0dbf"
       },
       "action": "조회",
       "note": "",
@@ -1689,16 +1754,16 @@
         "sha256": "f6eed17c66d85a9767c7e2bfaf611cd4e2ca0dedb5899ce93d2461fd86a4ac90"
       },
       "ios": {
-        "src": "images/ios-review-native-brag-detail-top.webp",
+        "src": "images/ios-matched-brag-detail.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-brag-detail-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "bd9324f202738c93d2fecf7b1c0dd25c782ef98706aadb154a3ef92b86aab11e"
+        "name": "matched-brag-detail",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testBragDetailReferenceFrame()",
+        "sha256": "246f2148386d41760e25100632f72f11e58507d13f891ad10fc5bd6c7a4e1290"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 는 화면 단독, iOS 는 시트. 좋아요 버튼·도넛 범례 구성 일치. 범례 줄 간격이 iOS 가 조금 넓다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1710,12 +1775,20 @@
       "group": "자랑하기",
       "title": "자랑 상세 하단",
       "android": null,
-      "ios": null,
+      "ios": {
+        "src": "images/ios-review-native-brag-detail-bottom.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "review-native-brag-detail-bottom",
+        "run": "final2-unit-shots",
+        "test": "AllScreenComparisonTests/testScreenInventory()",
+        "sha256": "f435620525152217745c44b29ec3253d7a07713fc4dfab685b5ac9c7d1d9e867"
+      },
       "action": "조회",
-      "note": " iOS 해당 상태의 유효 캡처가 아직 없다.",
+      "note": "",
       "same": false,
       "issue": false,
-      "capture": "미캡처",
+      "capture": "한쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
       "status": "추가 검증 필요"
     },
@@ -1732,14 +1805,22 @@
         "test": "",
         "sha256": "3bab73a847b7c16f3746551d42ad8c1815ecddafeda70bb997917183753ef641"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-toggle-normal.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-toggle-normal",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testBragToggleReferenceFrames()",
+        "sha256": "d3a70164fccaefef11ff3ac1a0c4ae95011273cbe2e581955124e6f1443e293c"
+      },
       "action": "수정",
-      "note": "",
+      "note": "줄 높이: 캡처상 iOS 가 약 12pt 높지만(Android 약 52~53pt, iOS 약 64~65pt) Android 캡처 쪽 문제다 — 이 Android 샷 테스트는 setContent 에 앱 테마(WeddingPlantTheme → MaterialTheme(typography = WpTypography))를 씌우지 않아 글자가 글꼴 기본 줄 높이로 그려졌다. 실제 앱의 Text 는 WpTypography 의 lineHeight 1.5em + M3 기본 LineHeightStyle(Center, Trim.None)이라 줄마다 1.5배를 차지하고, iOS wpTypography(1.5배·위아래 반씩)와 같다. Android 소스 값(글자 크기·굵기·간격 2·안쪽 여백 12/14·16)과 iOS 값이 모두 같아 iOS 는 고치지 않았다 (소스로 계산한 앱 높이: 12+21+2+18+12 = 65pt). 문구·스위치 위치는 같다.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-068",
@@ -1754,14 +1835,22 @@
         "test": "",
         "sha256": "bbeedc38f3ca9e93c04e4ae32d5992ccb357a3a2e05726c2f76aedc8e55a4534"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-toggle-locked.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-toggle-locked",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testBragToggleReferenceFrames()",
+        "sha256": "3517ff00c37d3f14eb6f7da495131e3741380163ecc4a3853358a086c8965a80"
+      },
       "action": "조회",
-      "note": "",
+      "note": "「신랑·신부를 등록하면 올릴 수 있어요」 잠금. 카드 높이 차이는 「공개 토글 안내」와 같은 원인.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-069",
@@ -1773,9 +1862,9 @@
         "width": 1170,
         "height": 2532,
         "name": "ads-brag",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testUnpaidFeedBragAndCalendarAdPlacements()",
-        "sha256": "c8eb780236811142c4f362d9b4828b839cbab8f9d8969742141ff04dc63ccde7"
+        "sha256": "072289179280342d568e33479f89307bb254e7d9a9e793b4c7aeb9a4ba7fd8d5"
       },
       "action": "조회",
       "note": "",
@@ -1799,16 +1888,16 @@
         "sha256": "ea0a2fe0dac2b4c1c35ce0d61cf8e177f2daee68a7aab9552b921b780549b3c2"
       },
       "ios": {
-        "src": "images/ios-parity-chat-list.webp",
+        "src": "images/ios-matched-chat-ready.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-chat-list",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testFiveTabsAndFilledAddReturnsToSchedule()",
-        "sha256": "df632b55f7cd181c7e6a9a0bab652bf4895a5d198e991bebb79d987df2437eb2"
+        "name": "matched-chat-ready",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testChatReferenceFrames()",
+        "sha256": "05f73c91cf64ec94597902122a51117c10995f5f83afc4722bcaaffdb4a854d7"
       },
       "action": "조회",
-      "note": "테스트 소켓 연결 상태와 메시지 데이터가 다르다.",
+      "note": "같은 대화 fixture. 결혼식까지 남은 날짜만 캡처한 날 차이. 실제 앱 캡처는 parity-chat-list.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1833,7 +1922,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-chat-solo",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testSoloChatReferenceFrames()",
         "sha256": "07b49f66b46e86eeaeb07bf3f3cc0d686a5a26ff41238d53e81770f8808b0fd6"
       },
@@ -1863,7 +1952,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-chat-unavailable",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testSoloChatReferenceFrames()",
         "sha256": "955480b2288f88d77b0b17f256a00df18b2d5cebc68006f1a24175a4370c49a6"
       },
@@ -1889,16 +1978,16 @@
         "sha256": "4065b73984f3a28f0c7a874e625c340bceb007ddfb895855d69e7b6eb63fae0c"
       },
       "ios": {
-        "src": "images/ios-review-native-pick-plan-top.webp",
+        "src": "images/ios-matched-pick-list.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-pick-plan-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "232b50b642c371a526a0b3d1d921420b6870034d5bd06eb4b981f0941ac6e1c7"
+        "name": "matched-pick-list",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPickAndShareReferenceFrames()",
+        "sha256": "871da756a47253299c5cca379d89d38e37cb5a9f85bcea9826ef770e80e9cd22"
       },
       "action": "조회",
-      "note": "",
+      "note": "플랜 줄 높이: 캡처상 iOS 가 약 12pt 높지만(Android 약 52~53pt, iOS 약 64~65pt) Android 캡처 쪽 문제다 — 이 Android 샷 테스트는 setContent 에 앱 테마(WeddingPlantTheme → MaterialTheme(typography = WpTypography))를 씌우지 않아 글자가 글꼴 기본 줄 높이로 그려졌다. 실제 앱의 Text 는 WpTypography 의 lineHeight 1.5em + M3 기본 LineHeightStyle(Center, Trim.None)이라 줄마다 1.5배를 차지하고, iOS wpTypography(1.5배·위아래 반씩)와 같다. Android 소스 값(글자 크기·굵기·간격 2·안쪽 여백 12/14·16)과 iOS 값이 모두 같아 iOS 는 고치지 않았다 (소스로 계산한 앱 높이: 12+21.75+2+18+12 ≈ 66pt — 제목 14.5). 제목·「스드메 · 11월 20일 · 300만원」 문구는 같다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1919,13 +2008,13 @@
         "sha256": "de1d140695db3e81790e53842781a6b9823d0f88686151ddc52fd9384aab7c41"
       },
       "ios": {
-        "src": "images/ios-review-native-pick-empty-top.webp",
+        "src": "images/ios-matched-pick-empty.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-pick-empty-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "13d0b1f7a54f04ba203925c5319f7269a7065210d94b4d230c9c033d2914b306"
+        "name": "matched-pick-empty",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPickAndShareReferenceFrames()",
+        "sha256": "43a0160eea0c984e2002a96a9ca5e2ef83b64c492d0f19ab7bef15a0f6668bab"
       },
       "action": "조회",
       "note": "",
@@ -1949,16 +2038,16 @@
         "sha256": "c46f067176198b60cd5fec1165824264ea6f2d0cd32d5bcabe2ce6bcfb44eb8c"
       },
       "ios": {
-        "src": "images/ios-review-native-pick-error-top.webp",
+        "src": "images/ios-matched-pick-error.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-pick-error-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "337eb14005415bbf7ea73678756fa967e1fde20b5c5d261171f23e35c3a3f47f"
+        "name": "matched-pick-error",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPickAndShareReferenceFrames()",
+        "sha256": "8cb851ac41ddd261572ab792d635210d202bfb52871b8cdf991c7444ce8b4071"
       },
       "action": "조회",
-      "note": "",
+      "note": "줄 높이 차이는 「플랜 선택해서 보내기」와 같은 원인(Android 샷 테스트가 앱 테마 없이 그림 — iOS 는 소스 값과 같음).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -1978,14 +2067,22 @@
         "test": "",
         "sha256": "da38083816e9f1641252586ff90d20792f3dca9a6255b1a35636483121b3f8c9"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-pick-sending.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-pick-sending",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPickAndShareReferenceFrames()",
+        "sha256": "12bf1b74b9d2a73e80331d239bb9ba5614411b30dd896527b80fe36b6190d776"
+      },
       "action": "등록",
-      "note": "",
+      "note": "줄 높이 차이는 「플랜 선택해서 보내기」와 같은 원인(Android 샷 테스트가 앱 테마 없이 그림 — iOS 는 소스 값과 같음).",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-077",
@@ -2000,14 +2097,22 @@
         "test": "",
         "sha256": "a7418b57d17a94d3f355cef13b104137bd0d9fe6e62be39ffe3ce026207c5dd1"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-pick-done.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-pick-done",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPickAndShareReferenceFrames()",
+        "sha256": "873e7801c96c1784aee33172a0447f0aadf0d084193bd24d40890c60e1240917"
+      },
       "action": "등록",
-      "note": "",
+      "note": "고른 줄 체크. 줄 높이 차이는 「플랜 선택해서 보내기」와 같은 원인(Android 샷 테스트가 앱 테마 없이 그림 — iOS 는 소스 값과 같음).",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-078",
@@ -2023,16 +2128,16 @@
         "sha256": "cddaffdbbcebd37412887de5bef8060010b850ae96a78d3d24691cb302496911"
       },
       "ios": {
-        "src": "images/ios-review-native-share-plan-top.webp",
+        "src": "images/ios-matched-share-sheet.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-share-plan-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "f7a043a463f14e36da0f7e2dab3992a36b95ca2f4c4601e35404cca231d2c878"
+        "name": "matched-share-sheet",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPickAndShareReferenceFrames()",
+        "sha256": "36e299c64b04ca6091849f9fa6ffe129550fc6730b8201247d1d26a068eb75e7"
       },
       "action": "조회",
-      "note": "",
+      "note": "보내기 · 보냄 · 혼자 세 상태를 세로로 이은 캡처. 양쪽 같은 구성.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2042,7 +2147,7 @@
     {
       "id": "case-079",
       "group": "커플 관리",
-      "title": "신랑·신부 관리",
+      "title": "배우자 자리 경고(참여 전)",
       "android": {
         "src": "images/android-release-spouse-seat-named.webp",
         "width": 1080,
@@ -2053,16 +2158,16 @@
         "sha256": "7f4379f45e11b76a671644d0b506dffd1ebea794c383d4d203933dd069493c31"
       },
       "ios": {
-        "src": "images/ios-review-native-couple-top.webp",
+        "src": "images/ios-matched-spouse-seat-named.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-couple-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "f806ec28fad2322b9af269e745fc288faaaed257b5db2de7a457844a7e648635"
+        "name": "matched-spouse-seat-named",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testCoupleReferenceFrames()",
+        "sha256": "914a462c05171ca7ae866a9bf254c661e7d2a1ff221a44d640534660edad8288"
       },
       "action": "조회",
-      "note": "",
+      "note": "「지금부터 초대한 사람의 플랜을 같이 쓰게 돼요」 경고창. 양쪽 일치(창의 세로 위치는 상태바 유무로 다름).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2083,13 +2188,13 @@
         "sha256": "e21218581bb75cfaf5d39af34edd465c37617cbbda003eb6724696caacb21456"
       },
       "ios": {
-        "src": "images/ios-parity-couple-unlink-confirm.webp",
+        "src": "images/ios-matched-couple-owner-confirm.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-couple-unlink-confirm",
-        "run": "review-shots",
-        "test": "AndroidParityUITests/testSoloChatInviteAndCoupleManagement()",
-        "sha256": "8c74f785662ac8c1a5f3b7b35f1d69f4d73738140a253beb0e8f42392913ec6e"
+        "name": "matched-couple-owner-confirm",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testCoupleReferenceFrames()",
+        "sha256": "bcdaba6f5f45cb380d9b14f4efaa39b22f23711a5eefd2981ac8756a6bdfd64f"
       },
       "action": "삭제",
       "note": "",
@@ -2112,14 +2217,22 @@
         "test": "",
         "sha256": "9064474ca48634470c08fa73432568e16e7ebca98e1109b64b9006601c3a5cca"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-couple-spouse-leave.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-couple-spouse-leave",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testCoupleReferenceFrames()",
+        "sha256": "995ad65b5fe5935343bc3e56fcdfa0b1c74dc00719e7049bccbc0fad7c27124e"
+      },
       "action": "삭제",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-082",
@@ -2134,14 +2247,22 @@
         "test": "",
         "sha256": "c5a2dd2fdc45bf8c25370d02bbd9abd2f7708150d7161a20ef3424e250db0e3f"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-join-refused.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-join-refused",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testCoupleReferenceFrames()",
+        "sha256": "9ff0b9932b7957dae27519904b1144fef65465eca496bdcbf9dfe6fe06d36c86"
+      },
       "action": "조회",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-083",
@@ -2156,14 +2277,22 @@
         "test": "",
         "sha256": "9df73c81d33b30090c25323ffe77ce02a238d68bf579641bb0eac27902a62863"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-chat-not-member.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-chat-not-member",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testChatReferenceFrames()",
+        "sha256": "b296a71d3af20c21c4fb44cd7a4541e97b91905c8897445b9be9e3bf3ebeeddc"
+      },
       "action": "조회",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-084",
@@ -2183,9 +2312,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-profile-top",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "71a89e041724861021ccb3348893762236a294a1684c5dc222dad40d76714fd5"
+        "sha256": "91aac38bb240f562a86d6cbdee5b1e2c725d7cfa3bbb019a022c6e6468d1eae9"
       },
       "action": "조회",
       "note": "",
@@ -2213,12 +2342,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-profile-middle",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "3391a6bed411737a769961b89d92871e365447f8ec7e5675e5d7e20bdefca7fe"
+        "sha256": "cfd0812d4bcc88142e71dd92e5750264c603d79173d1973d75690299568e2054"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 「예산·저장」 캡처는 예산 칸에 초점이 가 숫자 키보드가 찍혔다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2243,9 +2372,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-profile-bottom",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "3391a6bed411737a769961b89d92871e365447f8ec7e5675e5d7e20bdefca7fe"
+        "sha256": "cfd0812d4bcc88142e71dd92e5750264c603d79173d1973d75690299568e2054"
       },
       "action": "조회",
       "note": "",
@@ -2265,12 +2394,12 @@
         "width": 1170,
         "height": 2532,
         "name": "review-action-profile-edit-keyboard",
-        "run": "actions-shots",
+        "run": "final2-ui-shots",
         "test": "AllScreenReviewUITests/testProfileSaveAndAccountConfirmations()",
-        "sha256": "b920e3aa19b0f74616115c14746233fe3411986e0599f3b53a41a6a9bdb329bf"
+        "sha256": "0b6731fdd095ee827acc489b010f167b19aae0be59ac08f85c6c6674ea896612"
       },
       "action": "수정",
-      "note": "",
+      "note": "이 iOS 시뮬레이터 캡처에는 키보드가 찍히지 않았다(키보드 자리가 빈 여백으로 보인다).",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -2287,9 +2416,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-action-profile-saved",
-        "run": "actions-shots",
+        "run": "final2-ui-shots",
         "test": "AllScreenReviewUITests/testProfileSaveAndAccountConfirmations()",
-        "sha256": "418cab3d5803120f611ed516dee078c60175eb8fd5881874210f2b2f872d159b"
+        "sha256": "c15908df24c4bda5cdf79b49c1c1f2991fa398d1bcec5d02bfa5c0eb835807cf"
       },
       "action": "수정",
       "note": "",
@@ -2309,9 +2438,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-action-logout-confirm",
-        "run": "actions-shots",
+        "run": "final2-ui-shots",
         "test": "AllScreenReviewUITests/testProfileSaveAndAccountConfirmations()",
-        "sha256": "70646f249961414c9e036033923d826a40d445f4faedbb7cf0dfa16d16065b89"
+        "sha256": "74a243f469b1b75ba4dbce9aafc87fa234f739376ac7a78042e4578b5a8ee3cb"
       },
       "action": "삭제",
       "note": "",
@@ -2331,9 +2460,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-action-logout-done",
-        "run": "actions-shots",
+        "run": "final2-ui-shots",
         "test": "AllScreenReviewUITests/testProfileSaveAndAccountConfirmations()",
-        "sha256": "ff84032c5fcb8cf62b9ed294108f71780c8cd247bd98c22ffaf603b97d1fc7fa"
+        "sha256": "541bef569470a327c360c00976d51be9ede18125e8eff99ca87145fff01f34d2"
       },
       "action": "삭제",
       "note": "",
@@ -2353,9 +2482,9 @@
         "width": 1170,
         "height": 2532,
         "name": "review-action-withdraw-confirm",
-        "run": "actions-shots",
+        "run": "final2-ui-shots",
         "test": "AllScreenReviewUITests/testProfileSaveAndAccountConfirmations()",
-        "sha256": "5740ce9e269043da1c8c1b04c6ba85d2987d0c633611b8eefc897011a212f57f"
+        "sha256": "06537196229cf63ef7d54279e17338381f7498cbca3601aeba36b37dac0b330c"
       },
       "action": "삭제",
       "note": "운영 계정은 탈퇴시키지 않았다. 확인창까지 비교.",
@@ -2375,7 +2504,7 @@
         "width": 1170,
         "height": 2532,
         "name": "review-native-blocks-top",
-        "run": "states-shots",
+        "run": "final2-unit-shots",
         "test": "AllScreenComparisonTests/testScreenInventory()",
         "sha256": "4d481e072f0b03d6cb399b62895577ab96f679f19a9c00c83531e5640532321d"
       },
@@ -2400,14 +2529,22 @@
         "test": "",
         "sha256": "a348d737208d2075bf1779ac23d88add671088e43350b27862630c0d04fd3ccd"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-moderation-menu.webp",
+        "width": 1170,
+        "height": 426,
+        "name": "matched-moderation-menu",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testModerationReferenceFrames()",
+        "sha256": "e81c1acd5dd751b3f52c39027d353e12ea398160c368611262360ed50c8ac657"
+      },
       "action": "조회",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-094",
@@ -2423,16 +2560,16 @@
         "sha256": "197c2f751addcb1bf6cd7aa2d4681b9c5b7ec25c9b40a1185a4ad1ae7a38f494"
       },
       "ios": {
-        "src": "images/ios-review-native-report-top.webp",
+        "src": "images/ios-matched-moderation-reason.webp",
         "width": 1170,
-        "height": 2532,
-        "name": "review-native-report-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "6a9f3c463646f46fd2caae0cb4d2c36266bb9a90523793f08262892890b20efa"
+        "height": 1494,
+        "name": "matched-moderation-reason",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testModerationReferenceFrames()",
+        "sha256": "3c7db03fd6ad22281214f1e69e0e78357bf7501b637df62b325abe2d4efbf0e5"
       },
       "action": "등록",
-      "note": "",
+      "note": "본문 일치. iOS 위 여백이 몇 pt 크다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2452,14 +2589,22 @@
         "test": "",
         "sha256": "db54bdb2514d41af825a76517cd85ad563566e1024142997793c244de0190e19"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-moderation-reason-other.webp",
+        "width": 1170,
+        "height": 1764,
+        "name": "matched-moderation-reason-other",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testModerationReferenceFrames()",
+        "sha256": "85e9eb3cc21b2340bbdd80ec29475ba537f78596d66b11e8339349a37b37809e"
+      },
       "action": "등록",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-096",
@@ -2474,14 +2619,22 @@
         "test": "",
         "sha256": "19926d8a41c769be4f0348f4239a33ed74593434f5b7e2e4b7fa1eedf5a2b97f"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-moderation-block.webp",
+        "width": 1170,
+        "height": 585,
+        "name": "matched-moderation-block",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testModerationReferenceFrames()",
+        "sha256": "1df7fcaf0c930b53e52ad21abdf2b2518b6f1cfe3a7e15d271d46e776254e856"
+      },
       "action": "등록",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-097",
@@ -2496,14 +2649,22 @@
         "test": "",
         "sha256": "c1e8a5f6641cd3816f67bc64440e9228c8e7337f1934e52f58828fef3ad722b1"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-matched-moderation-done.webp",
+        "width": 1170,
+        "height": 399,
+        "name": "matched-moderation-done",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testModerationReferenceFrames()",
+        "sha256": "f78f1b0def55fe2f1ab4bef5f2ef9104a744833a0c2ddc2463bc8950aa3b6bed"
+      },
       "action": "등록",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-098",
@@ -2519,21 +2680,21 @@
         "sha256": "2f4f334f1bc1412571bc95a87eb0484c6eae423dec0395ae4b5d508bb7e0a7da"
       },
       "ios": {
-        "src": "images/ios-review-native-documents-top.webp",
+        "src": "images/ios-vault-library.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-documents-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "d235cc6b816cd3200f6b36e5ae2fa3fc44a060014794a056b63c4445613e8cf9"
+        "name": "vault-library",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "b3b0352cebb19f6839a62ceeb210ff3f013ef602a3ebf59be9b1569da9b3ab84"
       },
       "action": "조회",
-      "note": "차이: Android 보관함과 iOS 전체 내려받기 화면의 구조가 다르다. 같은 기능·레이아웃이라고 판정할 수 없다.",
+      "note": "이제 iOS 도 Android 와 같은 통합 보관함(DocumentsWorkspaceView)이다 — 용량 카드·개수·검색·필터·목록 구조 일치. iOS 단위 렌더라 OS 상태바가 없다.",
       "same": false,
-      "issue": true,
+      "issue": false,
       "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "차이 확인"
+      "status": "대조 가능"
     },
     {
       "id": "case-099",
@@ -2549,16 +2710,16 @@
         "sha256": "7f18d50b2f82225818aadfd813d5dc59f84657e512230d827df0d6753fd432a3"
       },
       "ios": {
-        "src": "images/ios-unpaid-document-card.webp",
+        "src": "images/ios-docs-card-locked.webp",
         "width": 1170,
         "height": 2532,
-        "name": "unpaid-document-card",
-        "run": "flows-shots",
-        "test": "PassEntitlementUITests/testUnpaidDocumentCardHasPassEntry()",
-        "sha256": "846044638bb5cc6f213614c7e6766d9307f54a3e9c3ae1756cc1d458c1d7abb1"
+        "name": "docs-card-locked",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "ee663277ed0e0ea709f9110e286cb9a302715695d13405c09f2ffd604e05ef34"
       },
       "action": "조회",
-      "note": "",
+      "note": "카드 단독 렌더 비교. 양쪽 일치.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2579,16 +2740,16 @@
         "sha256": "9392e51f82fe146f0fb6817782eeb55022912d31d7a06d2e52c635246b51c597"
       },
       "ios": {
-        "src": "images/ios-paid-document-card.webp",
+        "src": "images/ios-docs-card-viewonly.webp",
         "width": 1170,
         "height": 2532,
-        "name": "paid-document-card",
-        "run": "flows-shots",
-        "test": "PassEntitlementUITests/testPaidReadOnlyDocumentsHaveNoUploadOrEmptyDownload()",
-        "sha256": "9dea9513c5401a96c9c7c0e1df58091293e42a672f2faaff0ffb7f30ec07a669"
+        "name": "docs-card-viewonly",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "4a38f25a94d17c9d8d930b80a21e061bdb39cd3e57ee2161ab6ceea66efc93c5"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 캡처는 일정 상세 전체(카드는 아래쪽), iOS 는 카드 단독. 보기 전용 카드 문구 「방장·배우자만 볼 수 있어요 · 서류는 수정하기에서 붙이고 지워요」 일치.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2609,16 +2770,16 @@
         "sha256": "b49a7c015079d9bf8e3fe24ca5b6202cfc554449c99ac3fc7195a136c9037c01"
       },
       "ios": {
-        "src": "images/ios-review-native-docs-active-top.webp",
+        "src": "images/ios-docs-card-active.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-docs-active-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "2a0c1991f6404275457193dc3afc1b2cde076dc0e2b7c01a5368301d8ba7146b"
+        "name": "docs-card-active",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "473a79405399695a1ed6f704f907ca99f5e5be470a6c2eb765e0130fd573f96c"
       },
       "action": "등록",
-      "note": "양쪽 패스 활성 상태. 업로드 버튼과 빈 파일 목록을 비교한다. 실제 파일 업로드는 별도 검증 필요.",
+      "note": "패스 활성, 「+」(앨범)·「PDF」 칸. 실제 파일 업로드는 별도 검증 필요.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2640,7 +2801,7 @@
       },
       "ios": null,
       "action": "등록",
-      "note": "",
+      "note": "OS 사진 선택기 화면. iOS 대응 캡처 없음.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -2660,14 +2821,22 @@
         "test": "",
         "sha256": "46659024154df1c8c60e067164814d9d001e4d4e06d898606beb631557e2980e"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-docs-card-uploading.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "docs-card-uploading",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "163f9a48f35eefc49953f3c31780f62a1d033959bf20d73f841ba969caf7db7e"
+      },
       "action": "등록",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-104",
@@ -2683,13 +2852,13 @@
         "sha256": "f5903453c990b23f00a5a7036355b55a5b1f67e698eef8d1d6b0346648ca8669"
       },
       "ios": {
-        "src": "images/ios-review-native-docs-files-top.webp",
+        "src": "images/ios-docs-card-files.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-docs-files-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "8794dd564f360ca2395a5dc6dfb410e8352666bc9a58453ab58d4f5fc745dc52"
+        "name": "docs-card-files",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "1c6cd50df2e3180dec826b4154c8e4285a642c463ff09f6eeec94dd7e52c6a15"
       },
       "action": "조회",
       "note": "",
@@ -2712,14 +2881,22 @@
         "test": "",
         "sha256": "7a88e84d37a8cd884c5f8bcd55659954f5de9080f83119623339af3101f72e4a"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-vault-inspector-delete.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "vault-inspector-delete",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "3f210695941c4022544a8c3d385e55c73e130e26cf2529b185c3ede0343f5190"
+      },
       "action": "삭제",
-      "note": "",
+      "note": "파일 이름 데이터 차이. 확인 줄 「이 파일을 삭제할까요? … 취소 · 삭제하기」 일치.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-106",
@@ -2735,16 +2912,16 @@
         "sha256": "2b13877ff7482b78137515dea60c14c09bfd84193774bad8517c377a9759d19f"
       },
       "ios": {
-        "src": "images/ios-review-native-docs-expired-top.webp",
+        "src": "images/ios-vault-expired.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-docs-expired-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "f36f5dea1e3325e558cb08245432cdb8ffb58dec5bb0c0530b1700037c6308ef"
+        "name": "vault-expired",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "af1fcf49b150b184b1a82ed7e3dc354dc9d95f57b35ad851ad7d660698b1d026"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 캡처는 아래로 굴려 만료 안내 띠가 위로 지나갔다. iOS 는 맨 위.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2765,16 +2942,16 @@
         "sha256": "67274fbfba78f687451fd04aed5d9b438c5dcf2f4da0cea6b5fbdd79fecdcf76"
       },
       "ios": {
-        "src": "images/ios-review-native-documents-error-top.webp",
+        "src": "images/ios-vault-error.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-documents-error-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "9debe4405f31ad1e97f07b7c538a58a05bd09c6f1f0a0c68e00b70c42f93edb6"
+        "name": "vault-error",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "02d816c2141aa40593327938af631ccfc010d43222cbf1b3fb518392ce0d96d9"
       },
       "action": "조회",
-      "note": "",
+      "note": "문구 세트는 양쪽 같다(「서류를 불러오지 못했어요」 / 「서류가 연결된 플랜을 확인하지 못했어요」). iOS fixture 는 모든 요청이 503 이라 방 조회에서 먼저 실패해 두 번째 문장이 보인다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2794,14 +2971,22 @@
         "test": "",
         "sha256": "3bdb0331b8e566969152c6f141232719ef7c24417b36c330dafca6bcc6b19f34"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-vault-inspector-photo.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "vault-inspector-photo",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "3ff8ea012858851a936165500412509a3842fcf647acbae9513e580b734e7f37"
+      },
       "action": "조회",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-109",
@@ -2816,14 +3001,22 @@
         "test": "",
         "sha256": "e26766eb3e03f3a23ece57931177040f9e93f104c9726072bded286ba8ca3fb5"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-vault-inspector-pdf.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "vault-inspector-pdf",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "e003177af82a9f9347b8cbb85dc2c9aef2bc5a026ae7967be776db51f855291c"
+      },
       "action": "조회",
       "note": "",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-110",
@@ -2839,16 +3032,16 @@
         "sha256": "3d6d27dac8ea2db82e8c9133ff5d2f10c5ec631efa8276bae96d8254d6bd5c08"
       },
       "ios": {
-        "src": "images/ios-review-native-export-top.webp",
+        "src": "images/ios-matched-export-options.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-export-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "5c3885a3b03264c5321bfa2202c9eab4b3af2a8816ae8f7235886bb3d4ebcaab"
+        "name": "matched-export-options",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPaymentsAndExportReferenceFrames()",
+        "sha256": "45da64c67e6071284a6b51fd1ccba113cb0a81606a5fd8801da156d1459cd13d"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 는 「예시 데이터」 미리보기 상태, iOS 는 「내 일정」 상태라 아래 줄 문구가 다르다. 기간 칩이 Android 는 「포/함」, iOS 는 「날짜/미정 포함」에서 꺾인다. iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2869,16 +3062,16 @@
         "sha256": "9bd0de530cd7d5993b4d079be02fa04b8ef3c1de52ef2b884c50f645203c8297"
       },
       "ios": {
-        "src": "images/ios-parity-export-sample-preview.webp",
+        "src": "images/ios-matched-export-preview-pdf-1.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-export-sample-preview",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testSamplePDFPreviewWithoutPass()",
-        "sha256": "b2af5e9e9b8cb145fef72a8554225f9e598b58f19d024f2029c4af36749a07b6"
+        "name": "matched-export-preview-pdf-1",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPaymentsAndExportReferenceFrames()",
+        "sha256": "692c9431980b8e3ed4221184ed44efdf7b2bca484cff118a850fcc32b729ad51"
       },
       "action": "조회",
-      "note": "",
+      "note": "미리보기까지 굴린 프레임. 양쪽 구성 일치.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -2895,9 +3088,9 @@
         "width": 1170,
         "height": 2532,
         "name": "parity-export-pdf-share",
-        "run": "review-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testCalendarPDFExportReachesShareSheet()",
-        "sha256": "a463219d6eae38548906913f69abf418882beaf98443dfe354eae537ee0a35d7"
+        "sha256": "4431182945f8285accebb1c2333bde92c00e421ae22028f34c6faeb07c87658c"
       },
       "action": "외부 연동",
       "note": "OS 공유 화면. 실제 외부 전송은 실행하지 않았다.",
@@ -2917,9 +3110,9 @@
         "width": 1170,
         "height": 2532,
         "name": "parity-export-workbook-share",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testCalendarWorkbookExportReachesShareSheet()",
-        "sha256": "17b17eda55afdbd6ce7c3361dc063914d40aa3248b84833691f29c6f844f515e"
+        "sha256": "c11af440d3eb191f8b1ed0e9b726b2ae151467f24cf7cf7900a321bc93384106"
       },
       "action": "외부 연동",
       "note": "",
@@ -2947,9 +3140,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-page-0",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "340f14346e48d0886285770927d071105448ed51bd3eb8fd9139ca2a51f8412c"
+        "sha256": "90b5e59dac204d83b42060ac322a6dd828faf1a2fd7f7c016b19939bd5093bc6"
       },
       "action": "조회",
       "note": "양쪽 시연 시간을 6600ms로 고정한 실제 WebView 캡처.",
@@ -2977,9 +3170,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-page-1",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "b6d397a48dffe76b1b689bfe3bc7bf3cebae7ac4d48377aac556039a086a7aa5"
+        "sha256": "4eaaa976166dde4e80ce1e44ffae89b3432cc0b16fe250f795b06a31e57cdfb3"
       },
       "action": "조회",
       "note": "양쪽 시연 시간을 6600ms로 고정한 실제 WebView 캡처.",
@@ -3007,9 +3200,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-page-2",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "31faca574b174361146c4dd9930334c84059032224d114ee003b9228d1b04d9c"
+        "sha256": "e08a235ddfa8ac8c140ad4f6fc0ac9672f54b31f2e5244e2350238ac2d34565c"
       },
       "action": "조회",
       "note": "양쪽 시연 시간을 6600ms로 고정한 실제 WebView 캡처.",
@@ -3037,9 +3230,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-page-3",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "c56be568de6b46c04c62feaad9707cba2c2b08fa960f91fdfaea4bd46ca4d743"
+        "sha256": "13934098b473a648b4bc2b9bef85fd488a08f001661fd4e3a239edd95023fad2"
       },
       "action": "조회",
       "note": "양쪽 시연 시간을 6600ms로 고정한 실제 WebView 캡처.",
@@ -3067,9 +3260,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-page-4",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "5c616a333efbc3078a2f926a66f789c7f9cde1003fa797fd3168b8c980a1bb6c"
+        "sha256": "945fce8a694fd433f969b8433f562574be260609f2751b8a2922913f3779ebc4"
       },
       "action": "조회",
       "note": "양쪽 시연 시간을 6600ms로 고정한 실제 WebView 캡처.",
@@ -3097,9 +3290,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-page-5",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "dc7a7bdf498fead51a13e069cacc66e97df6d63cef9a0ac4c0033bca24999852"
+        "sha256": "7eb7d869a775312906a1a2a287cb6db2a3e7106c4acce6a4a5824d0cc6016f7b"
       },
       "action": "조회",
       "note": "양쪽 시연 시간을 6600ms로 고정한 실제 WebView 캡처.",
@@ -3123,16 +3316,16 @@
         "sha256": "0fd3c25ed2c1ae9d1c963d90dc7e783761cbcd95fdc6af426b20aa82e332ee09"
       },
       "ios": {
-        "src": "images/ios-parity-pass-plans.webp",
+        "src": "images/ios-plans-yearly.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-pass-plans",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testPassOpeningBenefitsAndNativePlans()",
-        "sha256": "ad0e911afd367b91dbc6fe609868420fb111888cb5b7662e64f42fc43c320c69"
+        "name": "plans-yearly",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "eac42ad8ae1861814273c42774fb31ac737e09c72553606b4f10e5033df393f6"
       },
       "action": "조회",
-      "note": "차이: iOS StoreKit 결제는 서버 영수증 검증 연결 전까지 비활성. 결제 완료 검증은 하지 않았다.",
+      "note": "화면 구성은 일치(요금제 셋·혜택·필수 동의·결제 버튼). 차이: iOS StoreKit 결제가 서버 영수증 검증과 연결되지 않아 결제 버튼이 잠겨 있다. 결제 완료 검증은 하지 않았다. iOS 26 시트는 좌우가 떠 있는 둥근 모양이다(유지 결정).",
       "same": false,
       "issue": true,
       "capture": "양쪽 캡처",
@@ -3153,16 +3346,16 @@
         "sha256": "d4ad434669d8d4a0c009843acecd27787b49ce849c0d8cd95cd60b33f5a8a66a"
       },
       "ios": {
-        "src": "images/ios-lifetime-compact-plans.webp",
+        "src": "images/ios-plans-lifetime.webp",
         "width": 1170,
         "height": 2532,
-        "name": "lifetime-compact-plans",
-        "run": "flows-shots",
-        "test": "PassEntitlementUITests/testLifetimeProfileAndCompactPlans()",
-        "sha256": "0db0cba08c628bc3782d06ab8c1e1e1e47b46230de81203af248e51cc0c5447d"
+        "name": "plans-lifetime",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "725359aa4f45475fa8753575b238aad4882d820b3c6250b67175dd07fada15d1"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 캡처는 결제 거절 안내 줄(「이미 평생 패스가 있어 이번 결제는 승인하지 않았어요…」)이 붙은 상태, iOS 는 평생 이용 중 패널만.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3187,9 +3380,9 @@
         "width": 1170,
         "height": 2532,
         "name": "lifetime-profile-tools",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "PassEntitlementUITests/testLifetimeProfileAndCompactPlans()",
-        "sha256": "bfb2cd8100e25f4be404c5db8e8eb1b4e9ffc645d82bd525fc0f543768ad4696"
+        "sha256": "1db7678ee7cb2c26681815e91485eb2fa21442a69bc09872d8b7cd639205697b"
       },
       "action": "조회",
       "note": "",
@@ -3214,7 +3407,7 @@
       },
       "ios": null,
       "action": "외부 연동",
-      "note": "iOS 실제 StoreKit 구매·복원은 미검증.",
+      "note": "차이: iOS StoreKit 구매·복원이 서버 검증과 연결되지 않아 구매 대기 상태 자체가 없다.",
       "same": false,
       "issue": true,
       "capture": "한쪽 캡처",
@@ -3236,7 +3429,7 @@
       },
       "ios": null,
       "action": "외부 연동",
-      "note": "",
+      "note": "iOS StoreKit 미연결로 대응 상태 캡처 없음.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -3258,7 +3451,7 @@
       },
       "ios": null,
       "action": "조회",
-      "note": "",
+      "note": "iOS 대응 캡처 없음.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -3279,16 +3472,16 @@
         "sha256": "d3536fbfda57819d052a585a1c4afc62f76759e636d7e778ee71302b750f0a99"
       },
       "ios": {
-        "src": "images/ios-parity-upcoming-payments.webp",
+        "src": "images/ios-matched-payweek.webp",
         "width": 1170,
         "height": 2532,
-        "name": "parity-upcoming-payments",
-        "run": "flows-shots",
-        "test": "AndroidParityUITests/testUpcomingPaymentsOpenReminderSettings()",
-        "sha256": "c746c42cc338f03c8075340e2c1e4eee606dab04127a419dc8e02b112cd03ba1"
+        "name": "matched-payweek",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPaymentsAndExportReferenceFrames()",
+        "sha256": "3cc9c3403502ac1e665523f9073c726b16fc83cbf07ca6fcc71118a97fd4c127"
       },
       "action": "조회",
-      "note": "",
+      "note": "iOS 캡처는 패스 활성·잠금 두 카드를 이었다. 위쪽(활성)이 Android 와 같은 상태. 날짜 데이터 차이.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3313,7 +3506,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-reminders-default",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testReminderDefaultAndBlockedReferenceFrames()",
         "sha256": "20f2acfa9b06f12a759699db060666b6aa2d6e4308ea09201efdab0f62eceb1f"
       },
@@ -3343,7 +3536,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-reminders-blocked",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testReminderDefaultAndBlockedReferenceFrames()",
         "sha256": "e4aad5b7cc60018a2ef03745efd4cd9bc51761f2b228d3ab1f0f31b07672c60d"
       },
@@ -3365,9 +3558,9 @@
         "width": 1170,
         "height": 2532,
         "name": "parity-reminders",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testHomeBudgetProfileAndReminderSave()",
-        "sha256": "3689e316fa87f0bd5f4a942e360b53ffe492ebab66d56443b57952398f08252c"
+        "sha256": "767ce94fb5f8f60ab7fdc9ff823ff63a8fe39fa51a339d4c1e35e88b6fb543ef"
       },
       "action": "수정",
       "note": "",
@@ -3409,12 +3602,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-editor-layout-0",
-        "run": "editor-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
-        "sha256": "5eff93d910bd9f56592e4ec466c63e9639a7b022a39d8397f29167bd9e96152c"
+        "sha256": "270534186c60c16758a0fc76dc99e0a4aaf643b3b2e9210d9dc76ad3d2036cf2"
       },
       "action": "수정",
-      "note": "직전 청첩장 비교에서 확정한 동일 데이터 원본. 캡처 날짜 2026-10-14. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
+      "note": "동일 데이터 fixture. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3439,12 +3632,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-editor-cover-0",
-        "run": "editor-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
-        "sha256": "2ea6e23d139e28029a33660afe83a82e031fd1bc779aa634d68c49950ee80986"
+        "sha256": "ac192556d13d687f9ccde55f7323bf299a60a0b0b0733baf9c24d2cd06451e53"
       },
       "action": "수정",
-      "note": "직전 청첩장 비교에서 확정한 동일 데이터 원본. 캡처 날짜 2026-10-14. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
+      "note": "동일 데이터 fixture. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3469,12 +3662,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-editor-calendar-0",
-        "run": "editor-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
-        "sha256": "a608ff57d981fc79674a33aa5c1d60758c3eff6f6c81329416a51d45293288e4"
+        "sha256": "d77120b0bdf57af6490acada9612e8d32f9df9632bae22205b7cd56bf4bed29e"
       },
       "action": "수정",
-      "note": "직전 청첩장 비교에서 확정한 동일 데이터 원본. 캡처 날짜 2026-10-14. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
+      "note": "동일 데이터 fixture. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3499,12 +3692,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-editor-location-0",
-        "run": "editor-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
-        "sha256": "7e292c6cb2a6c46bfcf60f7c8f0620ef7bd4444268c3bf3a2f505e9b9aea0da5"
+        "sha256": "66bdd32207aeca26b1f31686c19179bacf35f925472b997adf2346288d32e3e6"
       },
       "action": "수정",
-      "note": "직전 청첩장 비교에서 확정한 동일 데이터 원본. 캡처 날짜 2026-10-14. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
+      "note": "동일 데이터 fixture. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3529,12 +3722,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-editor-accounts-0",
-        "run": "editor-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
-        "sha256": "9043167963a656d948779ac7f77ed0c51fc15c3718565d35ea47776f4e3e9f63"
+        "sha256": "2c28eeaa5030479d07d0d30a559e091f7e7352212d2d4a8dcc82ed898d00bfb0"
       },
       "action": "수정",
-      "note": "직전 청첩장 비교에서 확정한 동일 데이터 원본. 캡처 날짜 2026-10-14. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
+      "note": "동일 데이터 fixture. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3559,12 +3752,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-editor-gallery-0",
-        "run": "editor-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
-        "sha256": "71eb917bc3ed20b39c3dacad737131f397e5661c7b4ad27c63395839c2aaecea"
+        "sha256": "577ce5dfe1ee334690c524c7bb48e1627be54ff84f81e1fdcb56e82bdf70e169"
       },
       "action": "수정",
-      "note": "직전 청첩장 비교에서 확정한 동일 데이터 원본. 캡처 날짜 2026-10-14. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
+      "note": "동일 데이터 fixture. 아이콘·기본 날짜 선택기는 OS 차이가 있다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3589,7 +3782,7 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-landing-0",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
         "sha256": "853e690b78c1309af5be67eafb7a1f02b0bb4b9ceb4c484ee2d618a523415db3"
       },
@@ -3619,9 +3812,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-landing-720",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
-        "sha256": "f17303a8ccf5493b93b1787f9b32adb84c00e872f8049e87367725d5a8b37101"
+        "sha256": "0d4bae198ddea7bda25669b4bf6993fa78df5521f3b75ec4e541ba6f9f42aa0e"
       },
       "action": "조회",
       "note": "스크롤 거리는 플랫폼별 콘텐츠 높이에 따라 다를 수 있다.",
@@ -3649,7 +3842,7 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-empty-0",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
         "sha256": "54536662ff9dde39001b0b9dba048e5a9b7a978aa64b1de098ca63a5da5e7d50"
       },
@@ -3679,9 +3872,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-empty-720",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
-        "sha256": "22ac78333fa0b9a81ed54fa480fb9e5ad5fd907fbf3ab20351c2d63cd0cfa9a7"
+        "sha256": "97e29629d7c3a71a7594f4782b5bf1eabe0a15d1d637017732d9c19233e9b46a"
       },
       "action": "조회",
       "note": "스크롤 거리는 플랫폼별 콘텐츠 높이에 따라 다를 수 있다.",
@@ -3709,9 +3902,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-unpublished-0",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
-        "sha256": "e378e3ae32fa487bf5f0c0ecd119fd2d1b0ecb4e452a30923f58cf34994a39a6"
+        "sha256": "9b12dae40c1536c7c72770b56668798ff936dedbdadfeb59805340abd429a24a"
       },
       "action": "조회",
       "note": "",
@@ -3739,9 +3932,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-unpublished-720",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
-        "sha256": "86e3b3c5e49493f4fdac463629fb5c87068771c193f6d338c405e98b05a1f8af"
+        "sha256": "7c70b25374e011297369797c5c1174ad8904f966d25628e4e0320be682d4f3d5"
       },
       "action": "조회",
       "note": "스크롤 거리는 플랫폼별 콘텐츠 높이에 따라 다를 수 있다.",
@@ -3769,9 +3962,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-published-0",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
-        "sha256": "15e67501dd56353f6e67931439b1af448b2b3ef0c4f5882278f1386ed0626f38"
+        "sha256": "cb18f6a3edffa765ecf00bb31e2baf250f76d17e4c1aeebed22af64d077b5d63"
       },
       "action": "조회",
       "note": "",
@@ -3799,9 +3992,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-studio-published-720",
-        "run": "complete-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testStudioComparisonFrames()",
-        "sha256": "886a386c381f10319b3a37630005d97b49eeb7fcf01efcb2745452b57b533244"
+        "sha256": "7cf2d17bd505b61f3d845efbe899c0e9e830c7d22568a49de62f21134a040605"
       },
       "action": "조회",
       "note": "스크롤 거리는 플랫폼별 콘텐츠 높이에 따라 다를 수 있다.",
@@ -3829,12 +4022,12 @@
         "width": 1170,
         "height": 2532,
         "name": "parity-invitation-published",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "AndroidParityUITests/testInvitationCreateSaveAndPublish()",
-        "sha256": "ccebafe011ef86670879f19dd261bddce33f4a2ae4b6808eac948ce0b69b742c"
+        "sha256": "d9452a71cf338768f20c3bce995130e01a83170dc5ebea903ee4b02caab22e02"
       },
       "action": "등록",
-      "note": "",
+      "note": "Android 는 편집기의 저장됨 띠, iOS 는 공개 직후 첫 화면(QR·주소). 같은 순간이 아니다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -3854,14 +4047,22 @@
         "test": "",
         "sha256": "9425c02488c63fdad52957f71151a5268535254246bd779d0504e32083bcdced"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-parity-invitation-share-note.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "parity-invitation-share-note",
+        "run": "final2-ui-shots",
+        "test": "AndroidParityUITests/testInvitationCreateSaveAndPublish()",
+        "sha256": "e470dc33f65e641a357fe3cc3eec10f4f3f5ec0243778b476277da18257217a8"
+      },
       "action": "외부 연동",
-      "note": "iOS QR 디코딩 단위 검증과 실제 OS 공유창 캡처는 별개다.",
+      "note": "공개 중 QR·주소 카드. 실제 OS 공유창 캡처와 QR 디코딩 검증은 별개다.",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-147",
@@ -3895,9 +4096,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-0",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "95248456727915fa4bc3e7f14eb2e95f41aef7b7da01b4e4b94f4acb5f274543"
+        "sha256": "0089bb134752059809dcd9d585b7520123275853ab42eca0eee4e4afb26d2d21"
       },
       "action": "조회",
       "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
@@ -3925,9 +4126,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-700",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "7735df8ab5d61d4075a5f6f862f4d23725473cc91bff8e6a06c038456f94111c"
+        "sha256": "4cfb17b1d36f37fb79798365b7c7f286af4a7eb3ad2de52ab470d45b003b8c09"
       },
       "action": "조회",
       "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
@@ -3955,9 +4156,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-1300",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "a27b9185c88d90030d9d6b9852cce74c0639cb70061776dc330d9d45597857aa"
+        "sha256": "d57a13692497e25538a3328848b4d924d025cc70c620478383a24309a33d6ccb"
       },
       "action": "조회",
       "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
@@ -3985,9 +4186,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-2100",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "f19dc7da339867917ae5cef10d47fbacb42e7948c6024d21a9ffb36b3690ff10"
+        "sha256": "25397ea2080260df0078f17b141ecb448d927431584141a8d53695944c212496"
       },
       "action": "조회",
       "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
@@ -4015,12 +4216,12 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-2800",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "822360e3285b9af5e5862e1b2afc7bbe84a7adcd0c43c60eef71a2ecad8d7057"
+        "sha256": "f2bf454c2271fea93c325eada006bea2fb880b2041bfac93b7fd02209ec8a11c"
       },
       "action": "조회",
-      "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
+      "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치. 오시는 길은 두 앱 모두 지도를 그리지 않고 카카오맵·네이버 지도 링크만 둔다.",
       "same": true,
       "issue": false,
       "capture": "양쪽 캡처",
@@ -4045,9 +4246,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-3500",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "869419f9faeda6fc14810e67c5399a08b076bab48301a585754b9c682d43bb51"
+        "sha256": "42d2b0113060f4cd92db79cfb916c779ef8ad86490716a440329fcdf780e96cc"
       },
       "action": "조회",
       "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
@@ -4075,9 +4276,9 @@
         "width": 1170,
         "height": 2532,
         "name": "compare-preview-4500",
-        "run": "last-shots",
+        "run": "final2-unit-shots",
         "test": "InvitationComparisonTests/testGuestBodyComparisonFrames()",
-        "sha256": "3520772837731e75dd5daeaa39b96e8e9a6fa5a2ee0116fd4f2411e6a111bfb8"
+        "sha256": "bebb19f73a74126f2f6c50acc03d6f1f450cacde1c065bf71ef70963c138e15e"
       },
       "action": "조회",
       "note": "740pt 표지·동일 데이터로 지정 거리까지 스크롤. 정원 모션은 위치 비교를 위해 정지. 끝 화면은 각 플랫폼의 최대 스크롤 위치.",
@@ -4119,7 +4320,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-bloom-create",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testBloomReferenceFrames()",
         "sha256": "918e1503abc2a4e5634dd2d823e02214fb3f5858f760d16e0088dc77ca18264c"
       },
@@ -4149,9 +4350,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-demo-1-2600",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "cdee600e3ea06aa31a12a40f3d880985c456d28a8a24acfc55a568946df37718"
+        "sha256": "19e9a2a41f14a7e9bbdbe99fdfed311c1f27988d33d286dcbe21ae74d8800779"
       },
       "action": "조회",
       "note": "양쪽 공통 재생 시각을 지정한 실제 WebView 프레임.",
@@ -4179,9 +4380,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-demo-2-2800",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "cdee600e3ea06aa31a12a40f3d880985c456d28a8a24acfc55a568946df37718"
+        "sha256": "4fbb6a8a68152859e1b6eb0576ded6d88136a403a080ab3f10b139ab6e4831c6"
       },
       "action": "조회",
       "note": "양쪽 공통 재생 시각을 지정한 실제 WebView 프레임.",
@@ -4209,9 +4410,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-demo-3-2300",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "f58de91f130ee0e5ea86eca445f2b418075fc3dda3ceff9032a1e56392e68b8d"
+        "sha256": "b77b4c8ae00ef9a9ce975b1f1c64538bb77adac94ec309c8ecdc0e29c63b1d51"
       },
       "action": "조회",
       "note": "양쪽 공통 재생 시각을 지정한 실제 WebView 프레임.",
@@ -4239,9 +4440,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-demo-4-2225",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "5afc1f06ebd7557f34b22988960c4687c64086adf72c15fc4ad0f89f9641ef11"
+        "sha256": "11f63184917fdfde60ad4210c6a957875c413b3424e45f79c768dbcb61494714"
       },
       "action": "조회",
       "note": "양쪽 공통 재생 시각을 지정한 실제 WebView 프레임.",
@@ -4269,9 +4470,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-open-1200",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "e659164229e7f893481ce0f77a5489e9537b561920e775f7d3bb24947f71e0d5"
+        "sha256": "9ee141b805892cad749b5cf001ad68850eabd99b32a8d32491f16dc862ddf21e"
       },
       "action": "조회",
       "note": "",
@@ -4299,9 +4500,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-open-2450",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "d69939af3230ed662d87a35bb580637f284b5019cf46fba104f3d1d88b5fb9a6"
+        "sha256": "0610ecf62da2b75bbf24e10a1b2ad1289e9b407d7194e92d77b8b53d458c046d"
       },
       "action": "조회",
       "note": "",
@@ -4329,9 +4530,9 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-intro-open-4000",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "PassVisualParityTests/testBenefitFramesAtRestAndMidway()",
-        "sha256": "c458f2c9eaa73d0f94c03cc9c8b533f1fcfd29dc67a39c6d6736a42187177d2d"
+        "sha256": "2ccdc5e25672014022ef8dcdf61d21276c33e4a2b1d8cc93c10dc2ff1223a1bb"
       },
       "action": "조회",
       "note": "",
@@ -4359,7 +4560,7 @@
         "width": 1170,
         "height": 2532,
         "name": "matched-garden-empty",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testGardenEmptyReferenceFrame()",
         "sha256": "97c949bbcf274d50a6406df142e9c7f1d60352a965eb671693d3b60b5f9b6ba4"
       },
@@ -4389,7 +4590,7 @@
         "width": 612,
         "height": 345,
         "name": "matched-garden-bubble",
-        "run": "flows-shots",
+        "run": "final2-unit-shots",
         "test": "VisualParityTests/testGuestBubbleTextAndControls()",
         "sha256": "a55e0a9d44d256cbe5bba9a9e0af475b7427ab7ae01d66c29c81ad71ccd8bfbc"
       },
@@ -4414,14 +4615,22 @@
         "test": "",
         "sha256": "c1339b071c08070ea345af4ca91e62aa774f15eb18ee1fe04f10eb2ff25c9186"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-compare-door-1900.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "compare-door-1900",
+        "run": "final2-unit-shots",
+        "test": "InvitationComparisonTests/testGuestDoorOpeningFrames()",
+        "sha256": "35503f129a57053ee039696b45f31c1f38c8eb0be3984537ad8e890a20940ee1"
+      },
       "action": "조회",
-      "note": "문 이미지 리소스·표시 코드는 검증했지만 같은 시간 프레임의 양쪽 캡처는 아직 없다.",
+      "note": "같은 시각 프레임이 아니다. Android 캡처는 문이 거의 다 열린 뒤, iOS 는 1900ms(문이 열리는 중). iOS 1200·2600·3200ms 프레임도 있다(compare-door-*).",
       "same": false,
       "issue": false,
-      "capture": "한쪽 캡처",
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "대조 가능"
     },
     {
       "id": "case-167",
@@ -4441,9 +4650,9 @@
         "width": 1170,
         "height": 2532,
         "name": "google-test-native",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testGoogleTestNativeAndBannerActuallyLoad()",
-        "sha256": "e3abf5fbef49bf1806d531e9a4a277c80893974065e49f40e3656b721c1c22f1"
+        "sha256": "b080f0dce78fe6fc71b84323b32d8897f5b411594b108a915ad72935a97f9484"
       },
       "action": "조회",
       "note": "양쪽 실제 테스트 광고. 제공 소재·형식이 달라 동일 픽셀 판정 대상이 아니다.",
@@ -4463,9 +4672,9 @@
         "width": 1170,
         "height": 2532,
         "name": "google-test-banner",
-        "run": "flows-shots",
+        "run": "final2-ui-shots",
         "test": "InvitationAdsUITests/testGoogleTestNativeAndBannerActuallyLoad()",
-        "sha256": "6f0b3959e17620867af3d8be6a252da6025be8cb47be9e89859853bda4f2c13c"
+        "sha256": "464b8e80393ea7ebbce5c26acabb795143a4e9ffdd6fccb6650262c3b97df184"
       },
       "action": "조회",
       "note": "",
@@ -4488,14 +4697,22 @@
         "test": "",
         "sha256": "9463604f3c4278d4a6bbd69d1a27da7419e0a2354ae2e981779ad0bc5895012e"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-update-card.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "update-card",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "7be8bb16ee49f514d2fac43d97dee3152fb4ff61e79a984f3a446ca138ffd037"
+      },
       "action": "조회",
-      "note": "",
+      "note": "모양은 일치(iOS 는 둘째 문장 줄바꿈 위치만 다름). 차이: iOS 는 모양만 있고 App Store 버전 확인이 없어 실제로 뜨는 경로가 없다.",
       "same": false,
-      "issue": false,
-      "capture": "한쪽 캡처",
+      "issue": true,
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "차이 확인"
     },
     {
       "id": "case-170",
@@ -4510,14 +4727,22 @@
         "test": "",
         "sha256": "f58b3997cd134f6230acc3af23e9e9bdafd93165138b9df3e41837afa060692c"
       },
-      "ios": null,
+      "ios": {
+        "src": "images/ios-update-card-force.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "update-card-force",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "57ba7eba126e046b884e4356d2f7d4593714cd0c3e9c53eab6b1b5f266ff0fcd"
+      },
       "action": "조회",
-      "note": "",
+      "note": "모양은 일치(iOS 는 「…이어서 써 / 주세요」로 한 번 더 꺾임). 차이: App Store 버전 확인이 없다.",
       "same": false,
-      "issue": false,
-      "capture": "한쪽 캡처",
+      "issue": true,
+      "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
-      "status": "추가 검증 필요"
+      "status": "차이 확인"
     },
     {
       "id": "case-171",
@@ -4525,16 +4750,16 @@
       "title": "서류 보관함 · 빈 목록",
       "android": null,
       "ios": {
-        "src": "images/ios-review-native-documents-empty-top.webp",
+        "src": "images/ios-vault-empty.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-documents-empty-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "3b51ae31c278a380fc753df722f2d399eebfd87bffaba1fceac62b6fcab20ad3"
+        "name": "vault-empty",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "cafbc843cb037ed4f47239db0aaf5f0420b3022b99f6e5ce875cf4f576ef687f"
       },
       "action": "조회",
-      "note": "",
+      "note": "Android 대응 캡처 없음.",
       "same": false,
       "issue": false,
       "capture": "한쪽 캡처",
@@ -4555,21 +4780,215 @@
         "sha256": "8afddb5cd9a43693f83cd3b10ab4e50f7a194109fba78279848da69523223a1b"
       },
       "ios": {
-        "src": "images/ios-review-native-docs-error-top.webp",
+        "src": "images/ios-docs-card-error.webp",
         "width": 1170,
         "height": 2532,
-        "name": "review-native-docs-error-top",
-        "run": "states-shots",
-        "test": "AllScreenComparisonTests/testScreenInventory()",
-        "sha256": "0174f07690742bd3e654ba40e7d12af28613116fd9b7c962fdfcb9deb81994f3"
+        "name": "docs-card-error",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "c57911954da8507fdab15fe8adce9417e9506a8cf464da46fd6b4c108252b55d"
       },
       "action": "조회",
-      "note": "",
+      "note": "같은 상태가 아니다. Android 캡처는 업로드 실패(「보관 공간이 가득 찼어요…」), iOS 는 목록 받기 실패(「서류를 불러오지 못했어요」). 두 문구 모두 양쪽 코드에 있다.",
       "same": false,
       "issue": false,
       "capture": "양쪽 캡처",
       "fixture": "상태·데이터 차이 있음",
       "status": "대조 가능"
+    },
+    {
+      "id": "case-173",
+      "group": "신고·차단",
+      "title": "채팅 말풍선 신고 메뉴",
+      "android": {
+        "src": "images/android-moderation-menu-chat.webp",
+        "width": 1170,
+        "height": 249,
+        "name": "moderation-menu-chat",
+        "run": "current-20261014",
+        "test": "",
+        "sha256": "f411a8dea8983dd7fef0247332daa0b35d4edd242d97075106137aa933da5dd4"
+      },
+      "ios": {
+        "src": "images/ios-matched-moderation-menu-chat.webp",
+        "width": 1170,
+        "height": 267,
+        "name": "matched-moderation-menu-chat",
+        "run": "final2-unit-shots",
+        "test": "ExploreParityTests/testModerationReferenceFrames()",
+        "sha256": "89846ac9f4bbdf3c649938a424f2f90749dab7ad1d32741c7d2d225485e93072"
+      },
+      "action": "조회",
+      "note": "채팅은 신고만, 차단 없음. 양쪽 일치.",
+      "same": false,
+      "issue": false,
+      "capture": "양쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "대조 가능"
+    },
+    {
+      "id": "case-174",
+      "group": "서류",
+      "title": "일정 서류 · 만료",
+      "android": {
+        "src": "images/android-pass-docs-expired.webp",
+        "width": 1170,
+        "height": 531,
+        "name": "pass-docs-expired",
+        "run": "current-20261014",
+        "test": "",
+        "sha256": "c171b0fcb348e311ba4bc75c6d6664b6226cfde9c6613408afe74cd50c1c5069"
+      },
+      "ios": {
+        "src": "images/ios-docs-card-expired.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "docs-card-expired",
+        "run": "final2-unit-shots",
+        "test": "PassVisualParityTests/testDocumentsPlansAndUpdateFrames()",
+        "sha256": "1a6abb9045bdb18ecd44197927357628e5908d80b1357e041e4642a81bb6e5cd"
+      },
+      "action": "조회",
+      "note": "iOS 는 「전부 내려받기」 입구가 있고 Android 캡처에는 없다 — Android 테스트가 onDownloadAll 을 넘기지 않은 fixture 차이(PassLockShotTest). 서류 개수 데이터 차이(12 / 1).",
+      "same": false,
+      "issue": false,
+      "capture": "양쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "대조 가능"
+    },
+    {
+      "id": "case-175",
+      "group": "내보내기",
+      "title": "엑셀 예시 미리보기",
+      "android": {
+        "src": "images/android-export-preview-xlsx.webp",
+        "width": 1080,
+        "height": 2400,
+        "name": "export-preview-xlsx",
+        "run": "earlier-20261014",
+        "test": "",
+        "sha256": "a2d2bfef8629a3337d29fc10d466a8080dff4e0cd6c72b1e1548c435b10cae04"
+      },
+      "ios": {
+        "src": "images/ios-matched-export-preview-xlsx-1.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "matched-export-preview-xlsx-1",
+        "run": "final2-unit-shots",
+        "test": "CoupleProfileParityTests/testPaymentsAndExportReferenceFrames()",
+        "sha256": "e7f42606e53f68fe60173dc3d64788e3d8b818b6085333ba7f8197bb24e00216"
+      },
+      "action": "조회",
+      "note": "같은 상태가 아니다. Android 는 「예산 정산표」 양식, iOS 는 「일정 체크리스트」 양식을 고른 상태.",
+      "same": false,
+      "issue": false,
+      "capture": "양쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "대조 가능"
+    },
+    {
+      "id": "case-176",
+      "group": "커플 관리",
+      "title": "신랑·신부 관리 시트",
+      "android": null,
+      "ios": {
+        "src": "images/ios-review-native-couple-top.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "review-native-couple-top",
+        "run": "final2-unit-shots",
+        "test": "AllScreenComparisonTests/testScreenInventory()",
+        "sha256": "05504fd354d3e2151048fc3923a2720c9d60e8bec84acea4b91f7ffac063904f"
+      },
+      "action": "조회",
+      "note": "공유 시트의 「우리 둘」·해제 줄. Android 대응 캡처 없음.",
+      "same": false,
+      "issue": false,
+      "capture": "한쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "추가 검증 필요"
+    },
+    {
+      "id": "case-177",
+      "group": "홈",
+      "title": "패스 보유 · 내 청첩장",
+      "android": {
+        "src": "images/android-home-invite-mine.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "home-invite-mine",
+        "run": "current-20261014",
+        "test": "",
+        "sha256": "9b46d16457ebe948f9bceede5f67370e594495bad7831dd6a9634229e3728260"
+      },
+      "ios": {
+        "src": "images/ios-parity-home-garden-mine.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "parity-home-garden-mine",
+        "run": "final2-ui-shots",
+        "test": "HomeBudgetParityUITests/testHomeStates()",
+        "sha256": "a8bae3df598a8d50018dffca6330a44af1b8e512fa134704d011151832fc6dfe"
+      },
+      "action": "조회",
+      "note": "같은 상태가 아니다. Android 는 공개 중 「새 축하 2 · 보기」, iOS 캡처는 비공개 「공개하기」.",
+      "same": false,
+      "issue": false,
+      "capture": "양쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "대조 가능"
+    },
+    {
+      "id": "case-178",
+      "group": "청첩장 편집",
+      "title": "분위기·첫 화면",
+      "android": {
+        "src": "images/android-inv-editor-mood-rose.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "inv-editor-mood-rose",
+        "run": "earlier-20261014",
+        "test": "",
+        "sha256": "992b4ddc0491c08e39bb665edf0cb184c2691301e6f9e619591b9a1e49745101"
+      },
+      "ios": {
+        "src": "images/ios-compare-editor-mood-0.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "compare-editor-mood-0",
+        "run": "final2-unit-shots",
+        "test": "InvitationComparisonTests/testInvitationComparisonFrames()",
+        "sha256": "6dcd262111cdce2e18e3528f64754f332e201144a096b14773e568c788293311"
+      },
+      "action": "수정",
+      "note": "Android 는 「로즈」, iOS 는 「가든」을 고른 상태. 패널 구성은 같다.",
+      "same": false,
+      "issue": false,
+      "capture": "양쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "대조 가능"
+    },
+    {
+      "id": "case-179",
+      "group": "일정",
+      "title": "보드 보기",
+      "android": null,
+      "ios": {
+        "src": "images/ios-cal-board.webp",
+        "width": 1170,
+        "height": 2532,
+        "name": "cal-board",
+        "run": "final2-ui-shots",
+        "test": "CalendarParityUITests/testCalendarStates()",
+        "sha256": "7bc69daba2f92891a2f4ad2bf16b9758538d793b4953ad5c579eb36525bdd8b3"
+      },
+      "action": "조회",
+      "note": "새 캡처. Android 대응 캡처 없음.",
+      "same": false,
+      "issue": false,
+      "capture": "한쪽 캡처",
+      "fixture": "상태·데이터 차이 있음",
+      "status": "추가 검증 필요"
     }
   ],
   "motion": [
@@ -4712,180 +5131,180 @@
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-00",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "fce672c136c875645b6edf7eca67bd88a1477098c97b7a20b2a13f86e4cffaa3"
+          "sha256": "dcf0b472854d359b89f99be274b6a1f7531540857f3f6cdfaa4d5d82112fcb0a"
         },
         {
           "src": "images/ios-matched-garden-flight-01.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-01",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "af71329deae1b8fb58812ace856dfcccb06f30ac16b0d89830a466cfb28a66da"
+          "sha256": "cafaa4612e48ff6ba3b6e185248fdf39dbf54d7b6987724cad8330d759e742d6"
         },
         {
           "src": "images/ios-matched-garden-flight-02.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-02",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "94dc367c3b8b9fb6008a8880cd5cb1df6f35a14b7e764fdf3911eb9a5fc41f48"
+          "sha256": "b549ced1c1f9c5a80688e3948f313035cad015bedc0e7d7f794b2e3050a788b3"
         },
         {
           "src": "images/ios-matched-garden-flight-03.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-03",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "05e864427487cce1c00ea805c49e3e30105f162de578094139fb98248447e15d"
+          "sha256": "a435f9732b4d684d382fce41493db0a1f03d93090edc2915cce00b1d21b45ac3"
         },
         {
           "src": "images/ios-matched-garden-flight-04.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-04",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "03590972873a0885ce39ec880ebf786c538ee996f81db7ee97a2ca0a0dd9735b"
+          "sha256": "ef4b19d1a936f54c8c84e759565f1277fb6f8c3a99322f9370322f39aa6efaa8"
         },
         {
           "src": "images/ios-matched-garden-flight-05.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-05",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "5d68bee6de0bf3de35b2365a1e88fbd77d0727314247f4144a73aca198f8202e"
+          "sha256": "b932299dadeb000f92419ff48e3ca94fd982526b5ec56629980e3c9b0b15f8e8"
         },
         {
           "src": "images/ios-matched-garden-flight-06.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-06",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "5341adc639ce25a3b3a7eecd269a76eeb6a96c84c3da5fd9672791cd095ccc8b"
+          "sha256": "994c1d1d824c4aae163c527c7d6537fc3fb0a4ef8885ba6cbe7e20af66be037b"
         },
         {
           "src": "images/ios-matched-garden-flight-07.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-07",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "95d8c970dacd03ada6cbcccbe075f26a82b25da9c3fdf4ad4c9873066acb2f2d"
+          "sha256": "950479f34d109e85102a4d9b17b0abdc27c0acd46deadf90cfb33a4e1e2b828b"
         },
         {
           "src": "images/ios-matched-garden-flight-08.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-08",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "317c098ba3b3a23c52a1621d95a72a93403d7cddef12176915f06e8fdf0584b6"
+          "sha256": "d32a4977faa8eeb80df05d3c9f121f3ff6c484cd7dfde631fb77a8af9aab7265"
         },
         {
           "src": "images/ios-matched-garden-flight-09.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-09",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "1023c87b24d68d89d523d2cac0c20523d4c811868bf407674ca8eaece5b7b214"
+          "sha256": "a5ad4510e95e0f6e0fba418c7b7574e03e1c7d08d5665617f4172681fa9af89e"
         },
         {
           "src": "images/ios-matched-garden-flight-10.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-10",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "7bf5fe4aae7de949687012415c7a7e30955c29c8771ed141968eb9549170e618"
+          "sha256": "01eba8e4ff11ac0a65c57a231eee28c89e98ad3d7a0d9f8226d5523c0dba4eea"
         },
         {
           "src": "images/ios-matched-garden-flight-11.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-11",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "41ab8c39b15b515e7491883ce7e2f6270e92eebfb8cf7f96886c6d96b4397b68"
+          "sha256": "af62d60e232acf1f9bd5ea9c9567864b5d868cd601eb8721b373e6ccf1074c66"
         },
         {
           "src": "images/ios-matched-garden-flight-12.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-12",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "d5952ac000a7744f3e8dfb673798c88cb6d7c8a9718c4cfac9afd5c277bff995"
+          "sha256": "4ec1ccb8dab56708fe35241b7ab9555394c372f81d399d15b76340728b27ac04"
         },
         {
           "src": "images/ios-matched-garden-flight-13.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-13",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "40e746fba2d2c551aad059dd6f90013f8f3bf943b4084ee87de4a9efbe399686"
+          "sha256": "7f50ba6b71523b80366e0cd561aa0324d505203ae7409e006f1df592fb09e10f"
         },
         {
           "src": "images/ios-matched-garden-flight-14.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-14",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "a5180ac90570b1890abd7aa625b70849d536763fc2a283d9adfa19cedd23b4ae"
+          "sha256": "e74d8e471c0a47cbaab1c5aa847545d45fb455971624b9365675b9436c11cf88"
         },
         {
           "src": "images/ios-matched-garden-flight-15.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-15",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "9a031b837ca16e2034cc15351e3cae05d87501a5e3b31b0c8b9c2597dad1f578"
+          "sha256": "069c71d3a9b2aaf989b56ca24d9427807dc92b60bc6f480be9366064e35afd4d"
         },
         {
           "src": "images/ios-matched-garden-flight-16.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-16",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "4f465a2fe91a91aa420eda27de670d1596975424d282fc2ce9aaebabe1eecb63"
+          "sha256": "4cb7c44cc063dc7b37f767ab877ccd5d04f6e309fa87c067495d893ff8dc858a"
         },
         {
           "src": "images/ios-matched-garden-flight-17.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-17",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "8973fdc3a276a6d5ce6496326e5403752ae7272c9ef7c7e23f85d75d1147350f"
+          "sha256": "a51ff18d877672e37d264d6ae19600a1f6fb59c4f1e8bbd85fd6869f3b8d1bb4"
         },
         {
           "src": "images/ios-matched-garden-flight-18.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-18",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "145fbf5d75b63604bf3f4579f1d075740429e0e27e11fef3f293e63b1899e717"
+          "sha256": "f7197a02c9b9dc8b2750f3812187bfdb3b39e372340afe24bb87b78fdbe63a80"
         },
         {
           "src": "images/ios-matched-garden-flight-19.webp",
           "width": 1170,
           "height": 2532,
           "name": "matched-garden-flight-19",
-          "run": "flows-shots",
+          "run": "final2-unit-shots",
           "test": "VisualParityTests/testGardenDropCrossesHeaderAndClearsAfterLanding()",
-          "sha256": "30bbadd2ac8b7ae25f6a8831cfd3434cf321fbaba93a5c89455fc7a184cf254f"
+          "sha256": "be32e673726b79acb49918ee69bd5cb0a6a0b8736f553769200635b86e7da0af"
         }
       ]
     }
@@ -4893,11 +5312,14 @@
   "verification": {
     "Android 전체 실행": "102개 중 101개 통과. 홈 정원 가로 화면 1건 실패 → 동일 테스트 개별 재실행 통과. 최초 실패를 보존하며 원인은 확정하지 않았다.",
     "Android 추가 캡처": "6개 중 5개 통과. 프로필 캡처 기준 문구를 실제 화면의 이름으로 수정 후 프로필 테스트 통과. 프로필과 가로 정원 재실행 2개 통과.",
-    "iOS 전체 실행": "UI 27개 중 23개 통과, 네이티브·모션 9개 통과. PDF 진입·피드 가져오기·혼자 쓰는 채팅은 개별 재실행 통과. 비밀번호 재설정은 두 번 실패해 미해결로 남겼다.",
+    "iOS 재캡처(2026-10-14 저녁)": "814defc 이후 미커밋 작업본으로 다시 실행. WeddingPlantTests 39개 모두 통과(final-unit, 첨부 PNG 208종), WeddingPlantUITests 54개 모두 통과(final-ui, 첨부 PNG 176종). Android 캡처는 다시 찍지 않았다.",
+    "iOS 이전 실패의 현재 상태": "비밀번호 재설정(AndroidParityUITests)은 새 비밀번호 칸의 강력한 암호 제안을 끈 뒤 통과 — 자동 강력한 암호 덮개가 입력 칸을 가리지 않는다. 이전 실행의 PDF 진입·피드 가져오기·혼자 쓰는 채팅 재시도 건도 이번 전체 실행에서 한 번에 통과.",
     "iOS 추가 흐름": "달 이동·날짜별 추가, 프로필 수정 저장·탈퇴 확인·로그아웃, 후기 일정 선택·입력 화면 검증 통과. 처음 작성한 캡처 테스트의 잘못된 선택자·저장 문구·스크롤 조작을 고쳐 재실행했다. 후기 실제 게시와 계정 탈퇴는 실행하지 않았다.",
-    "iOS 네이티브 화면": "35개 실제 뷰/상태의 상단·중간·하단 캡처. 별도 렌더링 검사 1개 통과. 이 검사는 실제 서버 CRUD 성공이나 UI 완전 일치를 의미하지 않는다.",
+    "캡처 조건": "iOS 단위 렌더(review-native-*, matched-*, vault-*, docs-card-*)에는 OS 상태바가 없다. UI 캡처는 실제 앱이라 탭바·상태바가 보이고, 상태바 아이콘은 분홍 면 위 흰색·흰 띠 위 어두운 색이다. 이 시뮬레이터 캡처에는 키보드가 대부분 찍히지 않는다(빈 여백, 일부 캡처는 찍힘). 보안 입력 칸은 시뮬레이터가 가린 입력값을 빼고 찍어 비어 보인다.",
+    "유지하는 플랫폼 차이": "iOS 지도는 Apple 지도(카카오맵 SDK 없음 — 사용자 결정), iOS 26 시트는 좌우가 떠 있는 둥근 모양(유지 결정), 로그인의 Apple 버튼은 iOS 전용.",
+    "남은 차이": "iOS StoreKit 결제가 서버 검증과 미연결이라 결제 버튼이 잠김 · 업데이트 알림은 모양만 있고 App Store 버전 확인 없음 · 플랜 추가 화면에 탭바 없음(Android 는 있음) · 두 줄 묶음 행간이 iOS 가 약 12pt 큼(플랜 선택 줄·자랑 토글) · 온보딩 예산 칸이 게스트 저장값을 「5000.0」으로 표시.",
     "정원 모션": "Android 낙하 첫 검사 실패 후 같은 검사 재실행 통과. iOS 헤더 위 낙하·착지 후 복구 검사 통과. Core Android 원본 133프레임 좌표 대조 포함 2개 테스트 통과. GIF/연속 캡처의 위상은 다르다.",
     "외부 연동": "Google 테스트 광고 실제 로딩은 통과. 운영 Google 로그인, StoreKit 결제·복원, 실기기 APNs/FCM, 실제 사진 업로드·하객 글 CRUD는 이번 보고서에서 끝까지 검증하지 않았다.",
-    "HTML": "오프라인 화면 이동·검색·기능/미검증 필터·검수 메모 저장·모션 프레임 이동을 실제 Chrome에서 검증. 원본 캡처 해시·테스트 출처는 manifest.json 참조."
+    "HTML": "오프라인 화면 이동·검색·필터·검수 메모·모션 프레임 이동. 재생성 후 manifest.json 의 모든 이미지 src 가 실제 파일로 존재하는지 확인. 원본 캡처 해시·테스트 출처는 manifest.json 참조."
   }
 }

@@ -155,21 +155,29 @@ final class MainViewModel: ObservableObject {
         return permission == .owner || permission == .spouse
     }
 
-    /// 홈의 두 묶음 — `이번 달에 할 일` / `그 다음`.
+    /// 자랑하기를 **켜지 못하게 잠글지** — 안드로이드 `bragLocked`.
+    ///
+    /// 자랑하기는 "우리 결혼" 을 내보이는 자리인데 혼자인 플랜은 아직 그 상태가 아니고,
+    /// 공개되는 보일 이름도 두 사람 이름이다. 그래서 신랑·신부가 등록돼야 켤 수 있다.
+    var bragLocked: Bool { !hasSpouse }
+
+    /// 홈의 세 묶음 — 안드로이드 `timeBuckets`: (이번 달, 지난 일정, 그 다음).
     ///
     /// 카테고리 칩을 걷고 **계획 중 목록을 시간으로만** 가른다. 완료한 것을 되짚거나
-    /// 카테고리로 좁혀 보는 일은 "전체"(캘린더)가 맡는다.
-    func timeBuckets(today: KstDate) -> (thisMonth: [ScheduleItem], later: [ScheduleItem]) {
+    /// 카테고리로 좁혀 보는 일은 "전체"(캘린더)가 맡는다. **이번 달 1일 이전**이 지난 일정이고,
+    /// 다음 달 이후와 날짜 미정이 그 다음이다(`PlanRules.timeBucket`).
+    func timeBuckets(today: KstDate) -> (thisMonth: [ScheduleItem], past: [ScheduleItem], later: [ScheduleItem]) {
         var now: [ScheduleItem] = []
+        var past: [ScheduleItem] = []
         var later: [ScheduleItem] = []
         for item in planned {
-            if PlanRules.isThisMonthOrPast(startDate: item.startDate, today: today) {
-                now.append(item)
-            } else {
-                later.append(item)
+            switch PlanRules.timeBucket(startDate: item.startDate, today: today) {
+            case .thisMonth: now.append(item)
+            case .past: past.append(item)
+            case .later: later.append(item)
             }
         }
-        return (now, later)
+        return (now, past, later)
     }
 
     var usagePercent: Int {

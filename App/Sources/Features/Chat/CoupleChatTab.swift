@@ -16,12 +16,17 @@ struct CoupleChatTab: View {
     var body: some View {
         Group {
             switch state {
-            case .loading: ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .loading: ChatRouteSkeleton()
             case .error:
+                // 처음부터 실패 — 머리 면 없이 가운데 안내 + `다시 시도`(안드로이드 `CoupleChat.Error`)
                 VStack(spacing: 16) {
-                    Text("대화를 불러오지 못했어요.\n네트워크 상태를 확인한 뒤 다시 시도해 주세요.").multilineTextAlignment(.center)
-                    Button("다시 시도") { Task { await load() } }.buttonStyle(.borderedProminent)
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Text("대화를 불러오지 못했어요.\n네트워크 상태를 확인한 뒤 다시 시도해 주세요.")
+                        .wpTypography(14.5, face: .kakao, lineHeight: 22).foregroundStyle(WPColor.chatShareSub).multilineTextAlignment(.center)
+                    Button { Task { await load() } } label: {
+                        Text("다시 시도").font(Font(WPTypeface.kakao.uiFont(14, .bold))).foregroundStyle(.white)
+                            .padding(.horizontal, 24).frame(height: 44).background(WPColor.primary, in: Capsule())
+                    }.buttonStyle(.plain)
+                }.padding(.horizontal, 24).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .ready(let chat, let room, let date, let partner):
                 ChatView(chatRoomId: chat, standalone: true, planRoomId: room, weddingDate: date, partnerName: partner).id(chat)
             case .solo, .unavailable: solo
@@ -101,6 +106,48 @@ struct CoupleChatInviteBody: View {
         }.background(.white).ignoresSafeArea(edges: .top)
     }
 }
+/// 내 대화를 찾는 동안의 뼈대 — 안드로이드 `ChatRouteSkeleton`. 분홍 머리 위 흰 뼈(얼굴 둘 · 이름 80 · 부제 144),
+/// 말풍선 여섯(왼쪽 얼굴 40 + 62%, 오른쪽 58%, 높이 62), 입력 줄(44 · 칸 · 44).
+struct ChatRouteSkeleton: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            BrandHead(corner: 22, horizontal: 16, top: 0, bottom: 0) {
+                HStack(spacing: 4) {
+                    HStack(spacing: -8) {
+                        SkeletonBox(width: 32, height: 32, onBrand: true, corner: 16)
+                        SkeletonBox(width: 32, height: 32, onBrand: true, corner: 16)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        SkeletonBox(width: 80, height: 20, onBrand: true)
+                        SkeletonBox(width: 144, height: 12, onBrand: true)
+                    }
+                    Spacer(minLength: 0)
+                }.frame(height: 64)
+            }
+            GeometryReader { g in
+                VStack(spacing: 20) {
+                    ForEach(0..<6, id: \.self) { i in
+                        let left = i % 2 == 0
+                        HStack(alignment: .bottom, spacing: 8) {
+                            if left { SkeletonBox(width: 40, height: 40, corner: 20) } else { Spacer(minLength: 0) }
+                            SkeletonBox(width: g.size.width * (left ? 0.62 : 0.58), height: 62, corner: 16)
+                            if left { Spacer(minLength: 0) }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 24)
+            HStack(spacing: 8) {
+                SkeletonBox(width: 44, height: 44, corner: 16)
+                SkeletonBox(height: 44, corner: 16)
+                SkeletonBox(width: 44, height: 44, corner: 16)
+            }.padding(16)
+        }
+        .background(Color.white)
+        .ignoresSafeArea(edges: .top)
+    }
+}
+
 /// Lucide Link2: Android와 같은 가로 연결 고리.
 struct WPLink2: Shape {
     func path(in rect: CGRect) -> Path {

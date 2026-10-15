@@ -17,7 +17,7 @@ struct InvitationGuestbookSection: View {
             HStack(spacing: 8) {
                 Circle().fill(Color(hex: 0xACD0B5)).frame(width: 5, height: 5).background(Circle().fill(Color(hex: 0xACD0B5).opacity(0.35)).padding(-2.5))
                 Text("공개하면 하객이 남긴 축하가 여기 모여요").font(.custom("KakaoSmallSans-Regular", size: 10)).foregroundStyle(muted).frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "heart").font(.system(size: 12))
+                InvIconView(InvIcon.heart, size: 12, color: p.bright)
                 Text("—개의 축하").font(.custom("KakaoSmallSans-Regular", size: 9))
             }.foregroundStyle(p.bright).padding(.horizontal, 24).padding(.top, 32).padding(.bottom, 16)
             SeasideGardenView(wishes: [
@@ -29,14 +29,15 @@ struct InvitationGuestbookSection: View {
             VStack(spacing: 16) {
                 Button { toast("미리보기에서는 보내지 않아요") } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: "paperplane").font(.system(size: 15))
+                        InvIconView(InvIcon.send, size: 15, color: p.deep)
                         Text("축하 글 남기기").font(.custom("KakaoSmallSans-Regular", size: 12)).frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "arrow.right").font(.system(size: 16))
-                    }.foregroundStyle(p.deep).padding(.horizontal, 20).frame(minHeight: 50).background(p.bright).overlay(Rectangle().stroke(p.gold))
-                }.buttonStyle(.plain).disabled(editing)
+                        InvIconView(InvIcon.arrowRight, size: 16, color: p.deep)
+                    }.foregroundStyle(p.deep).padding(.horizontal, 20).padding(.vertical, 12).frame(minHeight: 50).background(p.bright, in: RoundedRectangle(cornerRadius: 2)).overlay(RoundedRectangle(cornerRadius: 2).stroke(p.gold))
+                }.buttonStyle(.plain).allowsHitTesting(!editing)
                 Button { toast("공개하면 하객이 남긴 축하 글을 모아 볼 수 있어요") } label: {
-                    Label("축하 글 전체 보기", systemImage: "person.2").font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(p.bright).frame(minHeight: 44)
-                }.buttonStyle(.plain).disabled(editing)
+                    HStack(spacing: 8) { InvIconView(InvIcon.users, size: 14, color: p.bright); Text("축하 글 전체 보기").font(.custom("KakaoSmallSans-Regular", size: 11)) }
+                        .foregroundStyle(p.bright).padding(8).frame(minHeight: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain).allowsHitTesting(!editing)
             }.padding(.horizontal, 24).padding(.top, 24)
         }.frame(maxWidth: .infinity).padding(.top, 64).padding(.bottom, 40).background(p.night)
     }
@@ -115,7 +116,7 @@ struct InvitationGallery: View {
                                 if index == 0 && editing { Text("표지").font(.custom("KakaoSmallSans-Bold", size: 10)).padding(6).background(p.forest, in: Capsule()) }
                             }
                             Spacer()
-                            HStack { Spacer(); Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 15)) }
+                            HStack { Spacer(); InvIconView(InvIcon.maximize, size: 15, color: Color(hex: 0xF8EDCF)) }
                         }.padding(10).foregroundStyle(Color(hex: 0xF8EDCF))
                     } else {
                         let next = index == content.photos.count
@@ -187,18 +188,18 @@ struct InvitationLocation: View {
             if !location.guide.isEmpty { row("HOW") { Text(location.guide).wpTypography(13, face: .kakao, lineHeight: 24.7).padding(.vertical, -3) } }
             Button { openMap("https://map.kakao.com/link/search/") } label: {
                 VStack(spacing: 12) {
-                    Image(systemName: query.isEmpty ? "leaf" : "mappin.and.ellipse").font(.system(size: 27, weight: .light))
+                    InvIconView(query.isEmpty ? InvIcon.leaf : InvIcon.mapPin, size: 27, color: p.placeholderDark, weight: 1)
                     Text("두 사람에게 오는 길").font(.custom("KakaoSmallSans-Regular", size: 12))
                     Text(query.isEmpty ? "장소를 적으면 지도로 이어져요" : "카카오맵에서 \(content.venue.isEmpty ? address : content.venue) 찾기").font(.custom("KakaoSmallSans-Regular", size: 10))
-                }.foregroundStyle(p.muted).frame(maxWidth: .infinity).frame(height: 164)
+                }.foregroundStyle(p.placeholderDark).frame(maxWidth: .infinity).frame(height: 164)
                     .background(p.placeholder).overlay { HatchLines().stroke(p.ink.opacity(0.08), lineWidth: 1).clipped() }
                     .overlay(Rectangle().stroke(p.rule))
-            }.buttonStyle(.plain).disabled(editing || query.isEmpty).padding(.top, 12)
+            }.buttonStyle(.plain).allowsHitTesting(!editing && !query.isEmpty).padding(.top, 12)
             if !query.isEmpty {
                 HStack(spacing: 8) {
                     mapButton("네이버 지도") { openMap("https://map.naver.com/p/search/") }
                     if !address.isEmpty { mapButton("주소 복사") { UIPasteboard.general.string = address; toast("예식장 주소를 복사했어요") } }
-                }.padding(.top, 8).disabled(editing)
+                }.padding(.top, 8).allowsHitTesting(!editing)
             }
         }.foregroundStyle(p.ink).padding(.horizontal, 32).padding(.vertical, 48).background(p.soft)
     }
@@ -209,7 +210,7 @@ struct InvitationLocation: View {
         }.padding(.vertical, 20).overlay(alignment: .top) { Rectangle().fill(p.rule).frame(height: 1) }
     }
     private func mapButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { HStack(spacing: 6) { if title == "주소 복사" { Image(systemName: "square.on.square").font(.system(size: 11)) }; Text(title) }.font(.custom("KakaoSmallSans-Regular", size: 12)).frame(maxWidth: .infinity).frame(minHeight: 44).background(p.paper).overlay(Rectangle().stroke(p.rule)) }.buttonStyle(.plain)
+        Button(action: action) { HStack(spacing: 6) { if title == "주소 복사" { InvIconView(InvIcon.copy, size: 12, color: p.forest) }; Text(title) }.foregroundStyle(p.forest).font(.custom("KakaoSmallSans-Regular", size: 12)).frame(maxWidth: .infinity).frame(minHeight: 44).background(p.paper).overlay(Rectangle().stroke(p.rule)) }.buttonStyle(.plain)
     }
     private func openMap(_ base: String) {
         if let encoded = query.addingPercentEncoding(withAllowedCharacters: .alphanumerics), let url = URL(string: base + encoded) { openURL(url) }
@@ -244,9 +245,9 @@ struct InvitationAccounts: View {
                 if !rows.isEmpty {
                     VStack(spacing: 0) {
                         Button { withAnimation(.timingCurve(0.2, 0.65, 0.25, 1, duration: 0.45)) { open = expanded ? nil : side } } label: {
-                            HStack { Text(side == "groom" ? "신랑 측 계좌번호" : "신부 측 계좌번호"); Spacer(); Image(systemName: "chevron.down").foregroundStyle(p.gold).rotationEffect(.degrees(expanded ? 180 : 0)) }
+                            HStack { Text(side == "groom" ? "신랑 측 계좌번호" : "신부 측 계좌번호"); Spacer(); InvIconView(InvIcon.chevronDown, size: 18, color: p.gold, weight: 1.4).rotationEffect(.degrees(expanded ? 180 : 0)) }
                                 .font(.custom("KakaoSmallSans-Regular", size: 16)).foregroundStyle(p.forest).padding(.horizontal, 20).frame(minHeight: 56)
-                        }.buttonStyle(.plain).disabled(editing)
+                        }.buttonStyle(.plain).allowsHitTesting(!editing)
                         if expanded { ForEach(Array(rows.enumerated()), id: \.offset) { _, account in accountRow(account) }.transition(.opacity.combined(with: .move(edge: .top))) }
                     }.background(p.soft).overlay(Rectangle().stroke(p.rule)).clipped()
                 }
@@ -262,8 +263,9 @@ struct InvitationAccounts: View {
                 Text(account.number).font(.custom("KakaoSmallSans-Regular", size: 13)).lineLimit(1)
             }.frame(maxWidth: .infinity, alignment: .leading)
             Button { UIPasteboard.general.string = "\(account.bank) \(account.number)"; toast("\(name) 님 계좌를 복사했어요") } label: {
-                Label("복사", systemImage: "document.on.document").font(.custom("KakaoSmallSans-Regular", size: 16)).padding(.horizontal, 14).frame(minHeight: 44).background(p.paper).overlay(Rectangle().stroke(p.gold))
-            }.buttonStyle(.plain).disabled(editing)
+                HStack(spacing: 4) { InvIconView(InvIcon.copy, size: 13, color: p.forest); Text("복사").font(.custom("KakaoSmallSans-Regular", size: 16)) }
+                    .foregroundStyle(p.forest).padding(.horizontal, 14).frame(minHeight: 44).background(p.paper).overlay(Rectangle().stroke(p.gold))
+            }.buttonStyle(.plain).allowsHitTesting(!editing)
         }.padding(.vertical, 16).overlay(alignment: .top) { Rectangle().fill(p.rule).frame(height: 1) }.padding(.horizontal, 20)
     }
 }

@@ -14,6 +14,10 @@ final class AllScreenComparisonTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let guest = GuestStore(defaults: defaults)
+        // 안드로이드 비교 캡처는 견본 광고(`PreviewAds`)로 광고 자리를 그린다. 같은 자리를 iOS 도 보이게 한다 —
+        // 실제 테스트 광고는 NO_FILL 이 올 수 있어 캡처마다 달라진다.
+        AdPreview.forced = true
+        defer { AdPreview.forced = false }
         let guide = GuideController()
         let push = PushService()
         let feedJSON = try JSONSerialization.jsonObject(with: Data(DemoData.feed(categoryName: nil).utf8)) as! [String: Any]
@@ -59,6 +63,8 @@ final class AllScreenComparisonTests: XCTestCase {
         for (name, view) in screens {
             let env = AppEnvironment(api: APIClient(baseURL: base, transport: ReviewTransport(mode: name), tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)
             env.isAuthenticated = true
+            // 앱은 로그인하면 `WeddingPlantApp` 이 광고 판정을 받는다. 여기서는 화면만 띄우므로 직접 받는다.
+            await env.refreshAdEligibility()
             let root = view.environmentObject(env).environmentObject(guest).environmentObject(guide).environmentObject(push)
                 .tint(WPColor.primary).environment(\.brandStatusInset, 48).environment(\.locale, Locale(identifier: "ko_KR"))
             let controller = UIHostingController(rootView: root)

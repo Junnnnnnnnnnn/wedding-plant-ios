@@ -22,6 +22,8 @@ struct FeedView: View {
     @State private var path = NavigationPath()
     @State private var showPostSheet = false
     @State private var copyPost: FeedPost?
+    /// 탭 셸 위에 플랜 추가·수정을 연다(탭바가 남음 — Android `ADD_PLAN`). 셸 밖·다른 창 위면 예전처럼 전체 화면.
+    @Environment(\.addPlanPresenter) private var addPlanPresenter
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -34,11 +36,14 @@ struct FeedView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     head
+                    if !env.isAuthenticated {
+                        loginPrompt
+                    } else {
                     chips
                     sortRow
 
                     if model.loading {
-                        ForEach(0..<4, id: \.self) { _ in SkeletonRow() }
+                        ForEach(0..<3, id: \.self) { _ in SkeletonRow() }
                     } else if model.posts.isEmpty {
                         emptyState
                     } else {
@@ -50,16 +55,23 @@ struct FeedView: View {
                                     Task { await model.vote(post, vote, env: env) }
                                 },
                                 onOpen: { path.append(post) },
-                                onCopy: { copyPost = post }
+                                onCopy: {
+                                    let opened = addPlanPresenter?.open(AddPlanRequest(prefill: .init(title: post.title, categoryName: post.categoryName,
+                                                                                                     amount: post.amount, location: post.title))) ?? false
+                                    if !opened { copyPost = post }
+                                },
+                                onHidden: { model.hide(post.id) }
                             )
                             if AdRules.adAfter(index: index, count: model.posts.count, first: 3, every: 8) {
                                 NativeAdSlot(placement: "feed.\(index)", style: .feed, horizontal: 16, top: 8, bottom: 8)
                             }
                         }
 
+                        // 안드로이드처럼 끝에 닿으면 다음 장을 받는다(`더 보기` 단추 없음).
                         if model.hasMore {
-                            moreButton
+                            loadMoreRow
                         }
+                    }
                     }
                 }
                 .id(model.loading)
@@ -84,11 +96,11 @@ struct FeedView: View {
             await model.load(env: env, replace: true)
         }
         .navigationDestination(for: FeedPost.self) { post in
-            FeedDetailView(post: post)
+            FeedDetailView(post: post, onUpdate: { model.replace($0) }, onHidden: { model.hide($0) })
         }
         .fullScreenCover(item: $copyPost) { post in
             AddPlanView(prefill: .init(title: post.title, categoryName: post.categoryName,
-                                      amount: post.amount, location: post.address ?? post.region),
+                                      amount: post.amount, location: post.title),
                         onSaved: { copyPost = nil })
                 .environmentObject(env)
         }
@@ -167,36 +179,50 @@ struct FeedView: View {
 
     // MARK: - 빈 상태 · 더 보기
 
+    /// 안드로이드 `FeedEmpty` — 테두리 카드 + 올릴 수 있는 일정 보기
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Text("아직 후기가 없어요")
-                .wpTypography(16, .bold)
-                .foregroundStyle(WPColor.fgNeutral)
-            Text("완료한 일정에 별점과 한 줄만 얹으면 후기가 됩니다")
-                .wpTypography(13)
-                .foregroundStyle(WPColor.fgSubtle)
-                .multilineTextAlignment(.center)
+        VStack(spacing: 0) {
+            Text("아직 후기가 없어요").wpTypography(14, .bold).foregroundStyle(WPColor.textPrimary)
+            Color.clear.frame(height: 8)
+            Text("완료한 일정을 올리면 다른 커플이 견적을 가늠할 수 있어요.".wpKeepAll)
+                .wpTypography(12.5, lineHeight: 19).foregroundStyle(FeedCard.warmMuted)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Color.clear.frame(height: 16)
+            Button { showPostSheet = true } label: {
+                Text("올릴 수 있는 일정 보기").wpTypography(13, .bold).foregroundStyle(.white)
+                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }.buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 64)
-        .padding(.horizontal, 24)
+        .padding(40)
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(WPColor.cardBorder, lineWidth: 1))
+        .padding(16)
     }
 
-    private var moreButton: some View {
-        Button {
-            Task { await model.load(env: env, replace: false) }
-        } label: {
-            Text(model.loadingMore ? "불러오는 중..." : "더 보기")
-                .wpTypography(14, .bold)
-                .foregroundStyle(WPColor.fgMuted)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    /// 안드로이드 `FeedLoginPrompt`
+    private var loginPrompt: some View {
+        VStack(spacing: 16) {
+            Text("로그인하면 견적 후기를 볼 수 있어요").wpTypography(15, .bold).foregroundStyle(WPColor.textPrimary)
+            Button { env.isAuthenticated = false } label: {
+                Text("로그인하기").wpTypography(14, .bold).foregroundStyle(.white)
+                    .padding(.horizontal, 24).padding(.vertical, 12)
+                    .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }.buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-        .disabled(model.loadingMore)
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 32).padding(.vertical, 80)
+    }
+
+    /// 끝에 닿으면 다음 장 — 안드로이드는 끝에서 3개 남으면 받고 받는 동안 20pt 스피너를 둔다.
+    private var loadMoreRow: some View {
+        ZStack {
+            if model.loadingMore {
+                ProgressView().tint(WPColor.primary).controlSize(.small)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: model.loadingMore ? 52 : 1)
+        .onAppear { Task { await model.load(env: env, replace: false) } }
     }
 }
 
@@ -209,6 +235,8 @@ struct FeedCard: View {
     var onVote: (FeedRules.Vote) -> Void
     var onOpen: () -> Void
     var onCopy: () -> Void
+    /// 신고·차단이 끝나 이 글을 목록에서 치울 때
+    var onHidden: () -> Void = {}
 
     @Environment(\.openURL) private var openURL
 
@@ -231,7 +259,8 @@ struct FeedCard: View {
                     Stars(rating: post.rating)
                     }
                     Spacer(minLength: 0)
-                    if !post.isMine { ModerationMenu(targetType: "FEED", targetId: post.id, compact: true).offset(x: 6, y: -4).foregroundStyle(WPColor.fgMuted) }
+                    // **내 글에는 안 낸다** — 자기 글 신고는 서버가 거절한다. 웹 `-mr-1 -mt-0.5`
+                    if !post.isMine { ModerationMenu(targetType: "FEED", targetId: post.id, onHidden: onHidden).offset(x: 6, y: -4) }
                 }
 
                 placeLine
@@ -271,10 +300,7 @@ struct FeedCard: View {
             WPTmoneyText(text: "\(withThousands(amount))만원", size: 23, bold: true, color: UIColor(WPColor.textPrimary), lineHeight: 23, tracking: -0.69)
                 .foregroundStyle(WPColor.textPrimary)
         } else {
-            Text("금액 비공개")
-                .font(WPFont.tmoney(17, .bold))
-                .tracking(-0.02 * 17)
-                .foregroundStyle(WPColor.gray400)
+            WPTmoneyText(text: "금액 비공개", size: 17, bold: true, color: UIColor(WPColor.gray400), tracking: -0.34)
         }
     }
 
@@ -404,7 +430,7 @@ struct FeedCard: View {
 
     /// 웹 `#7a6c74` — 따뜻한 회색. 피드 본문·장소 줄이 쓴다.
     static let warmMuted = Color(hex: 0x7A6C74)
-    static let warmStroke = Color(hex: 0xEDE7EA)
+    static let warmStroke = Color(hex: 0xEFE7EB)
 }
 
 /// 만족도 1~5.
@@ -424,15 +450,24 @@ struct Stars: View {
     }
 }
 
-/// 실제 카드와 같은 짜임의 뼈대.
+/// 실제 카드와 같은 짜임의 뼈대 — 안드로이드 `SkeletonRow`.
 private struct SkeletonRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                SkeletonBox(width: 120, height: 24)
-                SkeletonBox(width: 60, height: 14)
-                SkeletonBox(width: 200, height: 16)
-                SkeletonBox(height: 14)
+            VStack(alignment: .leading, spacing: 0) {
+                SkeletonBox(width: 96, height: 23)
+                Color.clear.frame(height: 6)
+                SkeletonBox(width: 48, height: 12)
+                Color.clear.frame(height: 12)
+                SkeletonBox(width: 128, height: 16)
+                Color.clear.frame(height: 10)
+                GeometryReader { g in SkeletonBox(width: g.size.width * 0.8, height: 14) }.frame(height: 14)
+                Color.clear.frame(height: 16)
+                HStack(spacing: 8) {
+                    SkeletonBox(width: 112, height: 32, corner: 16)
+                    SkeletonBox(width: 32, height: 32, corner: 16)
+                    SkeletonBox(width: 128, height: 32, corner: 16)
+                }
             }
             .padding(.horizontal, 4)
             .padding(.vertical, 20)

@@ -36,6 +36,25 @@ final class InvitationComparisonTests: XCTestCase {
         try await capture(InvitationPreviewView(content: Self.content(), motionEnabled: false).environmentObject(environment(Self.content())), name: "preview", top: 48, bottom: 0, scrolls: [0, 700, 1300, 2100, 2800, 3500, 4500])
     }
 
+    /// Android `inv-guest-door-opening` — 하객 화면을 열고 문이 열리는 도중(0.7초 뒤 2.4초 동안)을 여러 장 찍습니다.
+    @MainActor func testGuestDoorOpeningFrames() async throws {
+        let view = InvitationPreviewView(content: Self.content()).environmentObject(environment(Self.content()))
+        let controller = UIHostingController(rootView: view.padding(.top, 48).background(.white).environment(\.locale, Locale(identifier: "ko_KR")))
+        controller.safeAreaRegions = []
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = controller; window.isHidden = false
+        controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
+        defer { window.isHidden = true }
+        let start = Date()
+        for at in [1.2, 1.9, 2.6, 3.2] {
+            let wait = at - Date().timeIntervalSince(start)
+            if wait > 0 { try await Task.sleep(for: .milliseconds(Int(wait * 1000))) }
+            let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
+            let image = UIGraphicsImageRenderer(size: window.bounds.size, format: format).image { _ in controller.view.drawHierarchy(in: controller.view.bounds, afterScreenUpdates: true) }
+            let attachment = XCTAttachment(image: image); attachment.name = "compare-door-\(Int(at * 1000))"; attachment.lifetime = .keepAlways; add(attachment)
+        }
+    }
+
     @MainActor private func environment(_ content: InvitationContent?, pass: Bool = true) -> AppEnvironment {
         let store = InMemoryTokenStore(token: DemoData.token), base = URL(string: "https://invitation-comparison.test")!
         return AppEnvironment(api: APIClient(baseURL: base, transport: ComparisonTransport(content: content, pass: pass), tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)

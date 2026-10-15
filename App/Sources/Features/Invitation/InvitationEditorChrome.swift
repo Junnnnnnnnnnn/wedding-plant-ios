@@ -10,6 +10,7 @@ extension WPColor {
     static let invLine = Color(hex: 0xDBE2D1), invForest = Color(hex: 0x173C2F)
     static let invSoft = Color(hex: 0xE8EEDF), invGold = Color(hex: 0xB7A375)
     static let invLandMuted = Color(hex: 0x66715E), invDash = Color(hex: 0xB9C4AD)
+    static let invPlaceholder = Color(hex: 0x959E8C), invErrorInk = Color(hex: 0xA93D56)
 }
 func invitationFont(_ size: CGFloat, bold: Bool = false) -> Font { .custom(bold ? "KakaoSmallSans-Bold" : "KakaoSmallSans-Regular", size: size) }
 
@@ -33,17 +34,48 @@ struct InvitationField: View {
     @Binding var text: String
     var identifier: String = ""
     var multiline = false
+    /// 안드로이드 `GardenField` 의 placeholder · 길이 제한 · 위 여백(웹 문구 그대로)
+    var placeholder: String = ""
+    var max: Int = 500
+    var top: CGFloat = 14
+    var filter: ((String) -> String)? = nil
     @FocusState private var focused: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if !label.isEmpty { Text(label).font(invitationFont(12, bold: true)).foregroundStyle(WPColor.invInk) }
-            TextField("", text: $text, axis: multiline ? .vertical : .horizontal)
+            // 여러 줄 칸은 글자 수를 라벨 옆에 씁니다(안드로이드 counter)
+            if !label.isEmpty || multiline {
+                HStack(spacing: 0) {
+                    Text(label).font(invitationFont(12, bold: true)).foregroundStyle(WPColor.invInk)
+                    Spacer(minLength: 0)
+                    if multiline { Text("\(text.count)/\(max)").font(invitationFont(12)).foregroundStyle(WPColor.invMuted) }
+                }
+            }
+            TextField("", text: Binding(get: { text }, set: { value in
+                let filtered = filter?(value) ?? value
+                text = String(filtered.prefix(max))
+            }), prompt: placeholder.isEmpty ? nil : Text(placeholder).foregroundColor(WPColor.invPlaceholder), axis: multiline ? .vertical : .horizontal)
                 .lineLimit(multiline ? 4...8 : 1...1).font(invitationFont(16)).foregroundStyle(WPColor.invInk)
-                .padding(.horizontal, 12).padding(.vertical, 10).frame(minHeight: multiline ? 112 : 46, alignment: .topLeading)
+                .lineSpacing(multiline ? 8 : 0)
+                .padding(.horizontal, 12).padding(.vertical, 10).frame(minHeight: multiline ? 112 : 46, alignment: multiline ? .topLeading : .leading)
                 .background(focused ? WPColor.invWhite : WPColor.invPaper, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(focused ? WPColor.invAccent : WPColor.invLine, lineWidth: focused ? 2 : 1))
                 .focused($focused).accessibilityLabel(label).accessibilityIdentifier(identifier)
-        }.padding(.top, 14)
+        }.padding(.top, top)
+    }
+}
+/// 안드로이드 `OutlineButton` — 초록 1px 테두리 · 흰 바탕 · 높이 40 · r10 · 글자 12 bold accent.
+struct InvitationOutlineLabel: View {
+    let title: String
+    var icon: [String]? = nil
+    var enabled = true
+    var body: some View {
+        HStack(spacing: 6) {
+            if let icon { InvIconView(icon, size: 16, color: WPColor.invAccent) }
+            Text(title).font(invitationFont(12, bold: true)).foregroundStyle(WPColor.invAccent).lineLimit(1).fixedSize()
+        }.padding(.horizontal, 14).frame(minHeight: 40)
+            .background(WPColor.invWhite, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(WPColor.invAccent, lineWidth: 1))
+            .opacity(enabled ? 1 : 0.45)
     }
 }
 struct InvitationSwitch: View {
@@ -60,10 +92,15 @@ struct InvitationSwitch: View {
 
 struct InvitationEditBadge: View {
     let selected: Bool
+    var onDark = false
     var body: some View {
-        Label(selected ? "고치는 중" : "고치기", systemImage: "pencil").font(invitationFont(11, bold: true))
+        HStack(spacing: 4) {
+            InvIconView(InvIcon.pencil, size: 12, color: selected ? WPColor.invWhite : WPColor.invAccent)
+            Text(selected ? "고치는 중" : "고치기").font(invitationFont(11, bold: true)).frame(minHeight: 14)
+        }
             .foregroundStyle(selected ? WPColor.invWhite : WPColor.invAccent).padding(.horizontal, 9).padding(.vertical, 5)
             .background(selected ? WPColor.invAccent : WPColor.invWhite.opacity(0.94), in: Capsule())
+            .overlay { if !selected && !onDark { Capsule().stroke(WPColor.invLine, lineWidth: 1) } }
     }
 }
 struct InvitationEditSelection: ViewModifier {
@@ -117,7 +154,7 @@ struct InvitationDateFields: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(invitationFont(12, bold: true)).foregroundStyle(WPColor.invInk)
             Button { picker = key; let formatter = DateFormatter(); formatter.timeZone = KST.timeZone; formatter.dateFormat = key == "date" ? "yyyy-MM-dd" : "HH:mm"; self.value = formatter.date(from: (key == "date" ? date : time) ?? "") ?? Date() } label: {
-                Text(value).wpTypography(15, face: .kakao, lineHeight: 22).foregroundStyle(WPColor.invInk).multilineTextAlignment(.leading)
+                Text(value).wpTypography(15, face: .kakao, lineHeight: 22).foregroundStyle(value.hasSuffix("고르기") ? WPColor.invPlaceholder : WPColor.invInk).multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 10)
                     .background(WPColor.invPaper, in: RoundedRectangle(cornerRadius: 10)).overlay(RoundedRectangle(cornerRadius: 10).stroke(WPColor.invLine))
             }.buttonStyle(.plain)
@@ -135,7 +172,7 @@ struct InvitationLayoutPanel: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("구성").font(invitationFont(16, bold: true)).foregroundStyle(WPColor.invForest)
+                Text("구성").font(invitationFont(16, bold: true)).tracking(-0.3).foregroundStyle(WPColor.invForest)
                 Text("\(sections.filter(\.visible).count)칸 보임 · 끌어서 순서를 바꾸고, 쓰지 않을 칸은 꺼 두세요")
                     .wpTypography(12, face: .kakao, lineHeight: 18).foregroundStyle(WPColor.invMuted).padding(.top, -4).padding(.bottom, 4)
                 row("cover", title: "표지", summary: InvitationRules.coverSummary(draft), index: nil)
@@ -144,7 +181,10 @@ struct InvitationLayoutPanel: View {
                         summary: section.visible ? InvitationRules.sectionSummary(section.type, content: draft) : "꺼 둠 · 청첩장에 보이지 않아요", index: index)
                         .offset(y: dragging == section.type ? dragOffset : 0).zIndex(dragging == section.type ? 1 : 0)
                 }
-                Label("맨 아래에는 늘 맺음 인사와 ‘청첩장 전하기’가 붙어요.", systemImage: "pin").font(invitationFont(12)).foregroundStyle(WPColor.invMuted).padding(.top, 6)
+                HStack(spacing: 6) {
+                    InvIconView(InvIcon.pin, size: 13, color: WPColor.invGold)
+                    Text("맨 아래에는 늘 맺음 인사와 ‘청첩장 전하기’가 붙어요.".wpKeepAll).font(invitationFont(12)).foregroundStyle(WPColor.invMuted)
+                }.padding(.top, 6)
             }.padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 24)
         }.background(WPColor.invPaper)
     }
@@ -152,13 +192,10 @@ struct InvitationLayoutPanel: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Group {
-                    if index == nil { Image(systemName: "pin") }
-                    else { Canvas { context, _ in
-                        for x in [4.0, 10.0] { for y in [2.0, 8.0, 14.0] { context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 3, height: 3)), with: .color(WPColor.invMuted)) } }
-                    }.frame(width: 18, height: 18) }
+                    if index == nil { InvIconView(InvIcon.pin, size: 15, color: WPColor.invGold) }
+                    else { InvIconView(InvIcon.gripVertical, size: 18, color: WPColor.invMuted) }
                 }
-                    .font(.system(size: index == nil ? 15 : 13)).foregroundStyle(index == nil ? WPColor.invGold : WPColor.invMuted)
-                    .frame(width: 36, height: 48)
+                    .frame(width: 36, height: 48).contentShape(Rectangle())
                     .gesture(DragGesture().onChanged { value in
                         guard let index = sections.firstIndex(where: { $0.type == key }) else { return }
                         if dragging != key { dragging = key; dragConsumed = 0 }
@@ -169,7 +206,7 @@ struct InvitationLayoutPanel: View {
                     }.onEnded { _ in dragging = nil; dragOffset = 0; dragConsumed = 0 })
                 Button { onOpen(key) } label: {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(title).font(invitationFont(14, bold: true)).foregroundStyle(index.map { sections[$0].visible } == false ? WPColor.invMuted : WPColor.invInk)
+                        Text(title).font(invitationFont(14, bold: true)).tracking(-0.2).foregroundStyle(index.map { sections[$0].visible } == false ? WPColor.invMuted : WPColor.invInk)
                         Text(summary).font(invitationFont(12)).foregroundStyle(WPColor.invMuted).lineLimit(1)
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 8).padding(.vertical, 6)
                 }.buttonStyle(.plain).accessibilityIdentifier(key == "cover" ? "invitation.editCover" : "invitation.layout." + key)
@@ -190,7 +227,10 @@ struct InvitationLayoutPanel: View {
         }.background(WPColor.invWhite, in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(WPColor.invLine, lineWidth: 1))
     }
     private func moveButton(_ title: String, icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Label(title, systemImage: icon).font(invitationFont(12)).frame(width: 66, height: 36) }
+        Button(action: action) {
+            HStack(spacing: 4) { InvIconView(icon == "arrow.up" ? InvIcon.arrowUp : InvIcon.arrowDown, size: 14, color: WPColor.invAccent); Text(title).font(invitationFont(12)) }
+                .padding(.horizontal, 10).frame(minHeight: 36)
+        }
             .buttonStyle(.plain).foregroundStyle(WPColor.invAccent).opacity(enabled ? 1 : 0.45).disabled(!enabled)
     }
     private func move(_ from: Int, _ to: Int) { guard sections.indices.contains(from), sections.indices.contains(to) else { return }; draft.design?.sections.swapAt(from, to) }

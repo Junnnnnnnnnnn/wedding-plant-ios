@@ -485,7 +485,7 @@ XCUITest에서 각 화면 진입 후 `XCTAttachment(screenshot: app.screenshot()
 | `/setting` | `SettingView` | 예산·이름·결혼일 |
 | `/main` (96KB) | `MainView` + 하위 컴포넌트 | **반드시 쪼갤 것.** 웹의 단일 파일 패턴을 그대로 옮기면 안 됨 |
 | `/calendar` | `CalendarView` | |
-| `/add-plen` (78KB) | `AddPlanView` | 카카오맵 → `KakaoMapsSDK` 또는 `MapKit` |
+| `/add-plen` (78KB) | `AddPlanView` | 카카오맵 → `KakaoMapsSDK` (`DesignSystem/KakaoMapView.swift`) |
 | `/budget-detail` | `BudgetDetailView` | 차트 → Swift Charts (iOS 16+) |
 | `/schedule-detail` | `ScheduleDetailView` | |
 | `/plan-list` | `PlanListView` | |

@@ -293,12 +293,19 @@ public struct BragMyStatus: Codable, Hashable, Sendable {
     public var bragId: Int?
     public var publishedAt: String?
     public var likeCount: Int
+    /// 자랑하기에 보일 이름. 직접 정한 값이고 **안 정했으면 `nil`** 이다. 내려도 남겨 두어 다시 올릴 때 그대로 쓴다.
+    public var title: String?
+    /// `title` 을 비웠을 때 대신 올라갈 이름 — 방장·배우자 두 사람 이름(안드로이드 `defaultNickname`).
+    public var defaultNickname: String
 
-    public init(published: Bool = false, bragId: Int? = nil, publishedAt: String? = nil, likeCount: Int = 0) {
+    public init(published: Bool = false, bragId: Int? = nil, publishedAt: String? = nil, likeCount: Int = 0,
+                title: String? = nil, defaultNickname: String = "") {
         self.published = published
         self.bragId = bragId
         self.publishedAt = publishedAt
         self.likeCount = likeCount
+        self.title = title
+        self.defaultNickname = defaultNickname
     }
 
     public init(from decoder: any Decoder) throws {
@@ -307,6 +314,8 @@ public struct BragMyStatus: Codable, Hashable, Sendable {
         self.bragId = try c.decodeIfPresent(Int.self, forKey: .bragId)
         self.publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
         self.likeCount = try c.decodeIfPresent(Int.self, forKey: .likeCount) ?? 0
+        self.title = try? c.decodeIfPresent(String.self, forKey: .title)
+        self.defaultNickname = (try? c.decodeIfPresent(String.self, forKey: .defaultNickname)) ?? ""
     }
 }
 

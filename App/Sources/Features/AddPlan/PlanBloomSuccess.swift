@@ -74,13 +74,14 @@ struct PlanBloomSuccess: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(wpThousands(abs(remaining ?? amount))).font(.custom("KakaoSmallSans-Bold", size: 37))
                     Text(over ? "만 원 초과" : "만 원").font(WPFont.hak(14, .bold))
-                }.foregroundStyle(over ? .red : colors[5]).frame(minHeight: 43).padding(.top, 5)
+                }.foregroundStyle(over ? WPColor.danger : colors[5]).frame(minHeight: 43).padding(.top, 5)
                 colors[8].frame(height: 1).padding(.top, 12)
                 HStack { Text(title).lineLimit(1); Spacer(); Text("\(wpThousands(amount))만 원").font(WPFont.hak(11, .bold)).strikethrough(action == .delete) }.font(WPFont.hak(11)).foregroundStyle(colors[4]).frame(minHeight: 17).padding(.top, 10)
             } else {
-                Text(action == .create ? "플랜 +1" : action == .update ? "플랜 수정" : "플랜 -1").font(WPFont.hak(27, .bold))
-                Text(title).font(WPFont.hak(13)).padding(.vertical, 7)
-                Text(action == .create ? "잊지 않도록, 우리 플랜에 담아뒀어요." : action == .update ? "바뀐 내용으로 다시 담아뒀어요." : "우리 플랜에서 덜어냈어요.").font(WPFont.hak(11)).foregroundStyle(colors[4])
+                // Android: 배지 27 굵게 · 제목 13 은 잉크색(줄 높이 1.5), 안내 11/17 은 잎색
+                Text(action == .create ? "플랜 +1" : action == .update ? "플랜 수정" : "플랜 -1").wpTypography(27, .bold).foregroundStyle(colors[3])
+                Text(title).wpTypography(13).foregroundStyle(colors[3]).padding(.vertical, 7)
+                Text(action == .create ? "잊지 않도록, 우리 플랜에 담아뒀어요." : action == .update ? "바뀐 내용으로 다시 담아뒀어요." : "우리 플랜에서 덜어냈어요.").wpTypography(11, lineHeight: 17).foregroundStyle(colors[4])
             }
         }.frame(maxWidth: .infinity).padding(.horizontal, 16).padding(.vertical, 17).background(colors[6].opacity(0.91), in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(colors[7]))
     }

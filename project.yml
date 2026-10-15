@@ -40,6 +40,12 @@ packages:
     url: https://github.com/google/GoogleSignIn-iOS
     from: "9.0.0"
 
+  # 카카오맵(Android `com.kakao.maps.open:android` 와 같은 지도). 로그인과 **같은 네이티브 앱 키**를 쓰고,
+  # 카카오 개발자 콘솔에서 [카카오맵] 제품이 활성화돼 있어야 타일이 내려온다(Android 와 같은 앱).
+  KakaoMapsSDK:
+    url: https://github.com/kakao-mapsSDK/KakaoMapsSDK-SPM.git
+    from: "2.12.19"
+
 settings:
   base:
     # App 타깃은 Windows 에서 컴파일 검증이 불가능하므로, 블라인드 작성 코드가
@@ -116,6 +122,22 @@ targets:
             echo "error:   GitHub Actions → 저장소 시크릿 KAKAO_NATIVE_APP_KEY 를 등록하세요."
             exit 1
           fi
+      # 안드로이드 `app/build.gradle.kts` 의 ADMOB 검사와 같다. Debug 는 늘 Google 테스트 ID(AdsService)라 보지 않는다.
+      # Release 에 테스트 ID 가 섞이면 광고 수익이 0 이고, 비어 있으면 **광고 없이** 나간다(AdsService.enabled).
+      - name: AdMob 광고 ID 확인 (Release)
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "${CONFIGURATION}" = "Release" ]; then
+            for value in "${ADMOB_APP_ID}" "${ADMOB_NATIVE_AD_UNIT_ID}" "${ADMOB_BANNER_AD_UNIT_ID}"; do
+              case "$value" in *3940256099942544*)
+                echo "error: Release 에 Google 테스트 광고 ID 가 들어 있습니다. Config/Local.xcconfig 의 ADMOB_* 를 실제 iOS 광고 단위로 바꾸세요."
+                exit 1;;
+              esac
+            done
+            if [ -z "${ADMOB_APP_ID}" ] || [ -z "${ADMOB_NATIVE_AD_UNIT_ID}" ] || [ -z "${ADMOB_BANNER_AD_UNIT_ID}" ]; then
+              echo "warning: ADMOB_* 가 비어 있어 이 Release 빌드에는 광고가 나오지 않습니다 (Local.example.xcconfig 참고)."
+            fi
+          fi
     dependencies:
       - package: GoogleMobileAds
         product: GoogleMobileAds
@@ -137,6 +159,8 @@ targets:
         product: KakaoSDKAuth
       - package: KakaoOpenSDK
         product: KakaoSDKUser
+      - package: KakaoMapsSDK
+        product: KakaoMapsSDK-SPM
     info:
       path: App/Resources/Info.plist
       properties:

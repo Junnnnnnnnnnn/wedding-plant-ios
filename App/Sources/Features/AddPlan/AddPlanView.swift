@@ -24,12 +24,16 @@ struct AddPlanView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
     @Environment(\.dismiss) private var dismiss
+    /// 탭 셸이 덮어 그렸을 때의 닫기(탭바가 남는 Android `ADD_PLAN`). 창으로 띄웠으면 비어 있어 `dismiss` 를 쓴다.
+    @Environment(\.addPlanClose) private var closeOverride
 
     @StateObject private var model: AddPlanViewModel
     @State private var locationRejection = 0
     @State private var showCategoryModal = false
     @State private var showDatePicker = false
     @State private var showTimePicker = false
+    /// 영수증 줄 자물쇠 → 준비 패스 소개. 이 화면 위에 덮여 적던 플랜이 그대로 남는다(Android `PassIntroSheet`).
+    @State private var showPassIntro = false
 
     /// 저장이 끝났을 때 목록을 새로 고치도록 알린다.
     var onSaved: () -> Void
@@ -52,8 +56,11 @@ struct AddPlanView: View {
         self.onSaved = onSaved
     }
 
-    init(model: AddPlanViewModel, onSaved: @escaping () -> Void = {}) {
-        _model = StateObject(wrappedValue: model); self.onSaved = onSaved
+    /// 처음 보일 스크롤 자리. 캡처 테스트가 Android `docs-edit`(서류 칸까지 굴린 수정 화면)와 같은 자리를 찍을 때만 쓴다.
+    var scrollAnchor: UnitPoint? = nil
+
+    init(model: AddPlanViewModel, scrollAnchor: UnitPoint? = nil, onSaved: @escaping () -> Void = {}) {
+        _model = StateObject(wrappedValue: model); self.onSaved = onSaved; self.scrollAnchor = scrollAnchor
     }
 
     var body: some View {
@@ -69,24 +76,32 @@ struct AddPlanView: View {
                             loadingSkeleton
                         } else {
                             sheet
-                            if let id = model.editId, id > 0 {
-                                PassDocumentsView(scheduleId: id, canAdd: true).padding(.horizontal, 16).padding(.top, 16)
-                            }
-                        }
 
-                        if let message = model.errorMessage {
-                            InfoBanner(message: message, actionLabel: "닫기") {
-                                model.errorMessage = nil
+                            if let message = model.errorMessage {
+                                InfoBanner(message: message, actionLabel: "닫기") {
+                                    model.errorMessage = nil
+                                }
+                                .padding(16)
                             }
-                            .padding(16)
+
+                            // 서류는 **수정하기에서** 붙이고 지운다(Android 2026-10-10). 새 플랜은 아직 붙일 자리(일정 id)가 없다.
+                            // 카드 둘레(가로 24 · 아래 18)는 Android `PassDocsRow` 의 바깥 여백 그대로다.
+                            if let id = model.editId, id > 0 {
+                                Spacer().frame(height: 16)
+                                PassDocumentsView(scheduleId: id, canAdd: true)
+                                    .padding(.horizontal, 24)
+                                    .padding(.bottom, 18)
+                            }
+                            Spacer().frame(height: 24)
                         }
                     }
                 }
                 .scrollIndicators(.hidden)
+                .defaultScrollAnchor(scrollAnchor)
 
                 // 저장 바는 스크롤 영역 **밖**에 붙는다. 안에 두면 목록 맨 끝까지
-                // 내려가야 닿는다.
-                if model.canSave {
+                // 내려가야 닿는다. 제목·카테고리·결제 유형이 다 있을 때만(웹 showSaveBar).
+                if model.canSave && !model.loadingDetail {
                     saveBar
                 }
             }
@@ -98,13 +113,22 @@ struct AddPlanView: View {
         .task { await model.load(env: env, guest: guest) }
         .fullScreenCover(isPresented: $model.saved) {
             PlanBloomSuccess(title: model.title, amount: Double(model.amount) ?? 0, remaining: model.remainingBudget, action: model.isEditMode ? .update : .create) {
-                model.saved = false; onSaved(); dismiss()
+                model.saved = false; onSaved(); close()
             }
         }
         .sheet(isPresented: $showCategoryModal) {
-            WeddingCategoryPicker(categories: model.categories, added: model.addedCategories, selected: model.category) { category, added in
+            WeddingCategoryPicker(categories: model.categories, added: model.addedCategories, selected: model.category, recentNames: model.recentCategoryNames) { category, added in
                 for name in added { model.addCategory(name) }
-                model.category = category; showCategoryModal = false
+                model.category = category
+                model.categorySelectedByUser = true
+                model.recentCategoryNames = WeddingCategories.pushRecent(model.recentCategoryNames, picked: category.name)
+                showCategoryModal = false
+            }
+        }
+        .background {
+            // 저장 완료 카드와 같은 뷰에 두 번째 fullScreenCover 를 걸지 않으려고 배경에 단다.
+            Color.clear.fullScreenCover(isPresented: $showPassIntro, onDismiss: { Task { await model.loadReceiptPass(env: env) } }) {
+                PassView(roomId: model.receiptRoomId)
             }
         }
         .sheet(isPresented: $showDatePicker) {
@@ -124,12 +148,16 @@ struct AddPlanView: View {
         }
     }
 
+    private func close() {
+        if let closeOverride { closeOverride() } else { dismiss() }
+    }
+
     // MARK: - 분홍 머리 면
 
     private var head: some View {
         BrandHead(corner: 24) {
             HStack(spacing: 0) {
-                Button { dismiss() } label: {
+                Button { close() } label: {
                     WPMaterialIcon(kind: .back).frame(width: 20, height: 20).foregroundStyle(.white).frame(width: 32, height: 32)
                 }.buttonStyle(.plain).accessibilityLabel("뒤로가기")
                 .offset(x: -8)
@@ -178,10 +206,7 @@ struct AddPlanView: View {
                 // 제목에서 추천되는 카테고리. 맞는 게 없으면 아무것도 보이지 않는다.
                 if !model.suggestedCategories.isEmpty {
                     Spacer().frame(height: 12)
-                    CategorySuggestions(
-                        names: model.suggestedCategories,
-                        selected: model.category?.name
-                    ) { model.selectCategory(named: $0) }
+                    CategorySuggestions(names: model.suggestedCategories) { model.selectCategory(named: $0) }
                 }
             }
         }
@@ -240,36 +265,44 @@ struct AddPlanView: View {
                 Text("만 원").wpTypography(14).foregroundStyle(WPColor.fgMuted)
             }.padding(.horizontal, 16).padding(.vertical, 12)
                 .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
+            // **금액 바로 아래에 둔다.** 돈 이야기라 금액 옆이 맞고, 일정 완료(상세)와는 다른 축이다.
             Spacer().frame(height: 10)
             paidToggle
+            // 영수증은 **결제 체크 바로 아래**(결제한 순간이 영수증을 쥔 순간). 패스가 있으면 어디에 붙이는지만
+            // 알리고 다시 팔지 않는다(Android · 웹 f6f0405).
+            if model.isPaid, let hasPass = model.receiptPass {
+                ReceiptRow(hasPass: hasPass, editing: model.isEditMode) { showPassIntro = true }
+                    .padding(.top, 8)
+            }
         }
     }
 
     /// 웹 `data-paid-toggle` — "이미 결제했어요".
     private var paidToggle: some View {
-        Button { model.isPaid.toggle() } label: {
+        // 완료한 플랜은 결제한 것 — 켠 채 잠근다(Android `checked = isPaidNow || completed`)
+        let checked = model.isPaid || model.completed
+        return Button { if !model.completed { model.isPaid.toggle() } } label: {
             HStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(model.isPaid ? WPColor.positive : Color.white)
+                        .fill(checked ? WPColor.positive : Color.white)
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .strokeBorder(
-                            model.isPaid ? WPColor.positive : Color(hex: 0xD4D7DC),
+                            checked ? WPColor.positive : Color(hex: 0xD4D7DC),
                             lineWidth: 2
                         )
-                    if model.isPaid {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
+                    if checked {
+                        // Material `Icons.Filled.Check` 11dp — Android 와 같은 경로
+                        WPMaterialPathIcon(paths: WPIconPaths.check, size: 11, color: .white)
                     }
                 }
                 .frame(width: 18, height: 18)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("이미 결제했어요")
+                    Text("이미 결제했어요".wpKeepAll)
                         .wpTypography(13.5, .bold)
-                        .foregroundStyle(model.isPaid ? WPColor.positive : WPColor.fgMuted)
-                    Text(model.completed ? "완료한 플랜은 결제한 것으로 잡혀요" : "일정이 남아 있어도 쓴 돈으로 잡혀요")
+                        .foregroundStyle(checked ? WPColor.positive : WPColor.fgMuted)
+                    Text((model.completed ? "완료한 플랜은 결제한 것으로 잡혀요" : "일정이 남아 있어도 쓴 돈으로 잡혀요").wpKeepAll)
                         .wpTypography(12)
                         .foregroundStyle(WPColor.fgSubtle)
                 }
@@ -279,12 +312,13 @@ struct AddPlanView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
-                model.isPaid ? Color(hex: 0xEEF6F2) : WPColor.fill,
+                checked ? Color(hex: 0xEEF6F2) : WPColor.fill,
                 in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
         }
+        // `.disabled` 는 쓰지 않는다 — 잠근 칸이 흐려지면 Android(켠 채 그대로)와 달라진다. 누름은 위에서 막는다.
         .buttonStyle(.plain)
-        .disabled(model.completed)
+        .accessibilityAddTraits(checked ? .isSelected : [])
         .accessibilityIdentifier("addplan.paid")
     }
 
@@ -373,6 +407,8 @@ struct AddPlanView: View {
     private var locationRow: some View {
         SheetRow {
             StackLabel("위치")
+            // 빈 칸으로 검색하면 흔들기(0,-6,6,-4,4,0 / 400ms) · 빨간 테두리 · `위치를 입력해주세요` · 거절 햅틱(웹 d513e95).
+            // 버튼은 늘 눌린다 — 꺼 두면 왜 안 되는지 몰랐다. 칸에 초점은 주지 않는다(키보드는 칸을 직접 눌렀을 때만).
             HStack(spacing: 8) {
                 WPTmoneyInput(text: Binding(get: { model.location }, set: { model.setLocation($0) }),
                     placeholder: "예식장, 스튜디오 등", placeholderColor: UIColor(Self.placeholderGray), identifier: "addplan.location")
@@ -390,8 +426,9 @@ struct AddPlanView: View {
                         CubicKeyframe(0, duration: 0.08)
                     }
 
+                let canSearch = !model.location.trimmingCharacters(in: .whitespaces).isEmpty
                 Button {
-                    if model.location.trimmingCharacters(in: .whitespaces).isEmpty {
+                    if !canSearch {
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
                         locationRejection += 1
                     }
@@ -399,53 +436,96 @@ struct AddPlanView: View {
                 } label: {
                     Group {
                         if model.searching {
-                            ProgressView().tint(.white)
+                            ProgressView().tint(.white).controlSize(.small)
                         } else {
+                            // Material `Icons.Filled.Search` 18dp
                             WPMaterialIcon(kind: .search).frame(width: 18, height: 18)
-                                .foregroundStyle(model.location.isEmpty ? WPColor.fgSubtle : .white)
+                                .foregroundStyle(canSearch ? .white : WPColor.fgSubtle)
                         }
                     }
                     .frame(width: 44, height: 44)
-                    .background(model.location.isEmpty ? WPColor.fill : Self.invertedFill, in: RoundedRectangle(cornerRadius: 12))
+                    .background(canSearch ? Self.invertedFill : WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("장소 검색")
+                .accessibilityIdentifier("addplan.search")
             }
 
             if model.locationError {
                 Text("위치를 입력해주세요").wpTypography(12).foregroundStyle(WPColor.danger).padding(.top, 8)
             }
+
             if !model.searchResults.isEmpty {
-                Spacer().frame(height: 4)
-                ForEach(model.searchResults) { place in
-                    Button { model.selectPlace(place) } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(place.placeName)
-                                .font(WPFont.tmoney(14, .bold))
-                                .foregroundStyle(WPColor.fgNeutral)
-                            Text(addressText(place))
-                                .wpTypography(12)
-                                .foregroundStyle(WPColor.fgSubtle)
+                // Android: 테두리 카드 한 장씩 — 이름 15 굵게(stone900) · 주소 13(stone600)
+                VStack(spacing: 8) {
+                    ForEach(model.searchResults) { place in
+                        Button { model.selectPlace(place) } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(place.placeName)
+                                    .wpTypography(15, .bold)
+                                    .foregroundStyle(WPColor.stone900)
+                                Text(addressText(place))
+                                    .wpTypography(13)
+                                    .foregroundStyle(WPColor.stone600)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(WPColor.stone200, lineWidth: 1))
+                            .contentShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.top, 12)
             } else if model.searchUnavailable {
-                Spacer().frame(height: 4)
-                Text("장소 검색을 불러오지 못했어요. 장소명을 직접 입력하거나 잠시 후 다시 시도해 주세요.")
+                Text("장소 검색은 백엔드에 `/plan/place/search` 가 추가되면 동작합니다. 그전까지는 아래 지도를 탭해 위치를 지정하세요.")
                     .wpTypography(12)
                     .foregroundStyle(WPColor.fgSubtle)
+                    .padding(.top, 8)
+            } else if let message = model.searchError {
+                Text(message)
+                    .wpTypography(13)
+                    .foregroundStyle(WPColor.danger)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
             } else if model.hasSearched {
-                Spacer().frame(height: 4)
-                Text("검색 결과가 없어요.")
-                    .wpTypography(12)
+                Text("검색 결과가 없습니다.")
+                    .wpTypography(13)
+                    .foregroundStyle(WPColor.stone500)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(WPColor.stone50, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(WPColor.stone200, lineWidth: 1))
+                    .padding(.top, 8)
+            }
+
+            // 장소 이름을 적으면 카카오맵이 붙는다(Android `KakaoMapView(onMapClick)` 와 같은 SDK).
+            if !model.location.trimmingCharacters(in: .whitespaces).isEmpty {
+                // 좌표가 아직 없으면 서울시청을 기준점으로 띄우고 눌러서 고르게 한다
+                KakaoMapView(
+                    latitude: model.hasCoordinates ? model.locationLat : Self.defaultLat,
+                    longitude: model.hasCoordinates ? model.locationLng : Self.defaultLng,
+                    onMapClick: { lat, lng in model.setCoords(lat: lat, lng: lng) }
+                )
+                .frame(height: 180)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(WPColor.stone200, lineWidth: 1))
+                .padding(.top, 12)
+                Text(model.hasCoordinates
+                     ? String(format: "좌표 %.5f, %.5f — 지도를 탭하면 위치를 바꿀 수 있어요.", model.locationLat, model.locationLng)
+                     : "지도를 탭해 위치를 지정하세요.")
+                    .wpTypography(11)
                     .foregroundStyle(WPColor.fgSubtle)
+                    .padding(.top, 6)
             }
         }
     }
+
+    /// 좌표를 아직 못 고른 상태에서 지도를 띄울 기준점 — 서울시청
+    static let defaultLat = 37.5665
+    static let defaultLng = 126.9780
 
     private func addressText(_ place: PlaceSearchResult) -> String {
         if let road = place.roadAddressName, !road.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -454,34 +534,46 @@ struct AddPlanView: View {
         return place.addressName
     }
 
+    /// Android `FillInput(singleLine = false, minHeight = 76, bottomPadding = 32)` — 글은 왼쪽 16 · 위 12 에서 시작하고
+    /// 적는 만큼 칸이 자란다. 아래 32 는 오른쪽 아래 `n/500` 자리다.
     private var memoRow: some View {
         SheetRow {
             StackLabel("메모")
             ZStack(alignment: .bottomTrailing) {
+                // 줄바꿈을 받아야 해서 TextEditor 다. 안쪽 여백(가로 5 · 위아래 8)을 빼서 글이 Android 처럼
+                // 왼쪽 16 · 위 12 에서 시작하고, 아래 32 를 비운다.
                 TextEditor(text: Binding(get: { model.memo }, set: { model.setMemo($0) }))
                     .font(WPFont.tmoney(14))
                     .foregroundStyle(WPColor.fgNeutral)
+                    .tint(WPColor.primary)
                     .scrollContentBackground(.hidden)
-                    .frame(height: 64)
+                    .scrollDisabled(true)
+                    .frame(minHeight: 76 - 11 - 24)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 11)
-                    .padding(.vertical, 6)
-                    .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    // Android 은 줄 높이 1.5 라 글이 위 12 보다 반 줄 여백만큼 내려와 있다 — 캡처로 맞춘 값
+                    .padding(.top, 11)
+                    .padding(.bottom, 24)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(alignment: .topLeading) {
                         if model.memo.isEmpty {
                             Text("메모 남기기")
                                 .font(WPFont.tmoney(14))
                                 .foregroundStyle(Self.placeholderGray)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
+                                .padding(.leading, 16)
+                                .padding(.top, 19)
                                 .allowsHitTesting(false)
                         }
                     }
+                    .accessibilityIdentifier("addplan.memo")
 
                 Text(verbatim: "\(model.memo.count)/500")
                     .wpTypography(12)
                     .foregroundStyle(WPColor.fgSubtle)
                     .padding(.trailing, 16)
                     .padding(.bottom, 8)
+                    .allowsHitTesting(false)
             }
         }
     }
@@ -490,7 +582,7 @@ struct AddPlanView: View {
 
     private var saveBar: some View {
         VStack(spacing: 0) {
-            Hairline()
+            Hairline(color: Color.black.opacity(0.1))
             SaveButton(text: model.saveButtonText, enabled: !model.saving) {
                 Task { await model.save(env: env, guest: guest) }
             }
@@ -501,17 +593,18 @@ struct AddPlanView: View {
         .background(Color.white)
     }
 
+    /// 수정할 일정을 받는 동안 — 폼과 같은 "라벨 | 값" 줄 모양의 뼈대(Android 와 같은 치수).
     private var loadingSkeleton: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(0..<4, id: \.self) { _ in
-                VStack(alignment: .leading, spacing: 10) {
-                    Hairline()
-                    SkeletonBox(width: 84, height: 14)
-                        .padding(.top, 12)
-                    SkeletonBox(height: 40)
-                        .padding(.bottom, 12)
+                HStack(spacing: 0) {
+                    SkeletonBox(width: 56, height: 16)
+                    Spacer().frame(width: 40)
+                    SkeletonBox(height: 44, corner: 12)
                 }
                 .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+                Hairline(color: WPColor.stone100)
             }
         }
     }
@@ -677,10 +770,11 @@ private struct SaveButton: View {
     }
 }
 
-/// 제목에서 추천되는 카테고리 칩. 색은 **8색 파스텔 팔레트**(리스트의 6색과 다르다).
+/// 제목으로 추천된 카테고리 칩 줄 — Android `CategorySuggestions`.
+/// 웹 `h-9 px-3 rounded-lg bg-stone-100 border border-stone-200`, 글자 `text-sm font-medium text-stone-600`. 가로로 구른다.
+/// 고른 칩을 따로 칠하지 않는다(웹 칩은 늘 `bg-stone-100`) — 칩으로 고르면 줄 자체가 접히고, 제목을 고치면 다시 나온다.
 private struct CategorySuggestions: View {
     var names: [String]
-    var selected: String?
     var onSelect: (String) -> Void
 
     var body: some View {
@@ -688,11 +782,12 @@ private struct CategorySuggestions: View {
             HStack(spacing: 8) {
                 ForEach(names, id: \.self) { name in
                     Button { onSelect(name) } label: {
-                        Text(name).wpTypography(14, .medium).foregroundStyle(Color(hex: 0x57534E))
+                        Text(name).wpTypography(14, .medium).foregroundStyle(WPColor.stone600).lineLimit(1)
                             .padding(.horizontal, 12).frame(height: 36)
-                            .background(Color(hex: 0xF5F5F4), in: RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: 0xE7E5E4)))
+                            .background(WPColor.stone100, in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(WPColor.stone200, lineWidth: 1))
                     }.buttonStyle(.plain)
+                    .accessibilityIdentifier("addplan.suggest.\(name)")
                 }
             }
         }.scrollIndicators(.hidden)
@@ -800,5 +895,45 @@ private struct BackPill: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("addplan.back")
+    }
+}
+
+/// `영수증 붙이기` 줄 — Android `ReceiptRow`(웹 f6f0405). 패스가 있으면 **누를 수 없는 안내**(저장 뒤 서류 칸에 붙인다),
+/// 없으면 자물쇠 + 준비 패스 소개. 모양은 둘 다 `rounded-xl bg-[#f7f8f9] px-3 py-2.5`.
+private struct ReceiptRow: View {
+    var hasPass: Bool
+    var editing: Bool
+    var onOpenGate: () -> Void
+
+    /// lucide `Paperclip` — Android `LucideIcons.PaperclipBold`(획 3)
+    private static let paperclip = ["m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"]
+
+    var body: some View {
+        let row = HStack(spacing: 10) {
+            WPLucideIcon(paths: hasPass ? Self.paperclip : WPIconPaths.lock, size: 10, color: WPColor.brand700, strokeWidth: 3)
+                .frame(width: 18, height: 18)
+                .background(WPColor.brand100, in: RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("영수증 붙이기").wpTypography(13.5, .bold).foregroundStyle(WPColor.fgMuted)
+                // 서류는 **수정하기에서만** 붙인다(2026-10-10) — 새 플랜은 아직 붙일 자리(일정)가 없다
+                Text((!hasPass ? "준비 패스가 있으면 서류 칸에 붙일 수 있어요"
+                      : editing ? "아래 서류 칸에 바로 붙여요"
+                      : "저장한 뒤 수정하기에서 서류 칸에 붙여요").wpKeepAll)
+                    .wpTypography(12)
+                    .foregroundStyle(WPColor.fgSubtle)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
+
+        if hasPass {
+            row.accessibilityElement(children: .combine)
+        } else {
+            Button(action: onOpenGate) { row.contentShape(RoundedRectangle(cornerRadius: 12)) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("addplan.receipt")
+        }
     }
 }

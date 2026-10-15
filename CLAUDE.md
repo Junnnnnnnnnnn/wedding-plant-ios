@@ -108,6 +108,18 @@ xcconfig 에서 `//` 는 주석이다. URL 은 `http:/$()/example.com` 처럼 `$
 **서버 전용 비밀값(카카오 REST API 키, client secret 등)을 앱에 넣지 않는다.**
 번들에 들어간 값은 `.ipa` 를 풀면 추출된다. 그런 값은 백엔드에만 둔다.
 
+### 지도는 카카오맵 (Android 와 같은 SDK, 2026-10-15)
+
+Apple 지도(MapKit)를 쓰지 않는다 — 사용자 결정. `KakaoMapsSDK`(SPM `KakaoMapsSDK-SPM`)를
+`DesignSystem/KakaoMapView.swift` 한 곳에서 감싸 일정 상세(장소 카드 위 200)·후기 상세(168, 줌 15)·
+자랑 상세(168, 줌 15)·플랜 추가(180, 눌러서 좌표 고르기)가 쓴다(Android `KakaoMapView` 와 같은 자리·크기).
+
+- 키는 로그인과 같은 **네이티브 앱 키**(`KAKAO_NATIVE_APP_KEY`)다. 네이티브 키는 원래 앱 번들에 들어가는 값이고
+  콘솔의 iOS 번들 ID 로 묶여 있어 위 "서버 전용 비밀값" 이 아니다(REST 키와 다르다).
+- 콘솔에서 **[카카오맵] 제품 활성화**와 **[플랫폼 > iOS] 번들 ID** 가 있어야 타일이 내려온다. 실패하면 지도 자리에
+  "지도를 불러오지 못했어요" 를 낸다(빈 회색 상자로 두지 않는다).
+- 시뮬레이터에서도 돈다(xcframework 에 simulator 조각이 있음) — `KakaoMapUITests` 가 세 화면을 확인한다.
+
 ## 백엔드 계약
 
 > **먼저 읽을 것: `wedding-plant-android/docs/IOS_PORTING_NOTES.md`**

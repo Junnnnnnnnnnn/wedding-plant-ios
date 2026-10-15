@@ -25,7 +25,30 @@ public enum WeddingCategories {
         }
         return result
     }
+    /// 빈 검색어는 전부 맞습니다. Foundation `contains("")` 는 false 라 빈 칸에서 목록이 0개로 보였습니다.
     public static func filter(_ all: [PlanCategory], group: Int?, query: String) -> [PlanCategory] {
-        all.filter { (group == nil || self.group($0.name) == group) && searchKey($0.name).contains(searchKey(query)) }
+        let q = searchKey(query)
+        return all.filter { (group == nil || self.group($0.name) == group) && (q.isEmpty || searchKey($0.name).contains(q)) }
     }
+    /// 그룹 머리의 점 색 — Android `WeddingCategories.GROUPS`·`CUSTOM` 의 color (마지막이 직접 추가)
+    public static let groupColors: [UInt32] = [0xD06D9C, 0xA17CB5, 0xB17D67, 0xBA8A51, 0x639589, 0x8E729F]
+    /// 필터 칩 — 5그룹 + 직접 추가 그룹에 하나라도 있으면 `직접 추가` (Android `CategoryPickerRules.groups`)
+    public static func groupIndices(_ all: [PlanCategory]) -> [Int] {
+        Array(0..<5) + (all.contains { group($0.name) == 5 } ? [5] : [])
+    }
+    public static func count(_ all: [PlanCategory], group index: Int?) -> Int {
+        guard let index else { return all.count }
+        return all.filter { group($0.name) == index }.count
+    }
+    /// 최근 고른 이름 → 지금 목록의 항목, 최대 4개
+    public static func recent(_ all: [PlanCategory], names: [String]) -> [PlanCategory] {
+        Array(names.compactMap { name in all.first { normalize($0.name) == normalize(name) } }.prefix(4))
+    }
+    /// 확정한 뒤의 최근 목록 — 맨 앞에 넣고 같은 이름은 빼고 4개까지(화면 메모리뿐, 저장 안 함)
+    public static func pushRecent(_ previous: [String], picked: String) -> [String] {
+        Array(([picked] + previous.filter { normalize($0) != normalize(picked) }).prefix(4))
+    }
+    public static let emptyNameError = "카테고리 이름을 입력해주세요"
+    public static let noticeExisting = "이미 있는 카테고리를 선택했어요"
+    public static let noticeCreated = "새 카테고리를 선택했어요. 선택 완료를 눌러 적용하세요."
 }
