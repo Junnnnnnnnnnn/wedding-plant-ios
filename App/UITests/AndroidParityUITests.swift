@@ -151,17 +151,17 @@ final class AndroidParityUITests: XCTestCase {
         XCTAssertTrue(app.buttons["user.pass"].waitForExistence(timeout: 5)); app.buttons["user.pass"].tap()
         let skip = app.webViews.buttons["건너뛰기"]
         XCTAssertTrue(skip.waitForExistence(timeout: 10)); skip.tap()
-        let benefits = app.webViews.buttons["혜택 살펴보기"]
-        XCTAssertTrue(benefits.waitForExistence(timeout: 8)); capture(app, "parity-pass-intro"); benefits.tap()
-        XCTAssertTrue(app.webViews.buttons["플랜 등록·서류 첨부 시연 다시 보기"].waitForExistence(timeout: 10))
-        capture(app, "parity-pass-docs-demo")
-        for (label, name) in [("엑셀 정리", "excel"), ("결제일 알림", "reminders"), ("청첩장", "invitation")] {
-            let chapter = app.webViews.buttons[label]
-            XCTAssertTrue(chapter.waitForExistence(timeout: 5)); chapter.tap()
-            // Let the section transition finish; the demonstration itself remains animated.
-            Thread.sleep(forTimeInterval: 1)
-            capture(app, "parity-pass-\(name)-demo")
+        // 소개는 그냥 스크롤되는 문서다(2026-10-16 사용자 — 스크롤 거리로 장면을 넘기지 않는다).
+        // 그래서 「혜택 살펴보기」 단추 없이 아래로 밀면 혜택 섹션이 이어서 보인다.
+        sleep(2); capture(app, "parity-pass-intro")
+        let web = app.webViews.firstMatch
+        for i in 1...4 {
+            web.swipeUp(velocity: .slow); sleep(1)
+            capture(app, "parity-pass-flow-scroll-\(i)")
         }
+        let plansLink = app.webViews.links["요금제 보기"]
+        for _ in 0..<12 { if plansLink.exists && plansLink.isHittable { break }; web.swipeUp() }
+        XCTAssertTrue(plansLink.isHittable, "아래로 밀면 끝에 요금제 보기가 나와야 한다")
         app.webViews.links["요금제 보기"].tap()
         // 요금제 시트 — 결제 버튼(iOS 구매 연결 전이라 잠김)과 안내는 동의를 고른 뒤에만 뜬다
         XCTAssertTrue(app.buttons["pass.buy"].waitForExistence(timeout: 5))

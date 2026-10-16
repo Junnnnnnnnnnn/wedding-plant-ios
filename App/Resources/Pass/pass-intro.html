@@ -640,9 +640,11 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
       });
       let referenceFrame=null;
       let openingStarted=0;
+      // flow(일반 스크롤)에서는 장면 번호가 늘 0 이라 시연이 하나도 시작되지 않았다 — 화면에 들어온 시연을 재생한다(iOS 앱 2026-10-16)
+      function demoInView(node){const r=node.getBoundingClientRect(),h=document.documentElement.clientHeight;return r.bottom>h*.15&&r.top<h*.85;}
       function renderDemos(time,scene) {
         demos.forEach(demo=>{
-          const active=!openingActive && demo.scene===scene && Number(demo.panel.style.opacity)>.1;
+          const active=!openingActive && (flow ? demoInView(demo.node) : (demo.scene===scene && Number(demo.panel.style.opacity)>.1));
           if(!active) { demo.started=null; return; }
           if(demo.started===null) demo.started=time;
           demo.renderer.render(referenceFrame ? referenceFrame.milliseconds : Math.min(PassDemos.total,time-demo.started));
