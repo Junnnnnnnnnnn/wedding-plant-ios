@@ -27,8 +27,10 @@ struct WeddingCategoryPicker: View {
     @State private var error = ""
     @FocusState private var searchFocused: Bool
     @FocusState private var nameFocused: Bool
-    /// 목록을 굴린 거리 — 0 보다 크면 시트를 끌어 닫지 않습니다(Android `dragScrollsBody`)
-    @State private var listOffset: CGFloat = 0
+    /// 목록을 내렸는지 — 내렸으면 시트를 끌어 닫지 않습니다(Android `dragScrollsBody`).
+    /// **거리가 아니라 참·거짓만** 둡니다: 거리를 상태로 두면 스크롤 프레임마다 시트 전체(타일 40여 개)를
+    /// 다시 그려 목록이 드드득 끊겼습니다.
+    @State private var listScrolled = false
     /// 붙여 둔 머리·칩을 잡고 아래로 끌면 목록이 먼저 맨 위로 갑니다
     @State private var scrollToTop = 0
 
@@ -73,7 +75,7 @@ struct WeddingCategoryPicker: View {
                             }
                         }
                         .scrollDismissesKeyboard(.interactively)
-                        .modifier(PickerScrollReader { listOffset = $0 })
+                        .modifier(PickerScrollReader { listScrolled = $0 })
                         .onChange(of: query) { _, _ in proxy.scrollTo("top", anchor: .top) }
                         .onChange(of: group) { _, _ in proxy.scrollTo("top", anchor: .top) }
                         .onChange(of: scrollToTop) { _, _ in withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("top", anchor: .top) } }
@@ -99,7 +101,7 @@ struct WeddingCategoryPicker: View {
           끌기를 목록으로 넘길 수 없어, 목록이 맨 위가 아닐 때는 끌어 닫기를 막고 아래로 끈 만큼 목록을 맨 위로
           올립니다 — 한 번 더 끌면 그때 닫힙니다. 닫기 X·바깥 누름은 그대로 닫습니다.
         */
-        .interactiveDismissDisabled(listOffset > 4 && !adding)
+        .interactiveDismissDisabled(listScrolled && !adding)
         .presentationDetents([.height(sheetHeight)])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(26)
@@ -111,7 +113,7 @@ struct WeddingCategoryPicker: View {
 
     /// 붙여 둔 자리(머리 · 칩 · 바닥 줄)를 아래로 끌면 목록을 맨 위로 — 목록 안의 끌기는 목록이 받습니다
     private var pinnedDrag: PinnedDrag {
-        PinnedDrag { if listOffset > 4, !adding { scrollToTop += 1 } }
+        PinnedDrag { if listScrolled, !adding { scrollToTop += 1 } }
     }
 
     // MARK: 머리
@@ -603,10 +605,11 @@ private struct LucideGlyph: Shape {
 /// 목록을 굴린 거리. iOS 18 부터는 스크롤 뷰가 직접 알려 주는 값을 씁니다(홈 `HomeScrollReader` 와 같은 이유 —
 /// iOS 26 에서 내용 안 GeometryReader 의 값이 올라오지 않았습니다). iOS 17 은 재지 않아 예전처럼 끌면 닫힙니다.
 private struct PickerScrollReader: ViewModifier {
-    let onChange: (CGFloat) -> Void
+    let onChange: (Bool) -> Void
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
-            content.onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in onChange(y) }
+            // 참·거짓으로 바꿔 받아 값이 바뀔 때(맨 위를 벗어나거나 돌아올 때)만 부른다
+            content.onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 4 } action: { _, scrolled in onChange(scrolled) }
         } else {
             content
         }

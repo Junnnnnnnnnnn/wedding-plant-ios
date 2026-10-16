@@ -44,6 +44,9 @@ actor DemoTransport: HTTPTransport {
             } else if path.hasSuffix("/login") || path.hasSuffix("/signup") {
                 json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
             } else { json = "{\"result\":true}" }
+        } else if path.hasSuffix("/plan/place/search") {
+            // 위치 검색(백엔드 카카오 프록시) — 엔터·검색 버튼이 결과를 띄우는지 보려고 한 곳만 돌려준다
+            json = "{\"result\":true,\"data\":{\"total\":1,\"list\":[{\"placeName\":\"서울특별시청\",\"addressName\":\"서울 중구 태평로1가 31\",\"roadAddressName\":\"서울 중구 세종대로 110\",\"lat\":37.5663,\"lng\":126.9779}]}}"
         } else if path.hasSuffix("/plan/my-invitation") {
             if request.method == .put, let data = request.body,
                var body = try JSONSerialization.jsonObject(with: data) as? [String: Any] {

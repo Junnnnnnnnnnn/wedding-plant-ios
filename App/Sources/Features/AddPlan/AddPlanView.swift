@@ -404,6 +404,15 @@ struct AddPlanView: View {
 
     // MARK: 위치 · 메모
 
+    /// 검색 버튼과 키보드 엔터가 같은 길로 — 빈 칸이면 흔들고 거절 햅틱(웹 d513e95)
+    private func searchLocation() {
+        if model.location.trimmingCharacters(in: .whitespaces).isEmpty {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            locationRejection += 1
+        }
+        Task { await model.searchPlaces(env: env) }
+    }
+
     private var locationRow: some View {
         SheetRow {
             StackLabel("위치")
@@ -411,7 +420,9 @@ struct AddPlanView: View {
             // 버튼은 늘 눌린다 — 꺼 두면 왜 안 되는지 몰랐다. 칸에 초점은 주지 않는다(키보드는 칸을 직접 눌렀을 때만).
             HStack(spacing: 8) {
                 WPTmoneyInput(text: Binding(get: { model.location }, set: { model.setLocation($0) }),
-                    placeholder: "예식장, 스튜디오 등", placeholderColor: UIColor(Self.placeholderGray), identifier: "addplan.location")
+                    placeholder: "예식장, 스튜디오 등", placeholderColor: UIColor(Self.placeholderGray), identifier: "addplan.location",
+                    // 엔터 = 검색(Android `ImeAction.Search` · 웹 form submit)
+                    returnKey: .search, onSubmit: { searchLocation() })
                     .padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 44)
                     .background(WPColor.fill, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.locationError ? WPColor.danger : .clear, lineWidth: 1))
@@ -427,13 +438,7 @@ struct AddPlanView: View {
                     }
 
                 let canSearch = !model.location.trimmingCharacters(in: .whitespaces).isEmpty
-                Button {
-                    if !canSearch {
-                        UINotificationFeedbackGenerator().notificationOccurred(.error)
-                        locationRejection += 1
-                    }
-                    Task { await model.searchPlaces(env: env) }
-                } label: {
+                Button { searchLocation() } label: {
                     Group {
                         if model.searching {
                             ProgressView().tint(.white).controlSize(.small)

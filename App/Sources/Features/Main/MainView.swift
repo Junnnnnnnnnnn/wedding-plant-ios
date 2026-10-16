@@ -84,6 +84,7 @@ struct MainView: View {
 
     /// 굴린 거리 — 머리 면의 줄어듦·흰 띠만 읽는다(이 화면 전체가 매 프레임 다시 그려지지 않게 `@Observable`).
     @State private var scroll = HomeScrollState()
+    @State private var snapScroll = HomeSnapScrollView()
     /// 머리 면(정원 카드 포함) · 그 아래 내용 · 스크롤 창의 높이 — 두 자리 스냅과 맨 끝 채움을 잰다.
     @State private var headHeight: CGFloat = 0
     @State private var restHeight: CGFloat = 0
@@ -147,12 +148,20 @@ struct MainView: View {
                 .background(GeometryReader { g in
                     Color.clear.preference(key: HomeScrollOffsetKey.self, value: g.frame(in: .named("main.scroll")).minY)
                 })
+                // 내용 안에 있어야 바깥 UIScrollView 를 위로 찾아 올라간다
+                .background(ScrollViewFinder { snapScroll.view = $0 })
             }
             .coordinateSpace(name: "main.scroll")
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(HomeHeadSnap(anchor: snapAnchor, viewport: viewportHeight, statusBar: wpStatusBarHeight))
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewportHeight = $0 }
-            .modifier(HomeScrollReader { scroll.offset = $0 })
+            .modifier(HomeScrollReader { y in
+                scroll.offset = y
+                // 머리 면 구간에서는 빠른 감속으로 두 자리에 **딱** 붙인다(안드로이드 HeadSnap 의 짧은 애니메이션).
+                // 기본(normal) 감속은 손을 뗀 뒤 목표 자리까지 오래 미끄러져 "맞춰지는 속도가 느렸다"(2026-10-16 사용자).
+                // 목록 구간은 보통 감속 그대로 — 긴 목록을 휙 넘기는 느낌은 유지한다.
+                snapScroll.view?.decelerationRate = y < snapAnchor - 0.5 ? .fast : .normal
+            })
             .accessibilityIdentifier("main.scroll")
 
             // 로딩 실패는 목록 자리의 안내가 맡는다 — 같은 말을 두 번 하지 않는다
@@ -554,6 +563,31 @@ struct CalendarRoute: Hashable {
 struct BragRoute: Hashable {}
 
 // MARK: - 굴림 · 두 자리 스냅
+
+/// 홈 ScrollView 의 바탕 UIScrollView — 머리 면 구간의 감속 속도를 바꾸려고 잡아 둔다(SwiftUI 에 API 가 없다).
+private final class HomeSnapScrollView {
+    weak var view: UIScrollView?
+}
+
+/// 붙은 자리에서 가장 가까운 바깥 UIScrollView 를 찾아 넘긴다.
+private struct ScrollViewFinder: UIViewRepresentable {
+    let found: (UIScrollView) -> Void
+    func makeUIView(context: Context) -> UIView { FinderView(found: found) }
+    func updateUIView(_ uiView: UIView, context: Context) {}
+    private final class FinderView: UIView {
+        let found: (UIScrollView) -> Void
+        init(found: @escaping (UIScrollView) -> Void) { self.found = found; super.init(frame: .zero); isUserInteractionEnabled = false }
+        required init?(coder: NSCoder) { fatalError() }
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            var node = superview
+            while let current = node {
+                if let scroll = current as? UIScrollView { found(scroll); return }
+                node = current.superview
+            }
+        }
+    }
+}
 
 @Observable
 private final class HomeScrollState {

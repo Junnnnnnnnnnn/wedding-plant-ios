@@ -89,6 +89,10 @@ struct WPTmoneyInput: UIViewRepresentable {
     var alignment: NSTextAlignment = .left
     var keyboard: UIKeyboardType = .default
     var identifier = ""
+    /// 키보드의 리턴 키 모양(예: 검색 칸은 `.search`)
+    var returnKey: UIReturnKeyType = .done
+    /// 리턴을 눌렀을 때 — 키보드를 내린 뒤 부른다(검색 칸의 엔터 = 검색)
+    var onSubmit: (() -> Void)? = nil
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> UITextField {
         let field = UITextField()
@@ -96,7 +100,7 @@ struct WPTmoneyInput: UIViewRepresentable {
         field.addTarget(context.coordinator, action: #selector(Coordinator.changed), for: .editingChanged)
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        field.returnKeyType = .done
+        field.returnKeyType = returnKey
         return field
     }
     func updateUIView(_ field: UITextField, context: Context) {
@@ -123,7 +127,13 @@ struct WPTmoneyInput: UIViewRepresentable {
         var parent: WPTmoneyInput
         init(_ parent: WPTmoneyInput) { self.parent = parent }
         @objc func changed(_ field: UITextField) { parent.text = field.text ?? "" }
-        func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            // 한글 조합 중에 누르면 조합이 끝난 글자를 먼저 넘긴다 — 안 그러면 마지막 글자가 빠진 채 검색된다
+            parent.text = textField.text ?? ""
+            textField.resignFirstResponder()
+            if let submit = parent.onSubmit { DispatchQueue.main.async { submit() } }
+            return true
+        }
     }
 }
 

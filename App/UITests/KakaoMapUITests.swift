@@ -64,12 +64,20 @@ final class KakaoMapUITests: XCTestCase {
         let location = app.descendants(matching: .any)["addplan.location"].firstMatch
         for _ in 0..<6 { if location.exists && location.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(location.waitForExistence(timeout: 5)); location.tap(); location.typeText("서울시청\n")
+        // 키보드 엔터만으로 검색된다(검색 버튼을 누르지 않음) — 2026-10-16 사용자 요청
+        let result = app.staticTexts["서울특별시청"]
+        XCTAssertTrue(result.waitForExistence(timeout: 5), "엔터를 누르면 바로 검색 결과가 떠야 한다")
+        // 결과를 고르면 좌표가 잡힌다
+        result.tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH '좌표 37.566'")).firstMatch.waitForExistence(timeout: 5),
+                      "검색 결과를 고르면 그 좌표가 잡혀야 한다")
         let map = app.descendants(matching: .any)["kakao.map"].firstMatch
         for _ in 0..<6 { if map.exists && map.isHittable { break }; app.swipeUp() }
         assertMapLoaded(app)
-        map.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4)).tap()
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH '좌표 '")).firstMatch.waitForExistence(timeout: 5),
-                      "지도를 누르면 좌표가 잡혀야 한다")
+        // 지도를 누르면 그 자리로 좌표가 바뀐다(검색 결과 좌표에서 벗어남)
+        map.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3)).tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH '좌표 ' AND NOT (label BEGINSWITH '좌표 37.56630')")).firstMatch.waitForExistence(timeout: 5),
+                      "지도를 누르면 좌표가 바뀌어야 한다")
         capture(app, "kakao-map-addplan")
     }
 }
