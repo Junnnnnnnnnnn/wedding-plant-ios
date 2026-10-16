@@ -1,26 +1,46 @@
 import SwiftUI
 import StoreKit
+import WPDomain
 import WPModels
 import WPNetworking
 import WPUtils
 
-/// 요금제 시트 — 안드로이드 `ui/pass/PassPlansSheet.kt` 의 `PassPlansContent` 와 같은 모양.
+/// 요금제 시트 — 안드로이드 `ui/pass/PassPlansSheet.kt` 의 `PassPlansContent` 와 같은 모양, 결제는 App Store(StoreKit 2).
 ///
-/// **iOS 는 StoreKit 구매가 서버 영수증 검증과 이어지기 전까지 결제 버튼을 열지 않는다.**
-/// 버튼 모양·문구는 안드로이드와 같게 두고(동의 전 회색), 동의하면 아래 안내 줄이 그 사정을 말한다 —
-/// 눌러도 아무 일이 없는 분홍 버튼은 만들지 않는다. 결제 문구에 Google Play 는 쓰지 않는다.
+/// 결제 순서는 안드로이드 `PassViewModel.purchase` 와 같다 — 결제할 방을 서버에서 받고(`POST /plan/room/mine`),
+/// 방이 정해진 화면에서 그 방이 서버의 내 방과 다르면 막고, 평생이면 사지 않고, 결제창에 방을 실어(`appAccountToken`) 보낸 뒤
+/// 서버가 확인하면 거래를 끝낸다(`PassStore`). 결제 문구에 Google Play 는 쓰지 않는다.
 ///
 /// **동의는 열 때마다 다시 받는다** — 기억해 두면 다음 구매는 동의 없이 결제되는 셈이다(전자상거래법 제17조 2항).
 struct PassPlansView: View {
+    /// 화면이 정한 방. 있으면 **방이 정해진 화면**(홈·예산·일정·청첩장)이라 서버의 내 방과 다를 때 막는다.
+    /// 없으면 내 화면(프로필 · 방이 없는 혼자 쓰는 사람) — 서버의 방으로 옮겨 결제한다.
     var roomId: Int?
+    /// 청첩장 칸·플랜 추가에서 열었다 — 결제를 마쳐도 홈으로 가지 않는다(안드로이드 `stayOnPurchase` · `ADD_PLAN`)
+    var staysAfterPurchase = false
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.purchase) private var purchaseAction
     @State private var state: PassState?
+    /// 지금 보이는 패스의 방(화면이 준 방, 아니면 귀속 방 · 내 청첩장의 방)
+    @State private var room: Int?
     @State private var error: String?
     @State private var selected = "prep_pass_yearly"
-    @State private var products: [Product] = []
+    @State private var products: [String: Product] = [:]
+    @State private var productsLoaded = false
     @State private var consent = false
+    /// 결제창이 떠 있거나 서버 확인 중
+    @State private var purchasing = false
+    @State private var verifying = false
+    @State private var restoring = false
+    /// 결제 실패·대기·결제 없이 끝남 안내
+    @State private var message: String?
+    @State private var messageIsError = true
+    /// 지금 안내가 결제 없이 끝났다는 말인가 — 그동안은 켜진 패스를 보고도 시트를 닫지 않는다(닫으면 결제된 것처럼 보인다)
+    @State private var settledNotice = false
+    /// 열 때 이미 패스를 쓰고 있었나 — 연장하려고 연 시트가 열리자마자 닫히지 않게(안드로이드 `openedActive`)
+    @State private var openedActive: Bool?
     /// 시트를 내용 높이로 — 안드로이드 바닥 시트는 내용만큼만 올라온다(요금제 목록만 구르고 조작 줄은 붙어 있음)
     @State private var scrollHeight: CGFloat = 0
     @State private var controlsHeight: CGFloat = 0
@@ -59,31 +79,61 @@ struct PassPlansView: View {
             .frame(maxHeight: scrollHeight > 0 ? scrollHeight : nil)
             // 동의·결제·약관은 굴리지 않고 늘 보이게 둔다(안드로이드 — 시트의 조작 줄 규칙)
             if lifetime {
-                buyButton(label: "닫기", enabled: true) { dismiss() }.padding(.top, 14).padding(.horizontal, 18).padding(.bottom, 18)
+                VStack(alignment: .leading, spacing: 0) {
+                    if let message { noticeText(message, error: messageIsError).padding(.top, 4) }
+                    buyButton(label: "닫기", enabled: true) { dismiss() }.padding(.top, 14)
+                }.padding(.horizontal, 18).padding(.bottom, 18)
                     .background(GeometryReader { g in Color.clear.onAppear { controlsHeight = g.size.height }.onChange(of: g.size.height) { _, h in controlsHeight = h } })
             } else if state != nil {
                 VStack(alignment: .leading, spacing: 0) {
                     if active, let current { stackNote(current).padding(.top, 12) }
                     consentBox.padding(.top, active ? 10 : 16)
-                    buyButton(label: "\(priceAmount(picked).text)\(priceAmount(picked).unit) 결제하기", enabled: false) {}
+                    // 버튼의 금액도 App Store 가 준 값 — 줄과 버튼이 어긋나면 안 된다. 상품을 못 받았으면 결제창을 열 수 없어 잠근다
+                    buyButton(label: purchasing ? (verifying ? "결제를 확인하는 중..." : "결제창을 여는 중...") : "\(priceAmount(picked).text)\(priceAmount(picked).unit) 결제하기",
+                              enabled: consent && products[picked.id] != nil && !purchasing && !restoring) { Task { await buy() } }
                         .padding(.top, 12).accessibilityIdentifier("pass.buy")
-                    if consent {
-                        Text("iOS 구매 연결을 준비하고 있어요. 이미 이용 중인 패스는 두 사람 모두 그대로 쓸 수 있어요.")
-                            .wpTypography(12.5, lineHeight: 20).foregroundStyle(WPColor.plansMuted).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
+                    if consent && productsLoaded && products[picked.id] == nil && message == nil {
+                        noticeText(PassPurchaseRules.productUnavailable, error: false)
                     }
+                    if let message { noticeText(message, error: messageIsError) }
                     Text("플랜당 1GB(약 3,000장) · 7일 이내 환불\n패스가 끝나면 올린 서류는 앱에서 보이지 않아요. 전부 내려받기는 90일 동안 됩니다.")
                         .wpTypography(10.5, lineHeight: 17).foregroundStyle(WPColor.passSheetFaint).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
-                    Button { if let url = URL(string: AppConfig.webBaseURL + "/terms/paid") { openURL(url) } } label: {
-                        Text("유료 서비스 이용약관").underline().foregroundColor(WPColor.passSheetFaint).wpTypography(10.5, lineHeight: 17)
-                    }.buttonStyle(.plain).frame(maxWidth: .infinity)
+                    HStack(spacing: 14) {
+                        Button { if let url = URL(string: AppConfig.webBaseURL + "/terms/paid") { openURL(url) } } label: {
+                            Text("유료 서비스 이용약관").underline().foregroundColor(WPColor.passSheetFaint).wpTypography(10.5, lineHeight: 17)
+                        }.buttonStyle(.plain)
+                        // 평생 패스(비소모성)는 App Store 에서 되살릴 수 있어야 한다(심사 지침 3.1.1)
+                        Button { Task { await restore() } } label: {
+                            Text(restoring ? "복원하는 중..." : "구매 복원").underline().foregroundColor(WPColor.passSheetFaint).wpTypography(10.5, lineHeight: 17)
+                        }.buttonStyle(.plain).disabled(purchasing || restoring).accessibilityIdentifier("pass.restore")
+                    }.frame(maxWidth: .infinity)
                 }.padding(.horizontal, 18).padding(.bottom, 18)
                     .background(GeometryReader { g in Color.clear.onAppear { controlsHeight = g.size.height }.onChange(of: g.size.height) { _, h in controlsHeight = h } })
             }
         }
         .background(.white).presentationCornerRadius(22).presentationDragIndicator(.visible)
         .presentationDetents(scrollHeight > 0 ? [.height(scrollHeight + controlsHeight)] : [.large])
+        // 결제하는 동안 끌어내리면 결과 안내를 읽을 곳이 사라진다
+        .interactiveDismissDisabled(purchasing || restoring)
         .task { await load() }
+        // 결제창 밖에서 패스가 켜졌다(승인 대기가 풀림 · 복구 · 배우자) — 조용히 다시 받는다
+        .onChange(of: env.passRevision) { _, _ in
+            guard !purchasing, !restoring else { return }
+            Task {
+                await load(quiet: true)
+                /*
+                  없던 패스가 생겼으면 닫는다. 결제 없이 끝난 안내가 떠 있으면 읽혀야 하고, 평생이 켜졌으면 "평생 이용 중" 을
+                  보여 준다(안드로이드 PassPlansSheet).
+                */
+                if active, openedActive == false, !settledNotice, !lifetime { dismiss() }
+            }
+        }
+    }
+
+    private func noticeText(_ text: String, error: Bool) -> some View {
+        Text(text).wpTypography(12.5, lineHeight: 20).foregroundStyle(error ? WPColor.danger : WPColor.plansMuted)
+            .fixedSize(horizontal: false, vertical: true).padding(.top, 8).accessibilityIdentifier("pass.message")
     }
 
     private var head: some View {
@@ -167,8 +217,9 @@ struct PassPlansView: View {
     }
 
     /// App Store 가 준 원화 값(`₩39,000`)은 숫자만 떼어 같은 모양으로, 못 받았으면 적어 둔 값(안드로이드 `priceParts`).
+    /// 다른 나라 통화면 App Store 문자열을 그대로 두고 단위를 붙이지 않는다.
     private func priceAmount(_ plan: Plan) -> (text: String, unit: String) {
-        if let product = products.first(where: { $0.id == plan.id }) {
+        if let product = products[plan.id] {
             let raw = product.displayPrice.trimmingCharacters(in: .whitespaces)
             if raw.hasPrefix("₩") || raw.hasPrefix("￦") || raw.hasSuffix("원") {
                 let digits = raw.filter(\.isNumber)
@@ -221,14 +272,86 @@ struct PassPlansView: View {
         }.buttonStyle(PlansButtonStyle()).disabled(!enabled)
     }
 
-    private func load() async {
-        error = nil
+    /// - Parameter quiet: 다시 받기 — 실패해도 보이던 값을 그대로 둔다(실패를 "패스 없음" 으로 읽지 않는다)
+    private func load(quiet: Bool = false) async {
+        if !quiet { error = nil }
         do {
-            var room = roomId ?? env.boundRoomId
-            if room == nil { let invitation: MyInvitation = try await env.api.send(Endpoint.myInvitation()); room = invitation.roomId }
-            if let room { state = try await env.api.send(Endpoint.pass(roomId: room)) } else { state = PassState() }
-        } catch { self.error = error.localizedDescription }
-        if !lifetime { products = (try? await Product.products(for: plans.map(\.id))) ?? [] }
+            var resolved = room ?? roomId ?? env.boundRoomId
+            if resolved == nil { let invitation: MyInvitation = try await env.api.send(Endpoint.myInvitation()); resolved = invitation.roomId }
+            var next = PassState()
+            if let resolved { next = try await env.api.send(Endpoint.pass(roomId: resolved)) }
+            room = resolved
+            state = next
+            if openedActive == nil { openedActive = PassPurchaseRules.isActive(next) }
+        } catch { if !quiet { self.error = error.localizedDescription } }
+        if !lifetime && products.isEmpty {
+            products = await env.passStore.loadProducts()
+            productsLoaded = true
+        }
+    }
+
+    /// 결제 — 안드로이드 `PassViewModel.purchase` 와 같은 순서.
+    private func buy() async {
+        guard !purchasing, !restoring, consent, let product = products[picked.id] else { return }
+        purchasing = true; verifying = false
+        message = nil; settledNotice = false
+        defer { purchasing = false; verifying = false }
+
+        /*
+          **결제할 방은 늘 서버가 정한다**(`POST /plan/room/mine`, 멱등 — 웹 `startPayment` 와 같음). 서버는 귀속(SPOUSE) 방을
+          먼저, 없으면 내 방을 주고 없으면 만든다. 패스는 방에 붙는데 방은 초대 참여 때에만 생겨서, 혼자 쓰는 사람은 예전에
+          결제할 수 없었다.
+        */
+        guard let mine = await env.ensureMyRoom() else { show(.failed(PassPurchaseRules.ensureFailed)); return }
+        let target = mine.roomId
+        if target != room {
+            // 방이 정해진 화면에서 서버의 방과 다르다 — 내 돈이 보이지 않는 방으로 가면 안 된다(웹 screenRoomId)
+            if roomId != nil { show(.settled(nil, PassPurchaseRules.notMyPlan)); return }
+            /*
+              화면이 보여 주지 않던 방이다. 그 방의 패스를 **먼저** 본다 — 상대가 이미 산 방이면 같은 패스를 또 사게 된다.
+              방·패스·안내를 한 번에 바꾼다(따로 바꾸면 켜진 패스를 본 시트가 안내를 읽히기도 전에 닫힌다).
+            */
+            guard let current: PassState = try? await env.api.send(Endpoint.pass(roomId: target)) else {
+                show(.failed(PassPurchaseRules.ensureFailed)); return
+            }
+            room = target
+            state = current
+            if PassPurchaseRules.isActive(current) { show(.settled(current, PassPurchaseRules.alreadyActive)); return }
+        }
+
+        let outcome = await env.passStore.purchase(product, roomId: target, env: env, action: purchaseAction) { verifying = true }
+        switch outcome {
+        case let .success(next):
+            state = next
+            env.notePassPurchased(roomId: target, goHome: !staysAfterPurchase)
+            dismiss()
+        case .canceled:
+            // 사용자가 닫은 것뿐 — 오류 안내를 띄우지 않는다
+            break
+        default:
+            show(outcome)
+        }
+    }
+
+    /// 구매 복원 — App Store 와 맞춘 뒤 평생 패스를 서버로 다시 보낸다.
+    private func restore() async {
+        guard !purchasing, !restoring else { return }
+        restoring = true
+        message = nil; settledNotice = false
+        defer { restoring = false }
+        let outcome = await env.passStore.restore(env: env)
+        if case .canceled = outcome { return }
+        show(outcome)
+        await load(quiet: true)
+    }
+
+    private func show(_ outcome: PassPurchaseOutcome) {
+        if case let .settled(next, _) = outcome {
+            if let next { state = next }
+            settledNotice = true
+        }
+        message = outcome.message
+        messageIsError = outcome.isError
     }
 }
 

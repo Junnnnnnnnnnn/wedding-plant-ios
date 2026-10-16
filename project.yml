@@ -258,12 +258,16 @@ targets:
     platform: iOS
     sources:
       - path: App/UITests
+      # 결제 UI 테스트가 SKTestSession 으로 불러 쓴다(`xcodebuild test` 는 스킴 실행의 StoreKit 구성을 쓰지 않는다)
+      - path: App/Resources/WeddingPlant.storekit
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.weddingplant.uitests
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: WeddingPlant
+      - sdk: StoreKitTest.framework
 
 schemes:
   # 실제 백엔드(Config/Local.xcconfig 의 API_BASE_URL)를 보는 기본 스킴.
@@ -272,8 +276,11 @@ schemes:
       targets:
         WeddingPlant: all
         WeddingPlantUITests: [test]
+    # 로컬 StoreKit 구성(App/Resources/WeddingPlant.storekit) — 시뮬레이터 실행·UI 테스트에서 App Store 대신 준비 패스 세 상품을
+    # 판다. 스킴 설정이라 Release 빌드·App Store 배포에는 들어가지 않는다(번들 리소스도 아니다).
     run:
       config: Debug
+      storeKitConfiguration: App/Resources/WeddingPlant.storekit
     test:
       config: Debug
       gatherCoverageData: false
@@ -291,6 +298,7 @@ schemes:
         WeddingPlant: all
     run:
       config: Debug
+      storeKitConfiguration: App/Resources/WeddingPlant.storekit
       commandLineArguments:
         "-WPDemoMode": true
         # 켜면 로그인 전 랜딩 화면부터 시작한다.

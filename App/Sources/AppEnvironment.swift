@@ -86,6 +86,56 @@ final class AppEnvironment: ObservableObject {
     /// 귀속된 방 id. 없으면 `nil` — 그때는 각 화면이 `/plan/user` 의 방을 쓴다.
     var boundRoomId: Int? { boundRoom.roomId }
 
+    // MARK: - 준비 패스 결제
+
+    /// StoreKit 결제·복구(안드로이드 `PassBilling`). 앱에 하나.
+    let passStore = PassStore()
+
+    /// 결제가 성공했다는 소식(안드로이드 `AppContainer.passPurchased`). 소개 창이 닫히고, `goHome` 이면 셸이 홈으로 간다.
+    struct PassPurchaseEvent: Equatable { let id = UUID(); let roomId: Int; let goHome: Bool }
+    @Published private(set) var passPurchase: PassPurchaseEvent?
+    /// 어느 방의 패스든 서버에서 바뀌었다(결제 · 복구 · 복원). 요금제 시트처럼 패스를 들고 있는 화면이 다시 받는다.
+    @Published private(set) var passRevision = 0
+
+    /// - Parameter goHome: **청첩장 칸·플랜 추가에서 산 사람은 그 자리에 남는다** — 청첩장을 만들려고 산 사람은 빈 정원을,
+    ///   영수증 칸으로 산 사람은 저장 전의 적던 플랜을 봐야 한다(안드로이드 `stayOnPurchase` · `ADD_PLAN` 예외).
+    func notePassPurchased(roomId: Int, goHome: Bool) {
+        passPurchase = PassPurchaseEvent(roomId: roomId, goHome: goHome)
+        notePassChanged()
+    }
+
+    func notePassChanged() {
+        passRevision += 1
+        // 패스가 생기면 광고가 사라져야 한다(AdGate)
+        Task { await refreshAdEligibility() }
+    }
+
+    /// 결제할 방을 **서버에서** 받는다(`POST /plan/room/mine`, 없으면 서버가 만듦). **결제 직전에만** 부른다 —
+    /// 읽기 경로에 쓰면 구경만 한 사람에게도 방이 생긴다. 서버가 귀속(SPOUSE)을 먼저 보고 답하므로 받은 답으로 귀속도 맞춘다
+    /// (안드로이드 `OwnRoomResolver.ensure`). 못 물었으면 nil — "방 없음" 이 아니다.
+    func ensureMyRoom() async -> MyRoom? {
+        guard let token = await tokenStore.currentToken(), !token.isEmpty else { return nil }
+        let asked = JWTDecoder.planUserId(from: token)
+        guard let mine: MyRoom = try? await api.send(Endpoint.ensureMyRoom()) else { return nil }
+        // 묻는 사이 계정이 바뀌었으면 옛 사람의 답을 쓰지 않는다(토큰은 갱신될 수 있어 사용자 id 로 본다)
+        guard await tokenStore.currentToken().flatMap({ JWTDecoder.planUserId(from: $0) }) == asked else { return nil }
+        let bound: BoundRoom.Cache = mine.isSpouse ? .bound(roomId: mine.roomId) : .notBound
+        if boundRoom != bound {
+            boundRoom = bound
+            if mine.isSpouse { Task { await refreshBoundRoom() } } else { boundRoomPlan = nil }
+        }
+        return mine
+    }
+
+    /// 방이 실리지 않은 거래를 복구할 내 방 — 귀속 방, 아니면 `/plan/user` 의 방(안드로이드 `OwnRoomResolver.resolve`).
+    /// 묻지 못했으면 nil 이고, 그 거래는 다음 복구 때 다시 본다(개인 방으로 추측하면 배우자에게 안 붙는 방에 켜진다).
+    func ownRoomIdForPurchases() async -> Int? {
+        if boundRoom == .unknown { await refreshBoundRoom() }
+        if let bound = boundRoom.roomId { return bound }
+        guard boundRoom == .notBound else { return nil }
+        return (try? await api.send(Endpoint.user(), decoding: PlanUser.self))?.roomId
+    }
+
     init(api: APIClient, tokenStore: any TokenStoring, baseURL: URL, isDemo: Bool) {
         self.api = api
         self.tokenStore = tokenStore

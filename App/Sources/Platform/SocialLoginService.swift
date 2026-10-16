@@ -184,8 +184,10 @@ final class SocialLoginService {
             .filter { !$0.isEmpty }
             .joined()
 
+        // 탈퇴 때 서버가 애플 토큰을 철회하려면 이 코드가 필요하다(5분짜리 1회용이라 지금 보낸다)
+        let authorizationCode = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
         let response = try await env.api.send(
-            Endpoint.appleLogin(identityToken: identityToken, name: name.isEmpty ? nil : name),
+            Endpoint.appleLogin(identityToken: identityToken, name: name.isEmpty ? nil : name, authorizationCode: authorizationCode),
             decoding: AuthToken.self
         )
         await env.tokenStore.save(response.token)

@@ -163,7 +163,7 @@ final class AndroidParityUITests: XCTestCase {
         for _ in 0..<12 { if plansLink.exists && plansLink.isHittable { break }; web.swipeUp() }
         XCTAssertTrue(plansLink.isHittable, "아래로 밀면 끝에 요금제 보기가 나와야 한다")
         app.webViews.links["요금제 보기"].tap()
-        // 요금제 시트 — 결제 버튼(iOS 구매 연결 전이라 잠김)과 안내는 동의를 고른 뒤에만 뜬다
+        // 요금제 시트 — 결제 버튼은 동의 + App Store 상품을 받은 뒤에 열린다(StoreKit 2)
         XCTAssertTrue(app.buttons["pass.buy"].waitForExistence(timeout: 5))
         capture(app, "parity-pass-plans")
     }

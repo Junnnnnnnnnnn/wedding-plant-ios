@@ -9,6 +9,8 @@ import WPUtils
 /// 채워진 화면을 보여준다. 실행 인자에 `-WPDemoMode` 가 있으면 활성화된다.
 actor DemoTransport: HTTPTransport {
     private var invitation: [String: Any]?
+    /// 이 실행에서 산 패스(`/plan/pass/apple/verify`) — UI 테스트가 StoreKit 구성 파일로 결제한 뒤 패스가 켜지는지 본다
+    private var purchasedPlan: String?
     private var reminder: [String: Any] = ["leadDays": [7, 1, 0], "hour": 9, "email": false, "emailAddress": "demo@example.com", "devices": ["ios": 1]]
     init(newUser: Bool = false) {
         self.newUser = newUser
@@ -25,6 +27,17 @@ actor DemoTransport: HTTPTransport {
     /// `PlanCompletion.isComplete` 가 true 가 되어 곧바로 메인으로 넘어간다(웹 명세대로).
     /// 그래서 설정 플로우를 보려면 비어 있는 사용자를 돌려줘야 한다.
     var newUser: Bool = false
+
+    /// StoreKit 거래 JWS 의 가운데(페이로드)에서 상품 ID 를 꺼낸다
+    private static func jwsProductId(_ jws: String) -> String? {
+        let parts = jws.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var base = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while base.count % 4 != 0 { base += "=" }
+        guard let data = Data(base64Encoded: base),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
+        return object["productId"] as? String
+    }
 
     func send(_ request: PreparedRequest) async throws -> HTTPResponse {
         try? await Task.sleep(for: latency)
@@ -56,15 +69,24 @@ actor DemoTransport: HTTPTransport {
                 body["photos"] = photoObjects
                 invitation = body
             }
-            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
+            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled") || purchasedPlan != nil
             let body: [String: Any] = ["result": true, "data": ["roomId": 1, "hasPass": hasPass, "canEdit": hasPass || invitation != nil, "invitation": invitation as Any? ?? NSNull()]]
             json = String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self)
+        } else if path.hasSuffix("/plan/room/mine") {
+            // 결제할 방(멱등). 데모 사용자는 방장이고 방은 1번이다
+            json = "{\"result\":true,\"data\":{\"roomId\":1,\"permission\":\"OWNER\"}}"
+        } else if path.hasSuffix("/plan/pass/apple/verify") {
+            // 실제 서버는 Apple 서명을 확인한다. 데모는 거래(JWS)의 상품만 읽어 그 패스를 켠다
+            let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: Any]
+            let product = (body?["signedTransaction"] as? String).flatMap(Self.jwsProductId) ?? "prep_pass_yearly"
+            purchasedPlan = product == "prep_pass_lifetime" ? "LIFETIME" : product == "prep_pass_monthly" ? "MONTHLY" : "YEARLY"
+            json = "{\"result\":true,\"data\":{\"hasPass\":true,\"plan\":\"\(purchasedPlan!)\",\"buyerName\":\"민준\",\"purchasedAt\":\"\(ISO8601DateFormatter().string(from: Date()))\"}}"
         } else if path.contains("/plan/pass/room/") {
-            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
-            let plan = ProcessInfo.processInfo.arguments.contains("-WPLifetimePass") ? "LIFETIME" : "YEARLY"
+            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled") || purchasedPlan != nil
+            let plan = purchasedPlan ?? (ProcessInfo.processInfo.arguments.contains("-WPLifetimePass") ? "LIFETIME" : "YEARLY")
             json = "{\"result\":true,\"data\":{\"hasPass\":\(hasPass),\"plan\":\"\(plan)\",\"buyerName\":\"지수\"}}"
         } else if path.contains("/plan/pass/file/schedule/") {
-            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled")
+            let hasPass = ProcessInfo.processInfo.arguments.contains("-WPPassEnabled") || purchasedPlan != nil
             json = "{\"result\":true,\"data\":{\"canOpen\":\(hasPass),\"roomId\":1,\"quotaBytes\":1073741824,\"usedBytes\":0,\"list\":[]}}"
         } else if path.hasSuffix("/plan/pass/reminder-setting") {
             if request.method == .put, let data = request.body,

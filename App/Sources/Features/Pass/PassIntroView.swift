@@ -3,6 +3,9 @@ import WebKit
 
 struct PassView: View {
     var roomId: Int?
+    /// 청첩장 칸·플랜 추가에서 열었다 — 결제를 마쳐도 홈으로 가지 않는다(`PassPlansView.staysAfterPurchase`)
+    var staysAfterPurchase = false
+    @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
     @State private var plans = false
     @State private var sample = false
@@ -10,7 +13,13 @@ struct PassView: View {
         PassIntroCanvas(onAction: { action in
             switch action { case "close": dismiss(); case "plans": plans = true; case "sample": sample = true; default: break }
         }).ignoresSafeArea().background(Color(hex: 0x0B090F)).accessibilityIdentifier("pass.intro")
-            .sheet(isPresented: $plans) { PassPlansView(roomId: roomId) }
+            .sheet(isPresented: $plans) { PassPlansView(roomId: roomId, staysAfterPurchase: staysAfterPurchase) }
+            // 결제가 끝나면 소개도 닫는다(안드로이드 PassIntro) — 요금제 시트가 먼저 내려간 뒤에
+            .onChange(of: env.passPurchase) { _, event in
+                guard event != nil else { return }
+                plans = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { dismiss() }
+            }
             .fullScreenCover(isPresented: $sample) { InvitationPreviewView(content: InvitationStudioView.example) }
     }
 }

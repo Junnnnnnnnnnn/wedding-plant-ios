@@ -369,6 +369,18 @@ struct MainTabShell: View {
             }
         }.background(WPColor.background)
             .onChange(of: env.roomsRevision) { _, _ in revision = UUID() }
+            /*
+              **결제를 마치면 홈으로**(안드로이드 AppNavHost `passPurchased` — 웹: 결제 성공 → `시작하기` → `/main`). 홈이 켜진 패스를
+              보여 준다. 소개·요금제 창이 먼저 내려간 뒤에 탭을 다시 만든다(그 아래 띄운 화면들도 함께 닫힌다). 플랜 추가 폼에서는
+              옮기지 않는다 — 영수증 칸으로 결제한 사람의 적던 플랜이 저장 전에 사라진다.
+            */
+            .onChange(of: env.passPurchase) { _, event in
+                guard let event, event.goHome else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    guard addPlan.request == nil else { return }
+                    detail.close(); tab = .home; revision = UUID()
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { note in
                 // 화면에 올라온 소프트웨어 키보드만 친다 — 하드웨어 키보드의 작은 도구 막대나 화면 밖 프레임은
                 // 키보드가 아니다(Android 도 IME 가 화면에 뜰 때만 `isImeVisible`)

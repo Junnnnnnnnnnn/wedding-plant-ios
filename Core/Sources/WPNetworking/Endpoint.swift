@@ -40,9 +40,12 @@ public enum Endpoint {
     ///
     /// - Parameter name: 애플이 **첫 로그인 때 한 번만** 주는 이름. 두 번째부터는
     ///   아무리 요청해도 안 오므로, 받은 그때 함께 보낸다 — 놓치면 영영 모른다.
-    public static func appleLogin(identityToken: String, name: String?) throws -> HTTPRequest {
+    /// - Parameter authorizationCode: 애플이 준 1회용 코드(UTF-8). 서버가 리프레시 토큰으로 바꿔 두었다가
+    ///   **탈퇴 때 애플 토큰을 철회**한다(App Store 심사 지침 5.1.1(v)). 선택 필드라 없으면 빼고 보낸다.
+    public static func appleLogin(identityToken: String, name: String?, authorizationCode: String? = nil) throws -> HTTPRequest {
         var body = ["identityToken": identityToken]
         if let name, !name.isEmpty { body["name"] = name }
+        if let authorizationCode, !authorizationCode.isEmpty { body["authorizationCode"] = authorizationCode }
         return try .json(.post, "/plan/auth/apple/login", body: body, requiresAuth: false)
     }
 

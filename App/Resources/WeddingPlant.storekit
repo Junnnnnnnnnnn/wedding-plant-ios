@@ -1,0 +1,80 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "ko",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "5B0D6C3E",
+  "nonRenewingSubscriptions" : [
+    {
+      "displayPrice" : "7900",
+      "familyShareable" : false,
+      "internalID" : "6740000001",
+      "localizations" : [
+        {
+          "description" : "두 사람 모두 30일 동안 · 자동으로 갱신되지 않아요",
+          "displayName" : "준비 패스 월간",
+          "locale" : "ko"
+        }
+      ],
+      "productID" : "prep_pass_monthly",
+      "referenceName" : "준비 패스 월간",
+      "type" : "NonRenewingSubscription"
+    },
+    {
+      "displayPrice" : "39000",
+      "familyShareable" : false,
+      "internalID" : "6740000002",
+      "localizations" : [
+        {
+          "description" : "두 사람 모두 365일 동안 · 자동으로 갱신되지 않아요",
+          "displayName" : "준비 패스 년간",
+          "locale" : "ko"
+        }
+      ],
+      "productID" : "prep_pass_yearly",
+      "referenceName" : "준비 패스 년간",
+      "type" : "NonRenewingSubscription"
+    }
+  ],
+  "products" : [
+    {
+      "displayPrice" : "69000",
+      "familyShareable" : false,
+      "internalID" : "6740000003",
+      "localizations" : [
+        {
+          "description" : "두 사람 모두 기간 제한 없이 · 결혼 뒤에도 계속",
+          "displayName" : "준비 패스 평생",
+          "locale" : "ko"
+        }
+      ],
+      "productID" : "prep_pass_lifetime",
+      "referenceName" : "준비 패스 평생",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : true,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ko",
+    "_storefront" : "KOR",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

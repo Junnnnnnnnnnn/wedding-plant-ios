@@ -37,12 +37,19 @@ struct WeddingPlantApp: App {
                         await env.refreshAuthState()
                         await notifications.start(env: env, push: push)
                     }
+                    // 준비 패스 결제: 밖에서 온 거래(승인 대기가 풀림 등)를 듣고, 서버에 안 들어간 거래를 다시 보낸다.
+                    // 데모에서도 켠다 — UI 테스트가 StoreKit 구성 파일로 결제하고 데모 서버가 확인한다.
+                    env.passStore.start(env: env)
+                    await env.passStore.recover(env: env)
                     // 스크린샷·수동 확인용. 실행 인자로 공유 링크를 흉내 낸다.
                     if let code = Self.launchShareCode() {
                         env.pendingShareCode = code
                     }
                 }
-                .task(id: env.isAuthenticated) { await env.refreshAdEligibility() }
+                .task(id: env.isAuthenticated) {
+                    await env.refreshAdEligibility()
+                    if env.isAuthenticated { await env.passStore.recover(env: env) }
+                }
                 // 로그인 상태가 되면 알림 권한을 묻고 기기 토큰을 등록한다.
                 //
                 // 설치 후 첫 로그인에는 FCM 갱신 콜백이 오지 않으므로,
@@ -60,7 +67,13 @@ struct WeddingPlantApp: App {
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { await notifications.start(env: env, push: push); await env.refreshAdEligibility() } }
+                    if phase == .active {
+                        Task {
+                            await notifications.start(env: env, push: push); await env.refreshAdEligibility()
+                            // 결제 직후 앱이 밀려났다 돌아온 경우 — 서버에 안 들어간 거래를 다시 보낸다(안드로이드 화면 복귀 때 복구)
+                            await env.passStore.recover(env: env)
+                        }
+                    }
                     else if phase == .background { notifications.stop() }
                 }
                 .onChange(of: push.currentChatRoomId) { _, room in notifications.markRead(room) }

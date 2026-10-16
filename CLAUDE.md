@@ -120,6 +120,26 @@ Apple 지도(MapKit)를 쓰지 않는다 — 사용자 결정. `KakaoMapsSDK`(SP
   "지도를 불러오지 못했어요" 를 낸다(빈 회색 상자로 두지 않는다).
 - 시뮬레이터에서도 돈다(xcframework 에 simulator 조각이 있음) — `KakaoMapUITests` 가 세 화면을 확인한다.
 
+## 준비 패스 결제 — StoreKit 2 (2026-10-16)
+
+안드로이드 `PassBilling`·`PassViewModel.purchase` 와 같은 순서다. 판정·문장은 `Core/Sources/WPDomain/PassPurchaseRules.swift`,
+StoreKit 은 `App/Sources/Platform/PassStore.swift`, 화면은 `Features/Pass/PassView.swift`(`PassPlansView`).
+
+- **패스를 켜는 것은 서버다.** 거래 JWS 를 `POST /plan/pass/apple/verify { roomId, signedTransaction }` 로 보내고, 서버가
+  받은 뒤에만 `transaction.finish()` 한다. 못 받았으면 끝내지 않아 앱을 켤 때·앞으로 올 때 `Transaction.unfinished` 를 다시
+  보낸다(`PassStore.recover`). 같은 거래는 서버가 멱등으로 받는다.
+- **결제할 방은 결제 직전에 서버가 정한다**(`POST /plan/room/mine`, `AppEnvironment.ensureMyRoom`). 방이 정해진 화면(`roomId` 를
+  넘긴 `PassPlansView`)에서 서버의 방과 다르면 "준비 패스는 내 플랜에서 결제할 수 있어요." 로 막는다.
+- **방은 `appAccountToken` 에 싣는다** — `00000000-0000-4000-8000-` + 방 id 12자리 소문자 16진수. 복구는 이 방으로, 없으면 내 방
+  (귀속 방 → `/plan/user`)으로 보낸다. 화면의 방으로 보내지 않는다.
+- 평생 패스가 있는 방은 사지 않고, 서버가 `PASS_ALREADY_LIFETIME` 으로 거절하면 거래를 끝내고 환불 요청 안내를 낸다(App Store 는
+  저절로 환불하지 않는다). 요금제 시트 아래 **`구매 복원`**(심사 지침 3.1.1)은 `AppStore.sync()` 뒤 평생 패스를 서버로 다시 보낸다.
+- 결제를 마치면 홈으로 간다(`AppEnvironment.passPurchase` → `MainTabShell`). 청첩장 칸·플랜 추가에서 연 소개는
+  `staysAfterPurchase` 라 그 자리에 남는다.
+- 로컬 확인: 스킴 실행에 `App/Resources/WeddingPlant.storekit`(세 상품, 7,900·39,000·69,000원)이 걸려 있다. `xcodebuild test` 는
+  스킴의 StoreKit 구성을 쓰지 않아 UI 테스트는 `SKTestSession(configurationFileNamed: "WeddingPlant")` 로 연다
+  (`PassEntitlementUITests.testStoreKitPurchaseTurnsPassOn`). 데모 서버는 verify 를 받으면 그 상품의 패스를 켠다.
+
 ## 백엔드 계약
 
 > **먼저 읽을 것: `wedding-plant-android/docs/IOS_PORTING_NOTES.md`**

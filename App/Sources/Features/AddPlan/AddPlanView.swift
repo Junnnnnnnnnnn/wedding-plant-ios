@@ -128,7 +128,7 @@ struct AddPlanView: View {
         .background {
             // 저장 완료 카드와 같은 뷰에 두 번째 fullScreenCover 를 걸지 않으려고 배경에 단다.
             Color.clear.fullScreenCover(isPresented: $showPassIntro, onDismiss: { Task { await model.loadReceiptPass(env: env) } }) {
-                PassView(roomId: model.receiptRoomId)
+                PassView(roomId: model.receiptRoomId, staysAfterPurchase: true)
             }
         }
         .sheet(isPresented: $showDatePicker) {

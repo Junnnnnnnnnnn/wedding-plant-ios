@@ -1,3 +1,4 @@
+import StoreKitTest
 import XCTest
 
 final class PassEntitlementUITests: XCTestCase {
@@ -74,5 +75,78 @@ final class PassEntitlementUITests: XCTestCase {
         XCTAssertFalse(app.buttons["사진 올리기"].exists)
         XCTAssertFalse(app.buttons["전부 내려받기"].exists)
         capture(app, "paid-document-card")
+    }
+
+    /// StoreKit 2 결제 — 스킴의 StoreKit 구성 파일(`App/Resources/WeddingPlant.storekit`, 대화상자 끔)로 년간을 사면 데모 서버가
+    /// `/plan/pass/apple/verify` 에서 패스를 켜고, 시트·소개가 닫히며 홈으로 돌아가 프로필이 「년간 · 사용 중」을 보인다.
+    func testStoreKitPurchaseTurnsPassOn() throws {
+        // 지난 실행의 거래를 지우고 확인 창 없이 산다 — 테스트 세션이 시뮬레이터의 App Store 를 구성 파일로 바꾼다
+        let session = try SKTestSession(configurationFileNamed: "WeddingPlant")
+        session.disableDialogs = true
+        session.clearTransactions()
+        defer { session.clearTransactions() }
+        let app = launch()
+        openProfile(app)
+        let entry = app.buttons["user.pass"]
+        for _ in 0..<6 { if entry.exists && entry.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(entry.waitForExistence(timeout: 5)); entry.tap()
+        let skip = app.webViews.buttons["건너뛰기"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 10)); skip.tap()
+        let web = app.webViews.firstMatch
+        let plansLink = app.webViews.links["요금제 보기"]
+        for _ in 0..<16 { if plansLink.exists && plansLink.isHittable { break }; web.swipeUp() }
+        XCTAssertTrue(plansLink.isHittable); plansLink.tap()
+
+        let buy = app.buttons["pass.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 10))
+        XCTAssertFalse(buy.isEnabled, "동의 전에는 결제 버튼이 잠겨 있다")
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "준비하고 있어요")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["pass.restore"].exists, "평생 패스 구매 복원 링크(심사 지침 3.1.1)")
+        app.buttons["pass.consent"].tap()
+        // App Store(StoreKit 구성)의 상품이 와야 열린다 — 금액은 App Store 가 준 값
+        let enabled = NSPredicate(format: "isEnabled == true")
+        expectation(for: enabled, evaluatedWith: buy)
+        waitForExpectations(timeout: 15)
+        XCTAssertTrue(buy.label.contains("39,000원 결제하기"), buy.label)
+        capture(app, "storekit-plans-ready")
+        buy.tap()
+        // 대화상자를 끈 구성이지만 기기 설정에 따라 확인 창이 뜨면 누른다
+        for label in ["구입", "Purchase", "구독", "Subscribe", "확인", "OK"] {
+            let button = app.buttons[label]
+            if button.waitForExistence(timeout: 1) { button.tap(); break }
+        }
+        // 결제 → 서버 확인 → 시트·소개가 닫히고 홈으로
+        XCTAssertTrue(app.buttons["main.profile"].waitForExistence(timeout: 20))
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: app.descendants(matching: .any)["pass.intro"].firstMatch)
+        waitForExpectations(timeout: 10)
+        capture(app, "storekit-purchased-home")
+        openProfile(app)
+        XCTAssertTrue(app.staticTexts["년간 · 사용 중"].waitForExistence(timeout: 10), "산 패스가 프로필에 켜진다")
+        XCTAssertFalse(app.buttons["user.pass"].exists)
+        capture(app, "storekit-purchased-profile")
+    }
+
+    /// 구매 복원(심사 지침 3.1.1) — 평생 패스를 산 적이 없으면 "복원할 구매가 없어요." 를 회색 안내로 말한다(시트는 그대로).
+    func testRestoreWithoutPurchasesSaysNothingToRestore() throws {
+        let session = try SKTestSession(configurationFileNamed: "WeddingPlant")
+        session.disableDialogs = true
+        session.clearTransactions()
+        let app = launch()
+        openProfile(app)
+        let entry = app.buttons["user.pass"]
+        for _ in 0..<6 { if entry.exists && entry.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(entry.waitForExistence(timeout: 5)); entry.tap()
+        let skip = app.webViews.buttons["건너뛰기"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 10)); skip.tap()
+        let web = app.webViews.firstMatch
+        let plansLink = app.webViews.links["요금제 보기"]
+        for _ in 0..<16 { if plansLink.exists && plansLink.isHittable { break }; web.swipeUp() }
+        XCTAssertTrue(plansLink.isHittable); plansLink.tap()
+        let restore = app.buttons["pass.restore"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 10)); restore.tap()
+        XCTAssertTrue(app.staticTexts["복원할 구매가 없어요."].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["pass.buy"].exists)
+        capture(app, "storekit-restore-nothing")
     }
 }
