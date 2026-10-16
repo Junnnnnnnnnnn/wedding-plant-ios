@@ -37,6 +37,10 @@ KAKAO_NATIVE_APP_KEY =
 WP_ENTITLEMENTS =
 CODE_SIGN_ENTITLEMENTS = $(WP_ENTITLEMENTS)
 
+// 앱 대상의 서명 신원(project.yml 이 이 값을 쓴다). TestFlight·App Store 수동 서명은 Local 에서
+// `WP_CODE_SIGN_IDENTITY[config=Release][sdk=iphoneos*] = Apple Distribution` 으로 덮는다.
+WP_CODE_SIGN_IDENTITY = iPhone Developer
+
 // 개인 설정으로 덮어쓰기. 파일이 없어도 빌드가 깨지지 않는다.
 // Debug uses Google demo ads. Release ads stay off until all iOS IDs are supplied.
 ADMOB_APP_ID =

@@ -94,8 +94,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.weddingplant
         PRODUCT_NAME: WeddingPlant
+        # xcodegen 은 앱 대상에 "iPhone Developer" 를 박아 xcconfig 보다 앞선다. 서명 신원은 xcconfig 의
+        # `WP_CODE_SIGN_IDENTITY` 로 받는다(기본 iPhone Developer, TestFlight 는 Local 에서 Apple Distribution).
+        CODE_SIGN_IDENTITY: $(WP_CODE_SIGN_IDENTITY)
         OTHER_LDFLAGS: "$(inherited) -ObjC"
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
