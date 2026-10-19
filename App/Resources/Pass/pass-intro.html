@@ -411,7 +411,15 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
           const newRect=card.getBoundingClientRect();
           const dx=oldRect.x+oldRect.width/2-newRect.x-newRect.width/2;
           const dy=oldRect.y+oldRect.height/2-newRect.y-newRect.height/2;
-          entry.animate([{transform:`translate(${dx}px,${dy}px) scale(${oldRect.width/newRect.width},${oldRect.height/newRect.height})`},{transform:'none'}],{duration:700,easing:'cubic-bezier(.16,1,.3,1)'});
+          const from=`translate(${dx}px,${dy}px) scale(${oldRect.width/newRect.width},${oldRect.height/newRect.height})`;
+          // iOS 앱: 열기가 끝나는 프레임은 문서를 다시 배치하느라 몇 프레임 멈춘다 — 그 사이에 줄어드는 움직임이 지나가 카드가
+          // 툭 바뀌어 보였다(2026-10-19 사용자 "가운데 크게 보였다가 줄어들어야"). 큰 자리에 먼저 붙잡아 두고, 화면이 다시 돌기
+          // 시작한 뒤 처음부터 끝까지 보이게 줄인다.
+          const hold=entry.animate([{transform:from},{transform:from}],{duration:60000,fill:'forwards'});
+          requestAnimationFrame(()=>requestAnimationFrame(()=>{
+            hold.cancel();
+            entry.animate([{transform:from},{transform:'none'}],{duration:900,easing:'cubic-bezier(.45,0,.2,1)'});
+          }));
         }
         if(nextScene) goToScene(nextScene);
         if(focusInsideOpening) {
@@ -538,6 +546,14 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
           $('.rays').style.top=(current<1?center:(safeTop+56+6+Math.min(190,Math.max(104,usable*.2))/2))+'px';
         }
 
+        // iOS 앱의 일반 스크롤(flow): 열기가 끝나면 카드는 Android 마무리 크기(finalW)로 — 열기의 큰 카드(실제 화면 가운데)에서
+        // 이 자리로 줄어들며 내려앉는다(finishOpening 의 FLIP). 600 으로 속인 innerHeight 대신 진짜 높이로 잰다.
+        if(flow && !openingActive){
+          const vh=window.wpViewportHeight?window.wpViewportHeight():viewportHeight,safeTop=parseFloat(getComputedStyle($('.topbar')).top)||0;
+          const w=Math.min(innerWidth*.4,(vh-safeTop)*.3/(280/190),190),h=w*280/190;
+          anchor.style.setProperty('width',w+'px','important');anchor.style.setProperty('height',h+'px','important');
+          perspective.style.width=w+'px';perspective.style.height=h+'px';
+        }
         anchor.style.top = flow ? '' : `${normalTop+(openingTop-normalTop)*openingPresence}%`;
         anchor.style.left = flow ? '' : `${cardLeft+(50-cardLeft)*openingPresence}%`;
         anchor.style.transform = `scale(${scale/cardRenderScale}) translateY(${-spinning*12*cardRenderScale}px)`;

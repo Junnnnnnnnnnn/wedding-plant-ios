@@ -26,7 +26,7 @@
   function render(t,top,bottom) {
     const root=$('.pack-stage');
     if(!back){back=canvas(root,'native-opening-back');burst=canvas(root,'native-opening-burst');pack=canvas($('.sealed-pack'),'native-pack');}
-    const w=innerWidth,h=innerHeight,usable=h-top-bottom,cy=top+usable*.4,cx=w/2,long=Math.max(w,h),cardW=Math.min(w*.5,usable*.4/(280/190),220),scale=cardW/190;
+    const w=innerWidth,h=window.wpViewportHeight?window.wpViewportHeight():innerHeight,usable=h-top-bottom,cy=top+usable*.4,cx=w/2,long=Math.max(w,h),cardW=Math.min(w*.5,usable*.4/(280/190),220),scale=cardW/190;
     const c=context(back,w,h);c.fillStyle='#0b090f';c.fillRect(0,0,w,h);
     const glow=radial(c,cx,cy,long*.75,[[0,'#56213e'],[.58,'#160d18'],[1,'#160d1800']]);circle(c,cx,cy,long*.75,glow,lerp(1,.55,p(t,2350,900)));
     if(t>=1800){const k=p(t,1800,3400),a=at([0,0,.15,.7,.3,1,1,.32],k)*(1-p(t,5200,300)),r=w*.7*at([0,.1,.15,.5,.3,1.4,1,1],k);circle(c,cx,cy,r,radial(c,cx,cy,r*Math.SQRT2,[[0,'#fff2e6f2'],[.22,'#edbaad73'],[.42,'#bd548940'],[.68,'#bd548900'],[1,'#bd548900']]),a);}

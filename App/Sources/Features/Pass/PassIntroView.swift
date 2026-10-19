@@ -35,8 +35,10 @@ extension PassView {
     /// 여기게 한다 — 스크립트의 `innerHeight` 와 CSS 의 높이 조건(`max-height` · `min-height`)을 600 기준으로 바꾼다.
     /// 원본 HTML(웹에서 복사해 온 파일)은 그대로 두어, 다시 복사해 와도 이 처리가 남는다.
     static let flowHeight = 600
-    /// 문서 시작 — 페이지 스크립트가 읽기 전에 `innerHeight` 를 600 이하로
-    static let flowViewportScript = "(function(){var d=Object.getOwnPropertyDescriptor(window,'innerHeight');try{Object.defineProperty(window,'innerHeight',{configurable:true,get:function(){var h=document.documentElement?document.documentElement.clientHeight:0;return Math.min(\(flowHeight),h||\(flowHeight));}});}catch(e){}})();"
+    /// 문서 시작 — 페이지 스크립트가 읽기 전에 `innerHeight` 를 600 이하로.
+    /// 열기 장면(`pass-opening.js`)은 카드를 **실제 화면** 가운데에 크게 두어야 해서 진짜 높이를 `wpViewportHeight()` 로
+    /// 따로 연다 — 600 으로 계산하면 카드가 화면 위 30% 에 작게 섰다(2026-10-19 사용자 "가운데 크게 보였다가 줄어들어야").
+    static let flowViewportScript = "(function(){var d=Object.getOwnPropertyDescriptor(window,'innerHeight');window.wpViewportHeight=function(){var h=document.documentElement?document.documentElement.clientHeight:0;return h||(d&&d.get?d.get.call(window):0)||\(flowHeight);};try{Object.defineProperty(window,'innerHeight',{configurable:true,get:function(){var h=document.documentElement?document.documentElement.clientHeight:0;return Math.min(\(flowHeight),h||\(flowHeight));}});}catch(e){}})();"
     /// 문서 끝 — CSS 의 높이 조건을 높이 600 화면 기준의 참·거짓으로 바꾸고 다시 재게 한다
     static let flowMediaScript = """
     (function(){var H=\(flowHeight);function fix(t){return t.replace(/\\(\\s*(max|min)-height\\s*:\\s*(\\d+)px\\s*\\)/g,function(_,k,n){n=+n;var ok=k==='max'?H<=n:H>=n;return ok?'(min-width: 0px)':'(max-width: 0px)';});}
