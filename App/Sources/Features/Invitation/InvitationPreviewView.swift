@@ -16,6 +16,9 @@ struct InvitationPreviewView: View {
     var onTurnOn: ((String) -> Void)? = nil
     /// 편집기 전용 — 아래 패널·단추 높이만큼 비워 마지막 칸도 패널 위로 올라오게(안드로이드 `bottomSpace + 24`)
     var bottomSpace: CGFloat = 0
+    /// 편집기 전용 — 지금 적고 있는 줄(예: 계좌 `account.3`). 키보드가 올라오면 미리보기에 남는 자리가 한 뼘이라
+    /// 칸 머리만 보였습니다 — 그 줄을 미리보기 맨 위로 올려 적는 대로 바뀌는 것이 보이게 합니다.
+    var focusAnchor: String? = nil
     /// 머리 제목·안내 — 안드로이드 `GuestPreview(title, notice)`
     var title = "하객이 보는 화면"
     var notice: String? = nil
@@ -64,6 +67,18 @@ struct InvitationPreviewView: View {
                         }
                         .task { if let selectedSection { try? await Task.sleep(for: .milliseconds(150)); proxy.scrollTo(["mood", "intro"].contains(selectedSection) ? "moodAnchor" : selectedSection == "gallery" ? "galleryGrid" : selectedSection, anchor: .top) } }
                         .onChange(of: replayID) { _, _ in proxy.scrollTo("cover", anchor: .top); started = Date() }
+                        // 꺼 둔 칸을 고르고 나서 켜면(구성 → 계좌 입력 → 보이기) 고를 때는 자리가 없어 굴러가지 않았습니다 — 켜진 뒤에 맞춥니다
+                        .onChange(of: design.sections.filter(\.visible).map(\.type)) { old, new in
+                            guard embedded, let selectedSection, new.contains(selectedSection), !old.contains(selectedSection) else { return }
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(60))
+                                withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(selectedSection == "gallery" ? "galleryGrid" : selectedSection, anchor: .top) }
+                            }
+                        }
+                        .onChange(of: focusAnchor) { _, value in
+                            guard let value else { return }
+                            withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(value, anchor: .top) }
+                        }
                 }
             }
         }.background(paper).ignoresSafeArea(.container, edges: .bottom).overlay(alignment: .bottom) {

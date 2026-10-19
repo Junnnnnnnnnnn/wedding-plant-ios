@@ -65,14 +65,45 @@ final class KeyboardDismiss: NSObject, UIGestureRecognizerDelegate {
 
     private static let padTypes: Set<UIKeyboardType> = [.numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad, .numbersAndPunctuation]
 
+    private static let doneBarTag = 0x57505F44 // "WP_D"
+
     private func attachDoneIfNeeded(to field: UITextField) {
-        guard Self.padTypes.contains(field.keyboardType), field.inputAccessoryView == nil else { return }
+        guard Self.padTypes.contains(field.keyboardType) else { return }
+        /*
+          SwiftUI `TextField` 에는 SwiftUI 가 자기 보조 막대(키보드 툴바)를 끼우고 다시 그릴 때마다 되돌린다 —
+          여기서 바꿔 끼워도 곧 사라진다. 그래서 **이미 막대가 있으면 손대지 않고**, SwiftUI 숫자 칸이 있는 화면은
+          `.wpKeyboardDone()`(SwiftUI 키보드 툴바)로 `완료` 를 단다. 여기는 직접 만든 UIKit 칸(`WPTmoneyInput`) 몫이다.
+        */
+        if field.inputAccessoryView != nil { return }
         let bar = UIToolbar(frame: CGRect(x: 0, y: 0, width: field.window?.bounds.width ?? 390, height: 44))
+        bar.tag = Self.doneBarTag
         let done = UIBarButtonItem(title: "완료", style: .done, target: field, action: #selector(UIResponder.resignFirstResponder))
         done.accessibilityIdentifier = "keyboard.done"
         bar.items = [UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil), done]
         bar.sizeToFit()
         field.inputAccessoryView = bar
         field.reloadInputViews()
+    }
+}
+
+import SwiftUI
+
+extension View {
+    /// SwiftUI 숫자·전화 키패드 칸이 있는 화면에 `완료` 를 단다(리턴 키가 없어 내릴 길이 없다). 화면의 바깥 틀에
+    /// **한 번만** 붙인다 — 칸마다 붙이면 SwiftUI 가 툴바 단추를 칸 수만큼 겹쳐 그린다.
+    /// - Parameter shown: 숫자 칸에 초점이 있을 때만 참으로 — 글자 키보드에도 붙이면 막대 높이만큼 다음 칸을 가린다.
+    func wpKeyboardDone(_ shown: Bool = true) -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                if shown {
+                Spacer()
+                Button("완료") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .fontWeight(.semibold)
+                .accessibilityIdentifier("keyboard.done")
+                }
+            }
+        }
     }
 }

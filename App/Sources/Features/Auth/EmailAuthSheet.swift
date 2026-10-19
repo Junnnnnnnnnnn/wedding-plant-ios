@@ -75,6 +75,8 @@ struct EmailAuthSheet: View {
         .presentationDetents([.height(contentHeight)])
         .presentationContentInteraction(.scrolls)
         .preferredColorScheme(.light).interactiveDismissDisabled(busy)
+        // 인증 코드(숫자 키패드)에는 리턴 키가 없다 — 그 칸에 있을 때만 키보드 위 `완료`
+        .wpKeyboardDone(focus == .code)
         // 키보드는 칸을 직접 눌렀을 때만 — 단계가 바뀌면 내립니다(Android `DismissKeyboardOn(step)`)
         .onChange(of: step) { _, _ in focus = nil; showPassword = false }
         .sensoryFeedback(.error, trigger: error) { _, new in new != nil }

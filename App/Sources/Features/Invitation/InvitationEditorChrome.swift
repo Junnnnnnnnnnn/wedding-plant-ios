@@ -29,6 +29,16 @@ struct InvitationFlower: Shape {
     }
 }
 
+/// 편집기가 지금 고치는 칸을 아는 통로 — 패널 안에서 그 칸을 키보드 위로 굴리고, 미리보기를 그 칸에 맞춥니다.
+/// 칸마다 클로저를 넘기지 않으려고 환경으로 둡니다(계좌 여섯 줄 × 세 칸).
+private struct InvitationFieldFocusKey: EnvironmentKey { static let defaultValue: ((String, Bool) -> Void)? = nil }
+extension EnvironmentValues {
+    var invitationFieldFocus: ((String, Bool) -> Void)? {
+        get { self[InvitationFieldFocusKey.self] }
+        set { self[InvitationFieldFocusKey.self] = newValue }
+    }
+}
+
 struct InvitationField: View {
     let label: String
     @Binding var text: String
@@ -39,7 +49,18 @@ struct InvitationField: View {
     var max: Int = 500
     var top: CGFloat = 14
     var filter: ((String) -> String)? = nil
+    /// 패널 안 스크롤 자리 · 초점 알림의 이름. 같은 라벨이 둘인 칸(부모님 성함·계좌)은 따로 줍니다
+    var focusID: String? = nil
     @FocusState private var focused: Bool
+    @Environment(\.invitationFieldFocus) private var onFocus
+    private var limited: Binding<String> {
+        Binding(get: { text }, set: { value in
+            let filtered = filter?(value) ?? value
+            text = String(filtered.prefix(max))
+        })
+    }
+    private var prompt: Text? { placeholder.isEmpty ? nil : Text(placeholder).foregroundColor(WPColor.invPlaceholder) }
+    private var key: String { focusID ?? (identifier.isEmpty ? "field." + label : identifier) }
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // 여러 줄 칸은 글자 수를 라벨 옆에 씁니다(안드로이드 counter)
@@ -50,17 +71,20 @@ struct InvitationField: View {
                     if multiline { Text("\(text.count)/\(max)").font(invitationFont(12)).foregroundStyle(WPColor.invMuted) }
                 }
             }
-            TextField("", text: Binding(get: { text }, set: { value in
-                let filtered = filter?(value) ?? value
-                text = String(filtered.prefix(max))
-            }), prompt: placeholder.isEmpty ? nil : Text(placeholder).foregroundColor(WPColor.invPlaceholder), axis: multiline ? .vertical : .horizontal)
+            // 한 줄 칸은 `axis` 없는 TextField — `axis:` 를 주면 안이 UITextView 라 앱 전체의 숫자 키패드 `완료`
+            // (`KeyboardDismiss`, UITextField 편집 알림으로 붙임)가 계좌번호 칸에 붙지 않았습니다
+            Group {
+                if multiline { TextField("", text: limited, prompt: prompt, axis: .vertical) }
+                else { TextField("", text: limited, prompt: prompt) }
+            }
                 .lineLimit(multiline ? 4...8 : 1...1).font(invitationFont(16)).foregroundStyle(WPColor.invInk)
                 .lineSpacing(multiline ? 8 : 0)
                 .padding(.horizontal, 12).padding(.vertical, 10).frame(minHeight: multiline ? 112 : 46, alignment: multiline ? .topLeading : .leading)
                 .background(focused ? WPColor.invWhite : WPColor.invPaper, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(focused ? WPColor.invAccent : WPColor.invLine, lineWidth: focused ? 2 : 1))
                 .focused($focused).accessibilityLabel(label).accessibilityIdentifier(identifier)
-        }.padding(.top, top)
+        }.padding(.top, top).id(key)
+            .onChange(of: focused) { _, value in onFocus?(key, value) }
     }
 }
 /// 안드로이드 `OutlineButton` — 초록 1px 테두리 · 흰 바탕 · 높이 40 · r10 · 글자 12 bold accent.

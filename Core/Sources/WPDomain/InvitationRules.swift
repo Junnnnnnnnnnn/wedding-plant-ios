@@ -7,6 +7,8 @@ public enum InvitationRules {
     public static let sectionTypes = ["message", "couple", "gallery", "calendar", "location", "notice", "accounts", "guestbook"]
     public static let sectionLabels = ["초대의 말", "신랑 · 신부", "사진첩", "예식 일시", "오시는 길", "안내 말씀", "계좌 입력", "댓글 관리"]
     public static let accountSeats = [("groom","신랑"),("groom","아버지"),("groom","어머니"),("bride","신부"),("bride","아버지"),("bride","어머니")]
+    /// 하객에게 보이는 계좌 줄 — 은행과 계좌번호를 둘 다 적은 줄(Android `Account.ready`)
+    public static func isAccountReady(_ account: InvitationAccountBody) -> Bool { !account.bank.isEmpty && !account.number.isEmpty }
     public static func design(new: Bool = false) -> InvitationDesignBody {
         InvitationDesignBody(intro: "door", galleryLayout: "mosaic",
             sections: sectionTypes.map { InvitationSectionBody(type: $0, visible: !["couple","notice","accounts"].contains($0) || (new && $0 == "couple")) },

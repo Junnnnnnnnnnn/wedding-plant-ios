@@ -233,14 +233,22 @@ struct InvitationAccounts: View {
     let toast: (String) -> Void
     @State private var open: String?
     private var p: InvitationPalette { .init(content.template) }
-    private var accounts: [InvitationAccountBody] { InvitationRules.normalize(content.design).accounts.filter { !$0.bank.isEmpty && !$0.number.isEmpty } }
+    /// 하객에게는 은행·계좌번호까지 적은 줄만(웹·안드로이드 `readyAccounts`). 편집 중에는 한 글자라도 적은 줄을 보입니다 —
+    /// 예금주부터 적는 동안 미리보기가 비어 있으면 "적는 게 반영되지 않는다" 로 읽혔습니다(2026-10-19 사용자 실기기 보고).
+    /// 아직 하객에게 안 보이는 줄은 그 아래에 그렇다고 적습니다. 번호(`index`)는 자리 순서 그대로라 편집기의 칸과 짝이 맞습니다.
+    private var accounts: [(index: Int, account: InvitationAccountBody)] {
+        InvitationRules.normalize(content.design).accounts.enumerated().map { (index: $0.offset, account: $0.element) }.filter { item in
+            let a = item.account
+            return InvitationRules.isAccountReady(a) || (editing && !(a.name.isEmpty && a.bank.isEmpty && a.number.isEmpty))
+        }
+    }
     var body: some View {
         VStack(spacing: 12) {
             Text("마음 전하실 곳").font(.custom("KakaoSmallSans-Regular", size: 21)).tracking(-0.7)
             Text("참석이 어려우신 분들을 위해 적어 두었어요.\n보내 주시는 마음, 오래 간직하겠습니다.").wpTypography(12, face: .kakao, lineHeight: 22.8).padding(.vertical, -2).multilineTextAlignment(.center).foregroundStyle(p.muted).padding(.bottom, 20)
             if accounts.isEmpty { Text("은행과 계좌번호를 적은 줄만 하객에게 보여요").font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(p.muted) }
             ForEach(["groom", "bride"], id: \.self) { side in
-                let rows = accounts.filter { $0.side == side }
+                let rows = accounts.filter { $0.account.side == side }
                 let expanded = editing || open == side
                 if !rows.isEmpty {
                     VStack(spacing: 0) {
@@ -248,7 +256,7 @@ struct InvitationAccounts: View {
                             HStack { Text(side == "groom" ? "신랑 측 계좌번호" : "신부 측 계좌번호"); Spacer(); InvIconView(InvIcon.chevronDown, size: 18, color: p.gold, weight: 1.4).rotationEffect(.degrees(expanded ? 180 : 0)) }
                                 .font(.custom("KakaoSmallSans-Regular", size: 16)).foregroundStyle(p.forest).padding(.horizontal, 20).frame(minHeight: 56)
                         }.buttonStyle(.plain).allowsHitTesting(!editing)
-                        if expanded { ForEach(Array(rows.enumerated()), id: \.offset) { _, account in accountRow(account) }.transition(.opacity.combined(with: .move(edge: .top))) }
+                        if expanded { ForEach(rows, id: \.index) { row in accountRow(row.account).id("account.\(row.index)") }.transition(.opacity.combined(with: .move(edge: .top))) }
                     }.background(p.soft).overlay(Rectangle().stroke(p.rule)).clipped()
                 }
             }
@@ -261,6 +269,9 @@ struct InvitationAccounts: View {
                 HStack(spacing: 8) { Text(account.role).font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(p.muted); Text(name).font(.custom("KakaoSmallSans-Regular", size: 14)) }
                 Text(account.bank).font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(p.muted)
                 Text(account.number).font(.custom("KakaoSmallSans-Regular", size: 13)).lineLimit(1)
+                if editing && !InvitationRules.isAccountReady(account) {
+                    Text("은행과 계좌번호까지 적으면 하객에게 보여요".wpKeepAll).font(.custom("KakaoSmallSans-Regular", size: 11)).foregroundStyle(p.muted)
+                }
             }.frame(maxWidth: .infinity, alignment: .leading)
             Button { UIPasteboard.general.string = "\(account.bank) \(account.number)"; toast("\(name) 님 계좌를 복사했어요") } label: {
                 HStack(spacing: 4) { InvIconView(InvIcon.copy, size: 13, color: p.forest); Text("복사").font(.custom("KakaoSmallSans-Regular", size: 16)) }

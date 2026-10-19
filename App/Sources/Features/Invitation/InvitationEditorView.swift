@@ -33,6 +33,11 @@ struct InvitationEditorView: View {
     @State private var error: String?
     @State private var pendingDraft: InvitationContent?
     @State private var storageKey: String?
+    /// 키보드가 편집 칸(머리 줄 아래)의 아래쪽을 덮는 높이 — 미리보기는 그대로 두고 패널만 이만큼 올립니다
+    @State private var keyboardOverlap: CGFloat = 0
+    @State private var contentFrame: CGRect = .zero
+    /// 지금 초점이 있는 입력 칸(`InvitationField` 의 key, 계좌는 `account.<자리>.<칸>`)
+    @State private var focusedField: String?
     private var design: Binding<InvitationDesignBody> {
         Binding(get: { draft.design ?? InvitationRules.design(new: true) }, set: { draft.design = $0 })
     }
@@ -79,14 +84,18 @@ struct InvitationEditorView: View {
                 }.padding(.leading, 14).padding(.trailing, 12).padding(.vertical, 12).foregroundStyle(WPColor.invForest)
                     .background(WPColor.invSoft, in: RoundedRectangle(cornerRadius: 12)).padding(.horizontal, 12).padding(.top, 10)
             }
+            // 키보드는 이 칸을 줄이지 않습니다(`ignoresSafeArea(.keyboard)` 는 맨 바깥) — 줄이면 표지 높이가 따라 줄어
+            // 미리보기가 통째로 밀려, 고치던 칸 대신 그 아래 칸(축하의 정원)이 보였습니다(2026-10-19 실기기 보고).
+            // 미리보기는 제자리에 두고 패널만 키보드 위로 올립니다 — 가려지는 것은 패널 안에서 굴려 풉니다.
             GeometryReader { geometry in
+                let available = geometry.size.height - keyboardOverlap
                 ZStack(alignment: .bottom) {
                     InvitationPreviewView(content: draft, embedded: true, onSelect: { target = $0 }, selectedSection: target, onCoverPhoto: { pickingCover = true; photoPickerOpen = true }, onAddPhotos: { pickingCover = false; photoPickerOpen = true },
                                           onTurnOn: { type in
                                               if let index = design.wrappedValue.sections.firstIndex(where: { $0.type == type }) { design.wrappedValue.sections[index].visible = true }
                                               target = type
-                                          }, bottomSpace: bottomHeight)
-                        .accessibilityIdentifier("invitation.editPreview")
+                                          }, bottomSpace: bottomHeight + keyboardOverlap, focusAnchor: previewAnchor)
+                        .accessibilityElement(children: .contain).accessibilityIdentifier("invitation.editPreview")
                     Group {
                     if let target {
                         VStack(spacing: 0) {
@@ -106,11 +115,20 @@ struct InvitationEditorView: View {
                                 Button { self.target = nil; UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } label: { InvIconView(InvIcon.chevronDown, size: 20, color: WPColor.invMuted).frame(width: 44, height: 44).contentShape(Circle()) }.accessibilityLabel("입력 닫기")
                             }.padding(.leading, 18).padding(.trailing, 6).frame(minHeight: 56)
                             WPColor.invLine.frame(height: 1)
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 0) { panel(target) }
-                                    .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 18)
-                                    .background(GeometryReader { content in Color.clear.onAppear { panelContentHeight = content.size.height }.onChange(of: content.size.height) { _, value in panelContentHeight = value } })
-                            }.frame(height: min(panelContentHeight, max(220, geometry.size.height * 0.56) - 57)).font(invitationFont(14))
+                            ScrollViewReader { proxy in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 0) { panel(target) }
+                                        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 18)
+                                        .background(GeometryReader { content in Color.clear.onAppear { panelContentHeight = content.size.height }.onChange(of: content.size.height) { _, value in panelContentHeight = value } })
+                                }
+                                // 안드로이드처럼 남은 높이(키보드 위)의 56% 까지 — 키보드가 오르면 패널도 줄고, 적는 칸은 아래에서 굴려 올립니다
+                                .frame(height: max(0, min(panelContentHeight, max(220, available * 0.56) - 57))).font(invitationFont(14))
+                                .scrollDismissesKeyboard(.interactively)
+                                .accessibilityIdentifier("invitation.panel")
+                                // 칸을 옮기거나 키보드 높이가 바뀌면(문자 ↔ 숫자 키패드) 적는 칸이 키보드 위에 남게 — 이미 보이면 굴리지 않습니다(anchor nil)
+                                .onChange(of: focusedField) { _, _ in revealFocused(proxy) }
+                                .onChange(of: keyboardOverlap) { _, _ in revealFocused(proxy) }
+                            }
                         }
                             // 흰 면은 홈 표시줄 밑까지 — 안드로이드 패널(navigationBarsPadding 안쪽)처럼 아래로 표지가 비치지 않게
                             .background(alignment: .top) {
@@ -129,9 +147,18 @@ struct InvitationEditorView: View {
                     }.background(GeometryReader { bottom in
                         Color.clear.onAppear { bottomHeight = bottom.size.height }.onChange(of: bottom.size.height) { _, value in bottomHeight = value }
                     })
+                    // 키보드 바로 위에 — 키보드가 덮는 만큼만 띄웁니다
+                    .padding(.bottom, keyboardOverlap)
                 }
+                .onAppear { contentFrame = geometry.frame(in: .global) }
+                .onChange(of: geometry.frame(in: .global)) { _, value in contentFrame = value }
             }
-        }.background(WPColor.invPaper.ignoresSafeArea()).overlay {
+            .environment(\.invitationFieldFocus) { key, on in
+                if on { focusedField = key } else if focusedField == key { focusedField = nil }
+            }
+        }
+        // 계좌번호(전화 키패드)에는 리턴 키가 없다 — 그 칸에 있을 때만 키보드 위 `완료`
+        .wpKeyboardDone(focusedField?.hasSuffix(".number") == true).ignoresSafeArea(.keyboard, edges: .bottom).background(WPColor.invPaper.ignoresSafeArea()).overlay {
             if layoutOpen {
                 ZStack(alignment: .bottom) {
                     Color.black.opacity(0.32).ignoresSafeArea().onTapGesture { layoutOpen = false }
@@ -158,6 +185,8 @@ struct InvitationEditorView: View {
                 storageKey = "invitation.draft.\(env.baseURL.absoluteString).\(roomId ?? 0).\(JWTDecoder.planUserId(from: token) ?? "unknown")"
                 if !env.isDemo, let key = storageKey, let data = UserDefaults.standard.data(forKey: key), let local = try? JSONDecoder().decode(InvitationContent.self, from: data), local != baseline { pendingDraft = local; restore = true }
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { keyboardChanged($0, hiding: false) }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { keyboardChanged($0, hiding: true) }
             .onChange(of: draft) { _, value in
                 if !env.isDemo, let key = storageKey, let data = try? JSONEncoder().encode(value) { UserDefaults.standard.set(data, forKey: key) }
             }
@@ -349,12 +378,12 @@ struct InvitationEditorView: View {
     private var editorSection5: some View {
         VStack(alignment: .leading, spacing: 0) {
             groupTitle("신랑 측", name: draft.groom.isEmpty ? "신랑" : draft.groom).padding(.top, 18)
-            HStack(spacing: 10) { InvitationField(label: "아버지 성함", text: design.couple.groomFather, max: 20); InvitationField(label: "어머니 성함", text: design.couple.groomMother, max: 20) }
-            InvitationField(label: "부를 말", text: design.couple.groomRelation, placeholder: "아들", max: 6)
+            HStack(spacing: 10) { InvitationField(label: "아버지 성함", text: design.couple.groomFather, max: 20, focusID: "couple.groomFather"); InvitationField(label: "어머니 성함", text: design.couple.groomMother, max: 20, focusID: "couple.groomMother") }
+            InvitationField(label: "부를 말", text: design.couple.groomRelation, placeholder: "아들", max: 6, focusID: "couple.groomRelation")
             WPColor.invLine.frame(height: 1).padding(.top, 22).padding(.bottom, 18)
             groupTitle("신부 측", name: draft.bride.isEmpty ? "신부" : draft.bride)
-            HStack(spacing: 10) { InvitationField(label: "아버지 성함", text: design.couple.brideFather, max: 20); InvitationField(label: "어머니 성함", text: design.couple.brideMother, max: 20) }
-            InvitationField(label: "부를 말", text: design.couple.brideRelation, placeholder: "딸", max: 6)
+            HStack(spacing: 10) { InvitationField(label: "아버지 성함", text: design.couple.brideFather, max: 20, focusID: "couple.brideFather"); InvitationField(label: "어머니 성함", text: design.couple.brideMother, max: 20, focusID: "couple.brideMother") }
+            InvitationField(label: "부를 말", text: design.couple.brideRelation, placeholder: "딸", max: 6, focusID: "couple.brideRelation")
             note("부모님 성함은 비워 두어도 돼요. 비우면 두 사람 이름만 보여요. 적은 성함은 공개한 청첩장을 보는 누구나 볼 수 있어요. ‘부를 말’은 ‘장남’·‘차녀’처럼 바꿔 적을 수 있어요.")
         }.foregroundStyle(WPColor.invForest)
     }
@@ -375,10 +404,10 @@ struct InvitationEditorView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(account.role).font(invitationFont(11, bold: true)).foregroundStyle(WPColor.invAccent).padding(.horizontal, 9).padding(.vertical, 2).background(WPColor.invWhite, in: Capsule())
                     HStack(alignment: .top, spacing: 10) {
-                        InvitationField(label: "예금주", text: design.accounts[index].name, placeholder: account.role == "신랑" ? (draft.groom.isEmpty ? "성함" : draft.groom) : account.role == "신부" ? (draft.bride.isEmpty ? "성함" : draft.bride) : "성함", max: 20, top: 10)
-                        InvitationField(label: "은행", text: design.accounts[index].bank, max: 20, top: 10)
+                        InvitationField(label: "예금주", text: design.accounts[index].name, identifier: "invitation.account.\(index).name", placeholder: account.role == "신랑" ? (draft.groom.isEmpty ? "성함" : draft.groom) : account.role == "신부" ? (draft.bride.isEmpty ? "성함" : draft.bride) : "성함", max: 20, top: 10, focusID: "account.\(index).name")
+                        InvitationField(label: "은행", text: design.accounts[index].bank, identifier: "invitation.account.\(index).bank", max: 20, top: 10, focusID: "account.\(index).bank")
                     }
-                    InvitationField(label: "계좌번호", text: design.accounts[index].number, placeholder: "숫자와 - 만", max: 30, top: 10, filter: { $0.filter { $0.isNumber || $0 == "-" } }).keyboardType(.phonePad)
+                    InvitationField(label: "계좌번호", text: design.accounts[index].number, identifier: "invitation.account.\(index).number", placeholder: "숫자와 - 만", max: 30, top: 10, filter: { $0.filter { $0.isNumber || $0 == "-" } }, focusID: "account.\(index).number").keyboardType(.phonePad)
                 }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(WPColor.invGarden, in: RoundedRectangle(cornerRadius: 12)).padding(.top, 12)
             }
             note("은행과 계좌번호까지 적은 줄만 하객에게 보여요 — 공개한 청첩장의 주소를 아는 누구나 볼 수 있어요. 이 칸을 꺼 두면 적어 둔 계좌도 공개 청첩장에 실리지 않아요.")
@@ -436,6 +465,30 @@ struct InvitationEditorView: View {
     }
     private func nullable(_ binding: Binding<String?>) -> Binding<String> { Binding(get: { binding.wrappedValue ?? "" }, set: { binding.wrappedValue = $0.isEmpty ? nil : $0 }) }
     private func label(_ type: String) -> String { InvitationRules.sectionTypes.firstIndex(of: type).map { InvitationRules.sectionLabels[$0] } ?? type }
+    /// 계좌 칸을 적는 동안 미리보기를 그 줄에 맞춥니다. 아직 아무것도 안 적은 줄은 미리보기에 없으니 칸 머리로.
+    private var previewAnchor: String? {
+        guard target == "accounts", let field = focusedField, field.hasPrefix("account.") else { return nil }
+        let parts = field.split(separator: ".")
+        guard parts.count >= 2, let index = Int(parts[1]), design.wrappedValue.accounts.indices.contains(index) else { return nil }
+        let account = design.wrappedValue.accounts[index]
+        return account.name.isEmpty && account.bank.isEmpty && account.number.isEmpty ? "accounts" : "account.\(index)"
+    }
+    private func revealFocused(_ proxy: ScrollViewProxy) {
+        guard let field = focusedField else { return }
+        // 패널 높이가 키보드를 따라 바뀐 뒤에 굴려야 "이미 보인다" 로 끝나지 않습니다
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(field, anchor: nil) }
+        }
+    }
+    private func keyboardChanged(_ note: Notification, hiding: Bool) {
+        let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
+        // 화면 밖으로 나간 키보드(하드웨어 키보드 · 내려감)는 0 — 편집 칸 아래 끝과 겹치는 만큼만
+        let overlap = hiding || contentFrame == .zero ? 0 : max(0, contentFrame.maxY - end.minY)
+        let duration = (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        guard abs(overlap - keyboardOverlap) > 0.5 else { return }
+        withAnimation(.easeOut(duration: max(0.1, duration))) { keyboardOverlap = overlap }
+    }
     private func save() async {
         guard !busy else { return }; busy = true; error = nil; defer { busy = false }
         do {
