@@ -75,7 +75,10 @@ struct AddPlanView: View {
                         if model.loadingDetail {
                             loadingSkeleton
                         } else {
+                            // 저장 중 · 저장 뒤에는 폼을 고치지 않는다(Android `formLocked`) — 새 플랜은 담아 둔 서류를 올리느라
+                            // `저장 중` 이 몇 초씩 이어지는데, 그사이 고친 제목 · 금액은 서버에 가지 않고 완료 카드에만 보였다.
                             sheet
+                                .allowsHitTesting(!(model.saving || model.saved))
 
                             if let message = model.errorMessage {
                                 InfoBanner(message: message, actionLabel: "닫기") {
@@ -84,8 +87,24 @@ struct AddPlanView: View {
                                 .padding(16)
                             }
 
-                            // 서류는 **수정하기에서** 붙이고 지운다(Android 2026-10-10). 새 플랜은 아직 붙일 자리(일정 id)가 없다.
+                            // 서류는 **수정하기에서** 붙이고 지운다(Android 2026-10-10). 새 플랜은 **저장 전에 담아 둔다**
+                            // (Android 2026-10-16 · `PendingDocsCard`) — 저장이 일정 id 를 받으면 그 일정에 올라간다.
+                            // 패스를 받는 동안은 칸을 내지 않는다(산 사람에게 자물쇠가 번쩍이지 않게). 단계형 폼이라 결제 유형을
+                            // 고른 뒤(나머지 칸과 함께) 나온다.
                             // 카드 둘레(가로 24 · 아래 18)는 Android `PassDocsRow` 의 바깥 여백 그대로다.
+                            if !model.isEditMode && model.showRestFields && model.loggedIn, let hasPass = model.receiptPass {
+                                Spacer().frame(height: 16)
+                                PendingDocsCard(
+                                    hasPass: hasPass, docs: model.pendingDocs, message: model.docsMessage,
+                                    busy: model.saving || model.saved, reading: model.readingDocs,
+                                    onOpenPass: { showPassIntro = true },
+                                    onPickPhotos: { model.addPendingPhotos($0) },
+                                    onPickPdfs: { model.addPendingPdfs($0) },
+                                    onRemove: { model.removePendingDoc($0) }
+                                )
+                                .padding(.horizontal, 24)
+                                .padding(.bottom, 18)
+                            }
                             if let id = model.editId, id > 0 {
                                 Spacer().frame(height: 16)
                                 PassDocumentsView(scheduleId: id, canAdd: true)
@@ -591,6 +610,8 @@ struct AddPlanView: View {
         VStack(spacing: 0) {
             Hairline(color: Color.black.opacity(0.1))
             SaveButton(text: model.saveButtonText, enabled: !model.saving) {
+                // 저장하면 폼이 잠기므로 적던 칸의 키보드도 내린다
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 Task { await model.save(env: env, guest: guest) }
             }
             .padding(.horizontal, 16)
@@ -905,7 +926,7 @@ private struct BackPill: View {
     }
 }
 
-/// `영수증 붙이기` 줄 — Android `ReceiptRow`(웹 f6f0405). 패스가 있으면 **누를 수 없는 안내**(저장 뒤 서류 칸에 붙인다),
+/// `영수증 붙이기` 줄 — Android `ReceiptRow`(웹 f6f0405). 패스가 있으면 **누를 수 없는 안내**(아래 서류 칸에 붙인다),
 /// 없으면 자물쇠 + 준비 패스 소개. 모양은 둘 다 `rounded-xl bg-[#f7f8f9] px-3 py-2.5`.
 private struct ReceiptRow: View {
     var hasPass: Bool
@@ -923,9 +944,10 @@ private struct ReceiptRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("영수증 붙이기").wpTypography(13.5, .bold).foregroundStyle(WPColor.fgMuted)
                 // 서류는 **수정하기에서만** 붙인다(2026-10-10) — 새 플랜은 아직 붙일 자리(일정)가 없다
+                // 새 플랜은 아래 서류 칸에 **담아 두면** 저장할 때 함께 올라간다(Android 2026-10-16) — 수정하기는 바로 올라간다
                 Text((!hasPass ? "준비 패스가 있으면 서류 칸에 붙일 수 있어요"
                       : editing ? "아래 서류 칸에 바로 붙여요"
-                      : "저장한 뒤 수정하기에서 서류 칸에 붙여요").wpKeepAll)
+                      : "아래 서류 칸에 담아 두면 저장할 때 함께 올라가요").wpKeepAll)
                     .wpTypography(12)
                     .foregroundStyle(WPColor.fgSubtle)
             }

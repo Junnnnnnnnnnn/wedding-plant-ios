@@ -1,5 +1,7 @@
 import Combine
 import Foundation
+import PhotosUI
+import SwiftUI
 import WPDomain
 import WPModels
 import WPNetworking
@@ -50,6 +52,8 @@ final class AddPlanViewModel: ObservableObject {
     @Published var saved = false
     @Published var remainingBudget: Double?
     private var resolvedRoomId: Int?
+    /// `/plan/user` 가 **성공**했고 방이 없었다 — "모른다" 와 가른다
+    private var roomKnownAbsent = false
     /// 영수증 자물쇠에서 여는 준비 패스의 방 — 저장할 방과 같다.
     var receiptRoomId: Int? { resolvedRoomId }
     /// 게스트가 플랜 3개를 이미 채웠음 → 로그인 안내 (웹 `GuestPlanLimitModal`)
@@ -70,6 +74,22 @@ final class AddPlanViewModel: ObservableObject {
     /// 영수증 줄 — `nil` 받는 중·방 모름(줄 없음) / `true` 패스 있음(안내 줄) / `false` 없음(잠금 + 소개).
     /// Android `receiptPass` 와 같은 판정(`hasPass && !expired`).
     @Published var receiptPass: Bool?
+    /// 로그인했다(게스트 저장이 아님) — 새 플랜의 서류 칸은 계정에만 낸다
+    @Published private(set) var loggedIn = false
+
+    // MARK: 저장 전에 담아 둔 서류 (새 플랜만, Android 2026-10-16)
+
+    /// 담아 둔 서류. 저장으로 일정 id 가 생기면 그 일정에 하나씩 올라간다
+    @Published private(set) var pendingDocs: [PendingDoc] = []
+    /// 담지 못한 까닭(형식 · 크기 · 개수) — 서류 칸 안에 띄운다
+    @Published private(set) var docsMessage: String?
+    /// 고른 파일을 읽는 중 — 저장은 이것을 기다린다(고르자마자 저장하면 고른 것이 빠지지 않게)
+    @Published private(set) var readingDocs = false
+    /// 저장 뒤 서류를 올리는 중 — (지금 올리는 순번, 전체). 저장 버튼 글자가 된다
+    @Published private(set) var uploadingDocs: (index: Int, total: Int)?
+    private var readers: [Task<Void, Never>] = []
+    /// 담아 둔 서류를 올리기 시작했다 — 이 뒤로는 더 담지 않는다
+    private var uploadsStarted = false
 
     let isEditMode: Bool
     let editId: Int?
@@ -151,6 +171,8 @@ final class AddPlanViewModel: ObservableObject {
     }
 
     var saveButtonText: String {
+        // 담아 둔 서류를 새 일정에 올리는 중이면 몇 번째인지 보여 기다리는 까닭을 말한다
+        if let uploadingDocs { return "서류 올리는 중 \(uploadingDocs.index + 1)/\(uploadingDocs.total)" }
         if saving { return isEditMode ? "수정 중..." : "저장 중..." }
         return isEditMode ? "수정하기" : "플랜 저장하기"
     }
@@ -159,20 +181,33 @@ final class AddPlanViewModel: ObservableObject {
 
     func load(env: AppEnvironment, guest: GuestStore) async {
         resolvedRoomId = roomId ?? env.boundRoomId
-        if resolvedRoomId == nil, await env.tokenStore.currentToken()?.isEmpty == false {
-            if let user: PlanUser = try? await env.api.send(Endpoint.user()) { resolvedRoomId = user.roomId }
+        loggedIn = await env.tokenStore.currentToken()?.isEmpty == false
+        roomKnownAbsent = false
+        if resolvedRoomId == nil, loggedIn {
+            if let user: PlanUser = try? await env.api.send(Endpoint.user()) {
+                resolvedRoomId = user.roomId
+                roomKnownAbsent = user.roomId == nil
+            }
         }
         await loadCategories(env: env)
         if let editId {
             await loadDetail(id: editId, env: env, guest: guest)
         }
         await loadReceiptPass(env: env)
+        let args = ProcessInfo.processInfo.arguments
+        if editId == nil, pendingDocs.isEmpty, args.contains("-WPDemoMode"), args.contains("-WPPendingDocsSample") {
+            pendingDocs = PendingDocReader.samples()
+        }
     }
 
     /// 영수증 줄의 패스 판정 — 저장할 방(`resolvedRoomId`)의 패스. 방을 모르거나 못 받았으면 줄을 내지 않는다
     /// (산 사람에게 자물쇠를 보이지 않게, Android `passState.loading || roomUnknown -> null`).
     func loadReceiptPass(env: AppEnvironment) async {
-        guard let room = resolvedRoomId else { receiptPass = nil; return }
+        /*
+          방이 **없다고 확인된** 혼자 쓰는 사람에게는 패스도 없다 — 잠긴 칸을 보인다(결제 직전에 서버가 방을 만든다,
+          `room/mine`). 묻지 못해 **모를 때**만 줄 · 칸을 내지 않는다(산 사람에게 자물쇠가 번쩍이지 않게).
+        */
+        guard let room = resolvedRoomId else { receiptPass = roomKnownAbsent ? false : nil; return }
         if let pass: PassState = try? await env.api.send(Endpoint.pass(roomId: room)) {
             receiptPass = pass.hasPass && !pass.expired
         } else {
@@ -423,6 +458,8 @@ final class AddPlanViewModel: ObservableObject {
         saving = true
         errorMessage = nil
         defer { saving = false }
+        // 방금 고른 파일을 읽는 중이면 마저 담고 저장한다
+        for reader in readers { await reader.value }
 
         /*
           방이 없으면 **개인 일정으로 저장한다**(Android `targetRoomAsync` · 웹 `useOwnRoomId`). 방은 초대 참여나
@@ -466,7 +503,10 @@ final class AddPlanViewModel: ObservableObject {
             if let editId {
                 try await env.api.sendIgnoringData(Endpoint.updateSchedule(id: editId, request))
             } else {
-                try await env.api.sendIgnoringData(Endpoint.createSchedule(request))
+                // POST /plan/schedule 은 `{ id }` 를 돌려준다(백엔드 PostPlanScheduleResponse) — 담아 둔 서류를 붙일 자리
+                let response = try await env.api.sendRaw(Endpoint.createSchedule(request))
+                try Self.checkEnvelope(response.body)
+                await uploadPendingDocs(env: env, scheduleId: Self.createdId(response.body))
             }
             if (Double(amount) ?? 0) > 0 {
                 var query = Endpoint.amountDetail(roomId: resolvedRoomId.map(String.init)); query.timeout = 3
@@ -476,6 +516,91 @@ final class AddPlanViewModel: ObservableObject {
         } catch {
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    // MARK: - 서류 담기
+
+    /// 고른 사진을 담아 둔다(새 플랜만). 올릴 수 없는 것은 **고른 자리에서** 거절한다.
+    func addPendingPhotos(_ items: [PhotosPickerItem]) {
+        stage { try await withThrowingTaskGroup(of: (Int, PendingDoc).self) { group in
+            for (index, item) in items.enumerated() { group.addTask { (index, try await PendingDocReader.read(item)) } }
+            var out: [(Int, Result<PendingDoc, Error>)] = []
+            while let next = await group.nextResult() {
+                switch next { case .success(let pair): out.append((pair.0, .success(pair.1))); case .failure(let e): out.append((out.count, .failure(e))) }
+            }
+            return out.sorted { $0.0 < $1.0 }.map(\.1)
+        } }
+    }
+
+    /// 고른 PDF 를 담아 둔다(파일 앱)
+    func addPendingPdfs(_ urls: [URL]) {
+        stage { urls.map { url in Result { try PendingDocReader.read(url) } } }
+    }
+
+    private func stage(_ read: @escaping () async throws -> [Result<PendingDoc, Error>]) {
+        guard editId == nil, !saved, !uploadsStarted else { return }
+        readingDocs = true
+        let task = Task { [weak self] in
+            let checked = (try? await read()) ?? [.failure(DocUploadError(message: "파일을 읽지 못했어요. 다시 선택해 주세요."))]
+            guard let self else { return }
+            guard !self.saved, !self.uploadsStarted else { PendingDocReader.discard(checked.compactMap { try? $0.get() }); return }
+            let fresh = checked.compactMap { try? $0.get() }
+            let (kept, dropped) = DocumentRules.stage(self.pendingDocs, picked: fresh)
+            PendingDocReader.discard(fresh.filter { doc in !kept.contains { $0.file == doc.file } })
+            self.pendingDocs = kept
+            self.docsMessage = dropped > 0 ? DocumentRules.stageLimitMessage
+                : checked.lazy.compactMap { result -> String? in
+                    if case .failure(let error) = result { return (error as? LocalizedError)?.errorDescription ?? "파일을 읽지 못했어요. 다시 선택해 주세요." }
+                    return nil
+                }.first
+        }
+        readers.append(task)
+        Task { [weak self] in
+            await task.value
+            self?.readers.removeAll { $0 == task }
+            self?.readingDocs = !(self?.readers.isEmpty ?? true)
+        }
+    }
+
+    /// 담아 둔 서류를 뺀다 — 아직 올리지 않았으니 되돌릴 일이 없어 묻지 않는다
+    func removePendingDoc(_ doc: PendingDoc) {
+        guard !saving, !saved else { return }
+        pendingDocs.removeAll { $0 == doc }
+        PendingDocReader.discard([doc])
+        docsMessage = nil
+    }
+
+    /**
+     담아 둔 서류를 **방금 만든 일정**에 올린다. 올리기는 화면이 아니라 `PendingDocUploader` 가 앱 수명 동안 한다 —
+     올리는 동안 탭 · 뒤로가기로 화면을 떠나도 끝까지 올리고, 못 올린 것은 거기서 알린다.
+     */
+    private func uploadPendingDocs(env: AppEnvironment, scheduleId: Int?) async {
+        let docs = pendingDocs
+        guard editId == nil, !docs.isEmpty else { return }
+        uploadsStarted = true
+        guard let scheduleId else {
+            PendingDocReader.discard(docs)
+            PendingDocUploader.shared.announce(failed: docs.count)
+            return
+        }
+        _ = await PendingDocUploader.shared.upload(env: env, scheduleId: scheduleId, docs: docs) { [weak self] index, total in
+            self?.uploadingDocs = (index, total)
+        }
+        // 다 올렸으면 진행 표시를 바로 걷는다(남은 예산을 받는 동안 `3/3` 이 남지 않게)
+        uploadingDocs = nil
+    }
+
+    /// `{ result: false }` 봉투면 서버 문장으로 실패시킨다(`sendIgnoringData` 와 같은 판정)
+    private static func checkEnvelope(_ body: Data) throws {
+        guard !body.isEmpty, let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let result = object["result"] as? Bool, !result else { return }
+        throw APIError.backend(message: (object["error"] as? String) ?? (object["message"] as? String))
+    }
+
+    private static func createdId(_ body: Data) -> Int? {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let data = object["data"] as? [String: Any] else { return nil }
+        return (data["id"] as? Int) ?? (data["id"] as? NSNumber)?.intValue ?? (data["id"] as? String).flatMap(Int.init)
     }
 
     /// 비로그인 저장 — 웹과 동일하게 **최대 3개**까지만 로컬에 담는다.

@@ -78,21 +78,7 @@ struct PassDocumentsView: View {
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
-                WPMaterialPathIcon(paths: DocIcon.folderOpenOutlined, size: 14, color: WPColor.primary)
-                Spacer().frame(width: 6)
-                // 웹 `text-[12px] text-[#7d727a]` — 굵게 쓰지 않는다
-                Text(files.isEmpty ? "서류" : "서류 \(files.count)").wpTypography(12, lineHeight: 18).foregroundStyle(WPColor.detailLabel)
-                if page != nil && !hasPass {
-                    Spacer().frame(width: 6)
-                    HStack(spacing: 4) {
-                        WPMaterialPathIcon(paths: DocIcon.lockOutlined, size: 10, color: WPColor.brand700)
-                        Text("준비 패스").wpTypography(10.5, .bold, lineHeight: 16).foregroundStyle(WPColor.brand700)
-                    }.padding(.horizontal, 8).padding(.vertical, 2).background(WPColor.brand100, in: Capsule())
-                }
-                Spacer(minLength: 0)
-            }
+        PassDocsCardChrome(count: files.count, locked: page != nil && !hasPass) {
             if page == nil {
                 // 목록을 못 받았다 — 안드로이드 `서류를 불러오지 못했어요` 줄과 같은 자리·모양. 눌러 다시 받는다
                 Button { Task { await load() } } label: {
@@ -100,45 +86,24 @@ struct PassDocumentsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).padding(.top, 12).accessibilityIdentifier("documents.retry")
             } else {
-                PassParagraph(text: description, size: 13, lineHeight: 19, color: WPColor.fgMuted).padding(.top, 12)
+                // 잠긴 칸은 설명 문단 대신 예시 타일(Android `LockedDocsPreview`, 2026-10-17 사용자 "설명보다 사진 + 레이아웃")
+                if !hasPass && !expired { LockedDocsPreview().padding(.top, 12) }
+                else { PassParagraph(text: description, size: 13, lineHeight: 19, color: WPColor.fgMuted).padding(.top, 12) }
                 if !hasPass { lockedFoot } else { tiles }
             }
-        }
-        .padding(20)
-        .background(.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(WPColor.detailBorder, lineWidth: 1))
-        .overlay { if page != nil && !hasPass { PassHighlightBorder(radius: 24) } }
-        .shadow(color: .black.opacity(0.06), radius: 1, y: 0.5)
-        // 패스가 없으면 카드 전체가 소개를 연다(안드로이드 `clickable(onOpen)`)
-        .contentShape(RoundedRectangle(cornerRadius: 24))
-        .onTapGesture { if page != nil && !hasPass { pass = true } }
+        } onOpen: { pass = true }
     }
 
     private var description: String {
         if hasPass { return canAdd ? "사진·PDF · 한 개 25MB 까지 · 방장·배우자만 볼 수 있어요" : "방장·배우자만 볼 수 있어요 · 서류는 수정하기에서 붙이고 지워요" }
-        if expired { return "\(PassDocRules.lockedDocsNote(files.count)). 전부 내려받기는 90일 동안 됩니다." }
-        return "계약서·영수증·사진을 이 일정에 보관해요. 약 3,000장까지 넉넉하게. 추가금 이야기가 나오면 바로 꺼내 보여 줄 수 있어요."
+        return "\(PassDocRules.lockedDocsNote(files.count)). 전부 내려받기는 90일 동안 됩니다."
     }
 
-    @ViewBuilder private var lockedFoot: some View {
+    private var lockedFoot: some View {
         // 끝난 뒤에도 받아 가는 길 — 위 문장이 약속한 것이다(안드로이드 `onDownloadAll`)
-        if expired, !files.isEmpty, page?.roomId != nil {
-            Button { downloadAll = true } label: {
-                HStack(spacing: 6) {
-                    WPMaterialPathIcon(paths: DocIcon.fileDownloadOutlined, size: 14, color: WPColor.fgMuted)
-                    Text("전부 내려받기").wpTypography(12.5, .bold).foregroundStyle(WPColor.fgMuted)
-                }.padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(.white, in: Capsule()).overlay(Capsule().strokeBorder(WPColor.detailBorder, lineWidth: 1))
-            }.buttonStyle(.plain).padding(.top, 12).accessibilityIdentifier("documents.downloadAll")
-        }
-        Rectangle().fill(WPColor.detailBorder).frame(height: 1).padding(.top, 16)
-        Button { pass = true } label: {
-            HStack(spacing: 0) {
-                Text(expired ? "패스 다시 켜기" : "준비 패스 알아보기").wpTypography(12.5, .bold).foregroundStyle(WPColor.docsPassLink)
-                Spacer(minLength: 8)
-                WPMaterialPathIcon(paths: DocIcon.callMade, size: 16, color: WPColor.docsPassLink)
-            }.contentShape(Rectangle())
-        }.buttonStyle(.plain).padding(.top, 14).accessibilityIdentifier("documents.pass")
+        PassDocsLockedFoot(expired: expired,
+                           onDownloadAll: expired && !files.isEmpty && page?.roomId != nil ? { downloadAll = true } : nil,
+                           onPass: { pass = true })
     }
 
     @ViewBuilder private var tiles: some View {
@@ -226,6 +191,13 @@ struct PassDocumentsView: View {
 
 // MARK: - 올리기·미리보기 공용
 
+/// 올리기 자리를 받지 못함 — 사용자 문장과 서버 사유를 함께 든다
+struct DocUploadError: LocalizedError {
+    var reason: String? = nil
+    var message: String
+    var errorDescription: String? { message }
+}
+
 /// 고른 파일 — 사진은 앨범, PDF 는 파일 앱에서 고른다(안드로이드와 같이 둘을 나눔).
 struct PickedDocument: Equatable {
     var data: Data
@@ -265,11 +237,17 @@ enum PassFileUploader {
         let slot: PassFileUpload
         do {
             slot = try await env.api.send(Endpoint.fileUpload(scheduleId: scheduleId, fileName: picked.name, contentType: picked.type, sizeBytes: picked.data.count))
-        } catch { throw APIError.backend(message: slotFailure(error)) }
+        } catch { throw DocUploadError(reason: reason(error), message: slotFailure(error)) }
         do { try await SignedStorage.upload(url: slot.uploadUrl, contentType: picked.type, bytes: picked.data) }
         catch { throw APIError.backend(message: "파일 전송에 실패했어요. 다시 시도해 주세요.") }
         do { try await env.api.sendIgnoringData(Endpoint.completeFile(slot.fileId)) }
         catch { throw APIError.backend(message: "저장을 확인하지 못했어요. 다시 시도해 주세요.") }
+    }
+    /// 서버가 준 거절 사유(`reason`) — 새 플랜의 담아 둔 서류가 남은 것을 멈출지 정한다(`DocumentRules.stopReasons`)
+    private static func reason(_ error: Error) -> String? {
+        guard case let .http(_, body)? = error as? APIError, let data = body?.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return object["reason"] as? String
     }
     /// 올리기 자리를 못 받았을 때 — 사유가 있으면 앱 문장, 서버 문장은 한국어이고 401·5xx 가 아닐 때만
     /// (안드로이드 `DocumentTransfer.uploadFailureMessage`).
@@ -1236,7 +1214,7 @@ private struct DocPrimaryButton: View {
 }
 
 /// `.plain` 은 꺼진 버튼을 한 번 더 흐리게 그려 안드로이드(알파 0.45 한 번)보다 옅어진다 — 흐림은 화면이 직접 정한다.
-private struct DocButtonStyle: ButtonStyle {
+struct DocButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { configuration.label.opacity(configuration.isPressed ? 0.85 : 1) }
 }
 

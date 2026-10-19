@@ -39,6 +39,9 @@ actor DemoTransport: HTTPTransport {
         return object["productId"] as? String
     }
 
+    /// 데모에서 올린 서류 수(파일 id 를 매기는 데만 쓴다)
+    private var uploadedFiles = 0
+
     func send(_ request: PreparedRequest) async throws -> HTTPResponse {
         try? await Task.sleep(for: latency)
 
@@ -57,6 +60,17 @@ actor DemoTransport: HTTPTransport {
             } else if path.hasSuffix("/login") || path.hasSuffix("/signup") {
                 json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
             } else { json = "{\"result\":true}" }
+        } else if path == "/plan/schedule" && request.method == .post {
+            // 새 일정 — 실제 서버처럼 `{ id }` 를 돌려줘 담아 둔 서류를 그 일정에 올린다
+            json = "{\"result\":true,\"data\":{\"id\":901}}"
+        } else if path.hasSuffix("/plan/pass/file/upload") {
+            // `-WPDocsStorageFull`: 방 용량이 찼다 — 남은 서류를 시도하지 않고 서버 문장을 그대로 알리는지 본다
+            if ProcessInfo.processInfo.arguments.contains("-WPDocsStorageFull") {
+                return HTTPResponse(status: 409, headers: ["Content-Type": "application/json"],
+                                    body: Data("{\"result\":false,\"reason\":\"STORAGE_FULL\",\"message\":\"저장 공간이 가득 찼어요.\"}".utf8))
+            }
+            uploadedFiles += 1
+            json = "{\"result\":true,\"data\":{\"fileId\":\(800 + uploadedFiles),\"uploadUrl\":\"https://demo.invalid/upload\"}}"
         } else if path.hasSuffix("/plan/place/search") {
             // 위치 검색(백엔드 카카오 프록시) — 엔터·검색 버튼이 결과를 띄우는지 보려고 한 곳만 돌려준다
             json = "{\"result\":true,\"data\":{\"total\":1,\"list\":[{\"placeName\":\"서울특별시청\",\"addressName\":\"서울 중구 태평로1가 31\",\"roadAddressName\":\"서울 중구 세종대로 110\",\"lat\":37.5663,\"lng\":126.9779}]}}"
