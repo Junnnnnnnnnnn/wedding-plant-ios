@@ -51,7 +51,11 @@ struct InvitationField: View {
     var filter: ((String) -> String)? = nil
     /// 패널 안 스크롤 자리 · 초점 알림의 이름. 같은 라벨이 둘인 칸(부모님 성함·계좌)은 따로 줍니다
     var focusID: String? = nil
+    /// 숫자·전화 키패드 칸(계좌번호). 이 칸은 안을 UIKit 칸으로 그린다 — SwiftUI `TextField` 는 키보드 위 막대를
+    /// 자기 것으로 고정해 앱의 `완료` 막대(`KeyboardDismiss`)를 달 수 없었다(2026-10-19).
+    var keyboard: UIKeyboardType? = nil
     @FocusState private var focused: Bool
+    @State private var padFocused = false
     @Environment(\.invitationFieldFocus) private var onFocus
     private var limited: Binding<String> {
         Binding(get: { text }, set: { value in
@@ -73,6 +77,13 @@ struct InvitationField: View {
             }
             // 한 줄 칸은 `axis` 없는 TextField — `axis:` 를 주면 안이 UITextView 라 앱 전체의 숫자 키패드 `완료`
             // (`KeyboardDismiss`, UITextField 편집 알림으로 붙임)가 계좌번호 칸에 붙지 않았습니다
+            if let keyboard {
+                InvitationPadField(text: limited, placeholder: placeholder, keyboard: keyboard, identifier: identifier, label: label,
+                                   focused: $padFocused)
+                    .padding(.horizontal, 12).padding(.vertical, 10).frame(minHeight: 46, alignment: .leading)
+                    .background(padFocused ? WPColor.invWhite : WPColor.invPaper, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(padFocused ? WPColor.invAccent : WPColor.invLine, lineWidth: padFocused ? 2 : 1))
+            } else {
             Group {
                 if multiline { TextField("", text: limited, prompt: prompt, axis: .vertical) }
                 else { TextField("", text: limited, prompt: prompt) }
@@ -83,8 +94,10 @@ struct InvitationField: View {
                 .background(focused ? WPColor.invWhite : WPColor.invPaper, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(focused ? WPColor.invAccent : WPColor.invLine, lineWidth: focused ? 2 : 1))
                 .focused($focused).accessibilityLabel(label).accessibilityIdentifier(identifier)
+            }
         }.padding(.top, top).id(key)
             .onChange(of: focused) { _, value in onFocus?(key, value) }
+            .onChange(of: padFocused) { _, value in onFocus?(key, value) }
     }
 }
 /// 안드로이드 `OutlineButton` — 초록 1px 테두리 · 흰 바탕 · 높이 40 · r10 · 글자 12 bold accent.
@@ -258,4 +271,50 @@ struct InvitationLayoutPanel: View {
             .buttonStyle(.plain).foregroundStyle(WPColor.invAccent).opacity(enabled ? 1 : 0.45).disabled(!enabled)
     }
     private func move(_ from: Int, _ to: Int) { guard sections.indices.contains(from), sections.indices.contains(to) else { return }; draft.design?.sections.swapAt(from, to) }
+}
+
+/// 청첩장 편집기의 숫자·전화 키패드 칸 — UIKit 칸이라 앱 전체 `완료` 막대(`KeyboardDismiss`)가 붙는다.
+/// 글꼴·색·자리표시는 SwiftUI 칸(`InvitationField`)과 같다.
+private struct InvitationPadField: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+    var keyboard: UIKeyboardType
+    var identifier: String
+    var label: String
+    @Binding var focused: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        field.font = UIFont(name: "KakaoSmallSans-Regular", size: 16) ?? .systemFont(ofSize: 16)
+        field.textColor = UIColor(WPColor.invInk)
+        field.tintColor = UIColor(WPColor.invAccent)
+        return field
+    }
+    func updateUIView(_ field: UITextField, context: Context) {
+        context.coordinator.parent = self
+        if field.text != text { field.text = text }
+        field.keyboardType = keyboard
+        field.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [
+            .font: UIFont(name: "KakaoSmallSans-Regular", size: 16) ?? .systemFont(ofSize: 16),
+            .foregroundColor: UIColor(WPColor.invPlaceholder),
+        ])
+        field.accessibilityIdentifier = identifier
+        field.accessibilityLabel = label
+    }
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: InvitationPadField
+        init(_ parent: InvitationPadField) { self.parent = parent }
+        @objc func changed(_ field: UITextField) {
+            parent.text = field.text ?? ""
+            // 거른 값(숫자와 - 만 · 길이)이 다르면 칸에도 되돌린다
+            if field.text != parent.text { field.text = parent.text }
+        }
+        func textFieldDidBeginEditing(_ textField: UITextField) { parent.focused = true }
+        func textFieldDidEndEditing(_ textField: UITextField) { parent.focused = false }
+    }
 }

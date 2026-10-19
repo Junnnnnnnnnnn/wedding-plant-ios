@@ -30,6 +30,7 @@ final class KeyboardDismiss: NSObject, UIGestureRecognizerDelegate {
                 if let window = note.object as? UIWindow { KeyboardDismiss.shared.install(on: window) }
             }
         }
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
         for scene in UIApplication.shared.connectedScenes {
             (scene as? UIWindowScene)?.windows.forEach { install(on: $0) }
         }
@@ -67,23 +68,81 @@ final class KeyboardDismiss: NSObject, UIGestureRecognizerDelegate {
 
     private static let doneBarTag = 0x57505F44 // "WP_D"
 
+    /// 키보드가 올라오는 순간 한 번 더 — SwiftUI 칸은 편집 시작 뒤에 자기 보조 막대를 끼워 앞의 것을 덮는다
+    @objc private func keyboardWillShow() {
+        if let field = UIResponder.wpCurrentFirstResponder as? UITextField { attachDoneIfNeeded(to: field) }
+    }
+
     private func attachDoneIfNeeded(to field: UITextField) {
-        guard Self.padTypes.contains(field.keyboardType) else { return }
+        guard Self.padTypes.contains(field.keyboardType), field.inputAccessoryView?.tag != Self.doneBarTag else { return }
         /*
-          SwiftUI `TextField` 에는 SwiftUI 가 자기 보조 막대(키보드 툴바)를 끼우고 다시 그릴 때마다 되돌린다 —
-          여기서 바꿔 끼워도 곧 사라진다. 그래서 **이미 막대가 있으면 손대지 않고**, SwiftUI 숫자 칸이 있는 화면은
-          `.wpKeyboardDone()`(SwiftUI 키보드 툴바)로 `완료` 를 단다. 여기는 직접 만든 UIKit 칸(`WPTmoneyInput`) 몫이다.
+          SwiftUI `TextField` 에는 SwiftUI 의 보조 막대 생성기(`InputAccessoryGenerator…`)가 들어 있는데, 앱은
+          `.toolbar(placement: .keyboard)` 를 쓰지 않아 늘 비어 있다 — 그것은 바꿔 끼운다. 직접 단 다른 막대는 둔다.
+          iOS 기본 막대(UIToolbar)는 iOS 26 에서 파란 알약 하나로 그려져 앱과 어울리지 않아(2026-10-19 사용자) 직접 그린다.
         */
-        if field.inputAccessoryView != nil { return }
-        let bar = UIToolbar(frame: CGRect(x: 0, y: 0, width: field.window?.bounds.width ?? 390, height: 44))
+        if let existing = field.inputAccessoryView, !String(describing: type(of: existing)).contains("InputAccessory") { return }
+        let bar = DoneBar(width: field.window?.bounds.width ?? UIScreen.main.bounds.width) { [weak field] in
+            field?.resignFirstResponder()
+        }
         bar.tag = Self.doneBarTag
-        let done = UIBarButtonItem(title: "완료", style: .done, target: field, action: #selector(UIResponder.resignFirstResponder))
-        done.accessibilityIdentifier = "keyboard.done"
-        bar.items = [UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil), done]
-        bar.sizeToFit()
         field.inputAccessoryView = bar
         field.reloadInputViews()
     }
+}
+
+/// 숫자 키패드 위 `완료` 막대 — 폭 전체 흰 면 · 위 구분선 · 오른쪽 분홍 굵은 `완료`(앱의 글자 단추와 같은 글꼴·색)
+private final class DoneBar: UIView {
+    private let action: () -> Void
+
+    init(width: CGFloat, action: @escaping () -> Void) {
+        self.action = action
+        super.init(frame: CGRect(x: 0, y: 0, width: width, height: 48))
+        autoresizingMask = .flexibleWidth
+        backgroundColor = .white
+
+        let line = UIView()
+        line.backgroundColor = UIColor(red: 0xEC / 255, green: 0xE7 / 255, blue: 0xEA / 255, alpha: 1)
+        line.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(line)
+
+        let button = UIButton(type: .system)
+        var config = UIButton.Configuration.plain()
+        config.attributedTitle = AttributedString("완료", attributes: AttributeContainer([
+            .font: WPTypeface.hak.uiFont(16, .bold),
+            .foregroundColor: UIColor(red: 0xEE / 255, green: 0x2B / 255, blue: 0x8C / 255, alpha: 1),
+        ]))
+        config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
+        button.configuration = config
+        button.accessibilityIdentifier = "keyboard.done"
+        button.addAction(UIAction { [weak self] _ in self?.action() }, for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(button)
+
+        NSLayoutConstraint.activate([
+            line.topAnchor.constraint(equalTo: topAnchor),
+            line.leadingAnchor.constraint(equalTo: leadingAnchor),
+            line.trailingAnchor.constraint(equalTo: trailingAnchor),
+            line.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+            button.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            button.topAnchor.constraint(equalTo: topAnchor),
+            button.bottomAnchor.constraint(equalTo: bottomAnchor),
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 72),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+    override var intrinsicContentSize: CGSize { CGSize(width: UIView.noIntrinsicMetric, height: 48) }
+}
+
+extension UIResponder {
+    private nonisolated(unsafe) static weak var found: UIResponder?
+    /// 지금 초점이 있는 응답자(키보드를 띄운 칸)
+    static var wpCurrentFirstResponder: UIResponder? {
+        found = nil
+        UIApplication.shared.sendAction(#selector(wpCaptureFirstResponder), to: nil, from: nil, for: nil)
+        return found
+    }
+    @objc private func wpCaptureFirstResponder() { UIResponder.found = self }
 }
 
 import SwiftUI

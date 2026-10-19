@@ -157,8 +157,8 @@ struct InvitationEditorView: View {
                 if on { focusedField = key } else if focusedField == key { focusedField = nil }
             }
         }
-        // 계좌번호(전화 키패드)에는 리턴 키가 없다 — 그 칸에 있을 때만 키보드 위 `완료`
-        .wpKeyboardDone(focusedField?.hasSuffix(".number") == true).ignoresSafeArea(.keyboard, edges: .bottom).background(WPColor.invPaper.ignoresSafeArea()).overlay {
+        // 숫자 칸의 `완료` 는 앱 전체 `KeyboardDismiss` 가 단다
+        .ignoresSafeArea(.keyboard, edges: .bottom).background(WPColor.invPaper.ignoresSafeArea()).overlay {
             if layoutOpen {
                 ZStack(alignment: .bottom) {
                     Color.black.opacity(0.32).ignoresSafeArea().onTapGesture { layoutOpen = false }
@@ -407,7 +407,7 @@ struct InvitationEditorView: View {
                         InvitationField(label: "예금주", text: design.accounts[index].name, identifier: "invitation.account.\(index).name", placeholder: account.role == "신랑" ? (draft.groom.isEmpty ? "성함" : draft.groom) : account.role == "신부" ? (draft.bride.isEmpty ? "성함" : draft.bride) : "성함", max: 20, top: 10, focusID: "account.\(index).name")
                         InvitationField(label: "은행", text: design.accounts[index].bank, identifier: "invitation.account.\(index).bank", max: 20, top: 10, focusID: "account.\(index).bank")
                     }
-                    InvitationField(label: "계좌번호", text: design.accounts[index].number, identifier: "invitation.account.\(index).number", placeholder: "숫자와 - 만", max: 30, top: 10, filter: { $0.filter { $0.isNumber || $0 == "-" } }, focusID: "account.\(index).number").keyboardType(.phonePad)
+                    InvitationField(label: "계좌번호", text: design.accounts[index].number, identifier: "invitation.account.\(index).number", placeholder: "숫자와 - 만", max: 30, top: 10, filter: { $0.filter { $0.isNumber || $0 == "-" } }, focusID: "account.\(index).number", keyboard: .phonePad)
                 }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(WPColor.invGarden, in: RoundedRectangle(cornerRadius: 12)).padding(.top, 12)
             }
             note("은행과 계좌번호까지 적은 줄만 하객에게 보여요 — 공개한 청첩장의 주소를 아는 누구나 볼 수 있어요. 이 칸을 꺼 두면 적어 둔 계좌도 공개 청첩장에 실리지 않아요.")
