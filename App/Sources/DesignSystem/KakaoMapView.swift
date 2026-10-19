@@ -14,6 +14,8 @@ struct KakaoMapView: View {
     let longitude: Double
     var zoomLevel: Int = 16
     var onMapClick: ((Double, Double) -> Void)? = nil
+    /// 실패했을 때 SDK 안내 대신 그릴 것(Android `errorContent` — 청첩장은 "카카오 지도에서 위치 보기" 자리를 그대로 둡니다)
+    var failure: AnyView? = nil
 
     @State private var phase: KakaoMapPhase = KakaoMapSDK.ensure() ? .loading : .failed(KakaoMapSDK.missingKeyMessage)
 
@@ -31,10 +33,12 @@ struct KakaoMapView: View {
                     ProgressView().tint(WPColor.primary)
                 }.allowsHitTesting(false)
             case .failed(let message):
+                if let failure { failure } else {
                 ZStack {
                     WPColor.stone100
                     Text(message).font(WPFont.hak(13)).foregroundStyle(WPColor.stone500)
                         .multilineTextAlignment(.center).padding(16)
+                }
                 }
             case .ready:
                 EmptyView()

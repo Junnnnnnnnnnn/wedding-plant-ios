@@ -186,18 +186,22 @@ struct InvitationLocation: View {
                 }
             }
             if !location.guide.isEmpty { row("HOW") { Text(location.guide).wpTypography(13, face: .kakao, lineHeight: 24.7).padding(.vertical, -3) } }
-            Button { openMap("https://map.kakao.com/link/search/") } label: {
-                VStack(spacing: 12) {
-                    InvIconView(query.isEmpty ? InvIcon.leaf : InvIcon.mapPin, size: 27, color: p.placeholderDark, weight: 1)
-                    Text("두 사람에게 오는 길").font(.custom("KakaoSmallSans-Regular", size: 12))
-                    Text(query.isEmpty ? "장소를 적으면 지도로 이어져요" : "카카오맵에서 \(content.venue.isEmpty ? address : content.venue) 찾기").font(.custom("KakaoSmallSans-Regular", size: 10))
-                }.foregroundStyle(p.placeholderDark).frame(maxWidth: .infinity).frame(height: 164)
-                    .background(p.placeholder).overlay { HatchLines().stroke(p.ink.opacity(0.08), lineWidth: 1).clipped() }
-                    .overlay(Rectangle().stroke(p.rule))
-            }.buttonStyle(.plain).allowsHitTesting(!editing && !query.isEmpty).padding(.top, 12)
+            // Android `InvitationLocationMap`(558f031) — 주소가 있으면 그 자리의 카카오 지도(220, 고정 · 끌기·확대 없음)를,
+            // 없거나 찾지 못하면 안내 자리를 그린다. 하객 화면에서 누르면 카카오맵으로, 편집 중에는 바깥 칸이 입력을 연다.
+            InvitationLocationMap(content: content, address: address, query: query, palette: p)
+                .overlay {
+                    if !query.isEmpty {
+                        Color.clear.contentShape(Rectangle())
+                            .onTapGesture { openMap("https://map.kakao.com/link/search/") }
+                            .accessibilityElement().accessibilityAddTraits(.isButton)
+                            .accessibilityLabel("\(content.venue.isEmpty ? address : content.venue) 카카오 지도")
+                            .allowsHitTesting(!editing)
+                    }
+                }
+                .padding(.top, 12)
             if !query.isEmpty {
                 HStack(spacing: 8) {
-                    mapButton("네이버 지도") { openMap("https://map.naver.com/p/search/") }
+                    mapButton("카카오 지도") { openMap("https://map.kakao.com/link/search/") }
                     if !address.isEmpty { mapButton("주소 복사") { UIPasteboard.general.string = address; toast("예식장 주소를 복사했어요") } }
                 }.padding(.top, 8).allowsHitTesting(!editing)
             }
@@ -216,16 +220,51 @@ struct InvitationLocation: View {
         if let encoded = query.addingPercentEncoding(withAllowedCharacters: .alphanumerics), let url = URL(string: base + encoded) { openURL(url) }
     }
 }
-private struct HatchLines: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path(); let diag = rect.width + rect.height, dx = cos(Double.pi * 35 / 180), dy = sin(Double.pi * 35 / 180)
-        for d in stride(from: -diag, to: diag, by: 33) {
-            let x = d * dy, y = -d * dx + rect.height / 2
-            path.move(to: CGPoint(x: x - dx * diag, y: y - dy * diag)); path.addLine(to: CGPoint(x: x + dx * diag, y: y + dy * diag))
+/// 오시는 길의 지도 칸 — 좌표를 찾으면 카카오 지도, 아니면 안내(Android `fallback()` 과 같은 문구)
+private struct InvitationLocationMap: View {
+    let content: InvitationContent
+    let address: String
+    let query: String
+    let palette: InvitationPalette
+    @StateObject private var resolver = InvitationLocationResolver()
+
+    var body: some View {
+        let point = resolver.address == address ? resolver.point : nil
+        ZStack {
+            palette.placeholder
+            if let point {
+                KakaoMapView(latitude: point.latitude, longitude: point.longitude, zoomLevel: 16, failure: AnyView(fallback))
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            } else {
+                fallback
+            }
         }
-        return path
+        .frame(maxWidth: .infinity).frame(height: 220)
+        .clipped()
+        .overlay(Rectangle().stroke(palette.rule))
+        .onAppear { resolver.load(address) }
+        .onChange(of: address) { _, value in resolver.load(value) }
+    }
+
+    private var loading: Bool { !address.isEmpty && (resolver.address != address || resolver.loading) }
+
+    private var fallback: some View {
+        VStack(spacing: 12) {
+            InvIconView(query.isEmpty ? InvIcon.leaf : InvIcon.mapPin, size: 27, color: palette.placeholderDark, weight: 1)
+            Text(query.isEmpty ? "두 사람에게 오는 길" : loading ? "지도를 불러오고 있어요" : "카카오 지도에서 위치 보기")
+                .font(.custom("KakaoSmallSans-Regular", size: 12))
+            Text(query.isEmpty ? "장소를 적으면 지도로 이어져요" : (content.venue.isEmpty ? address : content.venue))
+                .font(.custom("KakaoSmallSans-Regular", size: 10))
+        }
+        .multilineTextAlignment(.center)
+        .foregroundStyle(palette.placeholderDark)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(palette.placeholder)
     }
 }
+
 
 struct InvitationAccounts: View {
     let content: InvitationContent

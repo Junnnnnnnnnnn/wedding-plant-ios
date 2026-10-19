@@ -371,7 +371,7 @@ struct InvitationEditorView: View {
             }
             InvitationField(label: "", text: design.location.address, placeholder: "도로명 주소", max: 120, top: 6)
             InvitationField(label: "교통·주차 안내", text: design.location.guide, multiline: true, placeholder: "지하철 ○호선 ○○역 3번 출구에서 걸어서 5분\n건물 지하 주차장 2시간 무료", max: 500)
-            note("지도 버튼은 주소로(없으면 예식장 이름으로) 카카오맵·네이버 지도를 열어요.")
+            note("주소를 적으면 카카오 지도가 표시돼요. 하객 화면에서 지도나 버튼을 누르면 카카오맵으로 이어져요.")
         }
     }
 
