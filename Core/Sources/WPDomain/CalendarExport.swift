@@ -28,7 +28,7 @@ public struct ExportDoc: Sendable {
     }
 }
 public enum CalendarExport {
-    public static let samplePlan = ExportPlanInfo(couple: "지수 · 민호", weddingDate: KstDate(dateString: "2027-03-13"), budget: 4000, venue: "그랜드 라온홀")
+    public static let samplePlan = ExportPlanInfo(couple: "미주 · 현진", weddingDate: KstDate(dateString: "2027-03-13"), budget: 4000, venue: "그랜드 라온홀")
     /// The same 17 fictional schedules as Android CalendarExport.examples.
     public static var examples: [ScheduleItem] {
         func e(_ id: Int, _ category: String, _ title: String, _ amount: Double?, _ date: String?, _ time: String?, _ done: Bool, _ paid: Bool?) -> ScheduleItem {

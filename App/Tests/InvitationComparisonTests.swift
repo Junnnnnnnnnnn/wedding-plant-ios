@@ -67,7 +67,7 @@ final class InvitationComparisonTests: XCTestCase {
         d.accounts[0].bank = "국민"; d.accounts[0].number = "123-456-7890"
         d.accounts[3].bank = "신한"; d.accounts[3].number = "110-222-333444"
         let photo = Bundle.main.url(forResource: "pass_invite_portrait", withExtension: "png")?.absoluteString
-        return .init(slug: "ZXhhbXBsZUB3ZWRkaW5ncGxhbnQuYXBw", template: "garden", title: "우리, 결혼합니다", bride: "한채원", groom: "정우진", weddingDate: "2026-11-14", weddingTime: "13:00", venue: "웨딩플랜트 가든홀", message: InvitationRules.draft().message, photos: (0..<photoCount).map { .init(key: "invitation/7/\($0).jpg", url: photo) }, design: d, published: published, updatedAt: "2026-10-08T05:12:33.123Z")
+        return .init(slug: "ZXhhbXBsZUB3ZWRkaW5ncGxhbnQuYXBw", template: "garden", title: "우리, 결혼합니다", bride: InvitationRules.exampleBride, groom: InvitationRules.exampleGroom, weddingDate: "2026-11-14", weddingTime: "13:00", venue: "웨딩플랜트 가든홀", message: InvitationRules.draft().message, photos: (0..<photoCount).map { .init(key: "invitation/7/\($0).jpg", url: photo) }, design: d, published: published, updatedAt: "2026-10-08T05:12:33.123Z")
     }
     @MainActor private func capture<V: View>(_ view: V, name: String, top: CGFloat = 0, bottom: CGFloat = 24, scrolls: [CGFloat] = [0]) async throws {
         let controller = UIHostingController(rootView: view.padding(.top, top).padding(.bottom, bottom).background(.white).environment(\.brandStatusInset, 48).environment(\.locale, Locale(identifier: "ko_KR")))

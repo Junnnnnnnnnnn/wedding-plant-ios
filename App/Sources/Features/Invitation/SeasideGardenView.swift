@@ -9,8 +9,8 @@ struct SeasideGardenView: UIViewRepresentable {
     var demo = false
     var empty = false
     var peek = false
-    var groom = "정우진"
-    var bride = "이채원"
+    var groom = InvitationRules.exampleGroom
+    var bride = InvitationRules.exampleBride
     var script: [String]? = nil
     var labelNote: String? = nil
     var emptySeats = false
@@ -50,7 +50,7 @@ final class GardenCanvas: UIView {
     private var extraEmptySeats: Bool
     private static let demoWishes: [InvitationWish] = {
         let names = ["지은","수아","민재","외숙모","하린","할머니","도윤","서연","큰아버지","유나","준호","이모"]
-        let messages = ["결혼 축하해요!","채원아 너무 예뻐","우진아 장가 간다!","두 분 행복하세요","식장에서 봐요","평생 지금처럼 웃으며 살아라","축하 축하!","오래오래 다정하게","잘 살아라","두 사람의 모든 계절을 응원해","신혼여행 사진 꼭 보여줘","예쁜 가정 이루렴"]
+        let messages = ["결혼 축하해요!","미주야 너무 예뻐","현진아 장가 간다!","두 분 행복하세요","식장에서 봐요","평생 지금처럼 웃으며 살아라","축하 축하!","오래오래 다정하게","잘 살아라","두 사람의 모든 계절을 응원해","신혼여행 사진 꼭 보여줘","예쁜 가정 이루렴"]
         let avatars = [2,4,6,12,9,18,0,7,15,3,10,13]
         return names.indices.map { InvitationWish(id: "example-landing-\($0)", name: names[$0], message: messages[$0], avatar: avatars[$0]) }
     }()
@@ -83,7 +83,7 @@ final class GardenCanvas: UIView {
         speaker.font = dialog.font; speaker.textColor = dialog.textColor; speaker.backgroundColor = dialog.backgroundColor
         speaker.textColor = dialog.backgroundColor
         speaker.backgroundColor = UIColor(red: 0.937, green: 0.855, blue: 0.647, alpha: 1)
-        nameplate.update(title: demo ? "우진 & 채원 · 축하의 정원" : empty ? "축하의 정원" : "\(groom) & \(bride) · 축하의 정원", note: labelNote ?? (demo ? "예시" : empty ? "하객 0명" : nil))
+        nameplate.update(title: demo ? "\(InvitationRules.exampleGroom) & \(InvitationRules.exampleBride) · 축하의 정원" : empty ? "축하의 정원" : "\(groom) & \(bride) · 축하의 정원", note: labelNote ?? (demo ? "예시" : empty ? "하객 0명" : nil))
         addSubview(nameplate)
         speaker.text = demo ? "웨딩플랜트" : "정원지기"
         speaker.textAlignment = .center
@@ -117,7 +117,7 @@ final class GardenCanvas: UIView {
             advanceDialog()
         }
         extraEmptySeats = emptySeats
-        nameplate.update(title: demo ? "우진 & 채원 · 축하의 정원" : empty ? "축하의 정원" : "\(groom) & \(bride) · 축하의 정원", note: labelNote ?? (demo ? "예시" : empty ? "하객 0명" : nil))
+        nameplate.update(title: demo ? "\(InvitationRules.exampleGroom) & \(InvitationRules.exampleBride) · 축하의 정원" : empty ? "축하의 정원" : "\(groom) & \(bride) · 축하의 정원", note: labelNote ?? (demo ? "예시" : empty ? "하객 0명" : nil))
         setNeedsLayout(); setNeedsDisplay()
     }
     override func didMoveToWindow() {

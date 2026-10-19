@@ -83,7 +83,7 @@ struct InvitationStudioView: View {
                         }.padding(32)
                     case .landing, .empty, .mine:
                         SeasideGardenView(wishes: model.wishes, demo: model.state == .landing, empty: model.state == .empty,
-                            groom: model.result?.invitation?.groom ?? "정우진", bride: model.result?.invitation?.bride ?? "한채원",
+                            groom: model.result?.invitation?.groom ?? InvitationRules.exampleGroom, bride: model.result?.invitation?.bride ?? InvitationRules.exampleBride,
                             script: model.state == .mine ? InvitationRules.mineLines(published: published, guestbookOn: guestbookOn, guests: model.total) : nil,
                             labelNote: model.state == .mine ? InvitationRules.mineLabelNote(published: published, guests: model.total) : nil,
                             emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total), motionEnabled: motionEnabled)
@@ -128,7 +128,7 @@ struct InvitationStudioView: View {
         }.foregroundStyle(Color(hex: 0x173C2F))
     }
     static var example: InvitationContent {
-        var result = InvitationRules.draft(); result.groom = "정우진"; result.bride = "한채원"
+        var result = InvitationRules.draft(); result.groom = InvitationRules.exampleGroom; result.bride = InvitationRules.exampleBride
         result.title = "우리의 계절이 피어나는 날"
         result.message = "서로의 계절이 되어 주기로 했습니다.\n봄의 설렘과 여름의 다정함으로\n오래도록 나란히 걷겠습니다.\n그 첫걸음에 함께해 주세요."
         result.weddingDate = "2027-05-22"; result.weddingTime = "13:00"; result.venue = "웨딩플랜트 가든홀"
@@ -138,7 +138,7 @@ struct InvitationStudioView: View {
         result.design?.location.guide = "지하철을 타고 오시면 역에서 걸어서 5분이에요.\n건물 지하 주차장을 2시간 무료로 쓰실 수 있어요."
         result.design?.notice.title = "안내 말씀"
         result.design?.notice.body = "예식이 끝나면 2층 연회장에서 식사를 준비했어요.\n화환은 정중히 사양합니다. 마음만 감사히 받을게요."
-        for (index, name) in ["정우진", "정민호", "이수정", "한채원", "한상우", "오지혜"].enumerated() where index < (result.design?.accounts.count ?? 0) { result.design?.accounts[index].name = name }
+        for (index, name) in [InvitationRules.exampleGroom, "정민호", "이수정", InvitationRules.exampleBride, "한상우", "오지혜"].enumerated() where index < (result.design?.accounts.count ?? 0) { result.design?.accounts[index].name = name }
         return result
     }
 

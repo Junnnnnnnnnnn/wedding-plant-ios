@@ -151,7 +151,7 @@
       toast('결제일 7일 전 알림을 설정했어요',3800);
     }
     function invitation() {
-      const accent='#788357',name=typed('우진 & 채원',now,1600,120),x=15,y=68.5,w=174;
+      const accent='#788357',name=typed('현진 & 미주',now,1600,120),x=15,y=68.5,w=174;
       text('우리의 청첩장',x,y,10,'#677b4b',true);text('대표 사진',x,y+23,7,'#a2aa8a');
       pulse(x,y+36.5,w,46,900,accent,()=>{box(x,y+36.5,w,46,7,'#ffffff99','#d7dccb');c.save();c.globalAlpha*=1-progress(time,1150,250);const tw=width('사진 넣기',8)+18;icon('photo',x+(w-tw)/2,y+52.5,14,'#9aa67e');text('사진 넣기',x+(w-tw)/2+18,y+53.5,8,'#a2aa8a');c.restore();photo(x+4,y+40.5,w-8,38,5,ease(progress(time,1150,400)));});
       field('청첩장 제목',name,'',x,y+89.5,w,'#d7dccb',now>=1600&&now<=2940&&Math.floor(now/330)%2===0);button('청첩장 만들기',x,y+139,accent,3100,null,'arrow',false,w);

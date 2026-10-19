@@ -61,7 +61,7 @@ public final class SeasideEngine {
         let step = floor(u * 4) / 4
         return first ? 1 - 0.5 * step : 0.5 + 0.5 * step
     }
-    public init(groom: String = "정우진", bride: String = "이채원", wishes: [InvitationWish] = [], quietCouple: Bool = false, seed: UInt64 = 42) {
+    public init(groom: String = InvitationRules.exampleGroom, bride: String = InvitationRules.exampleBride, wishes: [InvitationWish] = [], quietCouple: Bool = false, seed: UInt64 = 42) {
         self.quietCouple = quietCouple; randomState = seed
         actors = Self.positions.enumerated().map { Actor(id: $0.offset, position: $0.element) }
         for a in actors {

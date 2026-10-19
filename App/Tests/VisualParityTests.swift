@@ -1,6 +1,7 @@
 import XCTest
 import SwiftUI
 import WPModels
+import WPDomain
 import WPNetworking
 import WPUtils
 @testable import WeddingPlant
@@ -13,7 +14,7 @@ final class VisualParityTests: XCTestCase {
         let controller = UIViewController(); controller.view.backgroundColor = .white
         let header = UIView(frame: CGRect(x: 0, y: 0, width: width, height: 170)); header.backgroundColor = UIColor(WPColor.primary)
         controller.view.addSubview(header)
-        let garden = GardenCanvas(wishes: [], demo: true, empty: false, peek: false, groom: "정우진", bride: "한채원")
+        let garden = GardenCanvas(wishes: [], demo: true, empty: false, peek: false, groom: InvitationRules.exampleGroom, bride: InvitationRules.exampleBride)
         garden.frame = CGRect(x: 0, y: 182, width: width, height: width * 440 / 320)
         controller.view.addSubview(garden)
         let window = UIWindow(frame: CGRect(origin: .zero, size: size)); window.rootViewController = controller; window.isHidden = false
@@ -165,7 +166,7 @@ final class VisualParityTests: XCTestCase {
 }
 
 private struct StaticGardenFixture: UIViewRepresentable {
-    func makeUIView(context: Context) -> GardenCanvas { GardenCanvas(wishes: [], demo: false, empty: true, peek: false, groom: "정우진", bride: "한채원", motionEnabled: false) }
+    func makeUIView(context: Context) -> GardenCanvas { GardenCanvas(wishes: [], demo: false, empty: true, peek: false, groom: InvitationRules.exampleGroom, bride: InvitationRules.exampleBride, motionEnabled: false) }
     func updateUIView(_ uiView: GardenCanvas, context: Context) {}
 }
 

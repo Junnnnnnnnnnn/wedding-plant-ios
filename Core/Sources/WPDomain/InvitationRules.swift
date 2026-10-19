@@ -3,6 +3,10 @@ import WPModels
 import WPUtils
 
 public enum InvitationRules {
+    /// 예시 청첩장의 두 사람 — 신랑 현진 · 신부 미주, **성은 붙이지 않습니다**(Android `EXAMPLE_GROOM`·웹 `INVITATION`,
+    /// 2026-10-18 사용자 "사람 이름이 들어가는 건 전부 신랑 현진 신부 미주로"). 그 전에는 지어낸 정우진 · 한채원이었습니다.
+    public static let exampleGroom = "현진"
+    public static let exampleBride = "미주"
     public static let photoLimit = 20
     public static let sectionTypes = ["message", "couple", "gallery", "calendar", "location", "notice", "accounts", "guestbook"]
     public static let sectionLabels = ["초대의 말", "신랑 · 신부", "사진첩", "예식 일시", "오시는 길", "안내 말씀", "계좌 입력", "댓글 관리"]
