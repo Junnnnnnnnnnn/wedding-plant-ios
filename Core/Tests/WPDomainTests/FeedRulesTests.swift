@@ -79,6 +79,15 @@ final class FeedRulesTests: XCTestCase {
         XCTAssertNil(FeedRules.kakaoMapLink(post(lat: nil, lng: nil)))
     }
 
+    func test_제목의_쉼표와_빗금은_링크를_가르지_않는다() {
+        let item = post(lat: 37.5, lng: 127.0, title: "라뮈에, 스튜디오/본점")
+        let url = FeedRules.kakaoMapLink(item)!.absoluteString
+        let last = url.components(separatedBy: "/link/map/").last!
+        XCTAssertEqual(last.filter { $0 == "," }.count, 2, "날 쉼표는 제목 · 위도 · 경도를 가르는 둘뿐(Android FeedMapConfirmTest)")
+        XCTAssertTrue(last.hasPrefix("%EB%9D%BC%EB%AE%88%EC%97%90%2C%20"), last)
+        XCTAssertTrue(last.contains("%2F"), last)
+    }
+
     func test_좌표_0_0_은_없음이다() {
         // 카카오 검색으로 고르지 않으면 0 이 들어간다 — **해외 장소가 그렇게 저장된다.**
         // null 만 걸러 내면 기니 만 앞바다에 마커가 찍힌 빈 지도가 그려진다.

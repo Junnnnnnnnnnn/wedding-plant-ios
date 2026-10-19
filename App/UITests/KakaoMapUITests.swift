@@ -44,7 +44,10 @@ final class KakaoMapUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         for _ in 0..<6 { if card.isHittable { break }; app.swipeUp() }
         card.tap()
-        assertMapLoaded(app)
+        // 후기 상세의 지도는 손을 받지 않고(확인창을 거쳐 밖으로) 위의 누름 면이 이름을 든다 — 지도 자리는 그 면으로 찾는다
+        XCTAssertTrue(app.descendants(matching: .any)["feed.detail.map"].firstMatch.waitForExistence(timeout: 10))
+        sleep(6)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '지도를 불러오지 못했어요'")).firstMatch.exists, "카카오맵 인증·로딩 실패")
         capture(app, "kakao-map-feed-detail")
     }
 

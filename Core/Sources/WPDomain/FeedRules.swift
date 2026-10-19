@@ -78,10 +78,15 @@ public enum FeedRules {
         guard post.hasCoordinates, let lat = post.lat, let lng = post.lng else { return nil }
         let name = post.title.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty,
-              let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+              let encoded = name.addingPercentEncoding(withAllowedCharacters: linkNameAllowed)
         else { return nil }
         return URL(string: "https://map.kakao.com/link/map/\(encoded),\(lat),\(lng)")
     }
+
+    /// 링크의 이름 칸에 그대로 둘 글자 — Android `Uri.encode` 와 같은 집합. 경로의 쉼표는 이름 · 위도 · 경도를 가르는
+    /// 둘뿐이어야 해서, 제목의 `,` 는 `%2C`, `/` 는 `%2F` 로 바꿉니다(`.urlQueryAllowed` 는 둘 다 그대로 둬 위치가 어긋났습니다).
+    private static let linkNameAllowed = CharacterSet(charactersIn:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-!.~'()*")
 
     // MARK: - 시세 자
 
