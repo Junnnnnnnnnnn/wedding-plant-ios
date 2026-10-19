@@ -97,6 +97,8 @@ struct AddPlanView: View {
                     }
                 }
                 .scrollIndicators(.hidden)
+                // 폼을 아래로 끌면 키보드가 따라 내려간다(2026-10-19 사용자 — 편하게 내리는 길)
+                .scrollDismissesKeyboard(.interactively)
                 .defaultScrollAnchor(scrollAnchor)
 
                 // 저장 바는 스크롤 영역 **밖**에 붙는다. 안에 두면 목록 맨 끝까지

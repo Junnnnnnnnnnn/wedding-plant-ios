@@ -45,6 +45,8 @@ struct UserView: View {
             }
             .padding(.bottom, 24)
         }
+        // 아래로 끌면 키보드가 따라 내려간다(플랜 추가와 같음)
+        .scrollDismissesKeyboard(.interactively)
         .background(WPColor.background)
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)

@@ -18,6 +18,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(
         _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // 키보드를 편하게 내리는 앱 전체 규칙(바깥 탭 · 숫자 키패드 `완료`) — `KeyboardDismiss`
+        MainActor.assumeIsolated { KeyboardDismiss.shared.start() }
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         Task { @MainActor in

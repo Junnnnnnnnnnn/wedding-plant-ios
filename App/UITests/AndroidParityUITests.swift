@@ -275,6 +275,20 @@ final class AndroidParityUITests: XCTestCase {
         waitForExpectations(timeout: 5)
         XCTAssertTrue(app.buttons["tab.home"].isSelected)
     }
+    /// 막 가입해 방이 아직 없는 사람도 플랜을 만든다 — 개인 일정으로 저장(Android `targetRoomAsync`, 2026-10-19 심사용 새 계정에서 막혔다)
+    func testCreatePlanWithoutRoomSavesPersonally() {
+        let app = launch(["-WPNoRoom"]); app.buttons["tab.add"].tap()
+        let title = app.textFields["addplan.title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5)); title.tap(); title.typeText("스튜디오 계약")
+        let category = app.buttons["스튜디오"].firstMatch
+        XCTAssertTrue(category.waitForExistence(timeout: 5)); category.tap()
+        let cash = app.buttons["현금"]
+        for _ in 0..<3 { if cash.isHittable { break }; app.swipeUp() }
+        cash.tap()
+        app.buttons["addplan.save"].tap()
+        XCTAssertTrue(app.staticTexts["플랜이 등록되었어요"].waitForExistence(timeout: 10), "방이 없어도 저장돼야 한다")
+        XCTAssertFalse(app.staticTexts["플랜을 불러오지 못했어요. 화면을 다시 열어 주세요."].exists)
+    }
     func testOnboardingPermissionsCanBeSkipped() {
         let app = launch(["-WPForceOnboarding"])
         let next = app.buttons["setting.next"]

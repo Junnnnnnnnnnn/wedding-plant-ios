@@ -112,7 +112,10 @@ actor DemoTransport: HTTPTransport {
         } else if path == "/plan/room/1" {
             json = DemoData.user
         } else if path.hasSuffix("/plan/user") {
-            json = newUser ? DemoData.newUser : DemoData.user
+            // `-WPNoRoom`: 막 가입해 혼자 쓰는 사람 — 방은 초대 참여·패스 결제 때 생겨 아직 없다
+            json = newUser ? DemoData.newUser
+                : ProcessInfo.processInfo.arguments.contains("-WPNoRoom") ? DemoData.user.replacingOccurrences(of: "\"roomId\":1,", with: "")
+                : DemoData.user
         } else if path.hasSuffix("/plan/schedule/calendar") {
             json = DemoData.calendar(query: request.url.query)
         } else if path.contains("/plan/schedule/") && !path.hasSuffix("/list") {
@@ -139,7 +142,7 @@ actor DemoTransport: HTTPTransport {
             // 대화 기록: /plan/chat/{chatRoomId}
             json = DemoData.chatHistory
         } else if path.hasSuffix("/plan/room/list") {
-            json = ProcessInfo.processInfo.arguments.contains("-WPSolo") ? "{\"result\":true,\"data\":{\"list\":[]}}" : DemoData.roomList
+            json = ProcessInfo.processInfo.arguments.contains("-WPSolo") || ProcessInfo.processInfo.arguments.contains("-WPNoRoom") ? "{\"result\":true,\"data\":{\"list\":[]}}" : DemoData.roomList
         } else if path.hasSuffix("/plan/room/share-code") {
             json = "{\"result\":true,\"data\":{\"shareCode\":\"demo-invite\",\"canInvite\":true}}"
         } else if path.hasSuffix("/plan/feed/list") {

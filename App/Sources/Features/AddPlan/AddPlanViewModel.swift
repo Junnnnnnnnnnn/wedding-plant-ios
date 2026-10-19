@@ -424,9 +424,17 @@ final class AddPlanViewModel: ObservableObject {
         errorMessage = nil
         defer { saving = false }
 
+        /*
+          방이 없으면 **개인 일정으로 저장한다**(Android `targetRoomAsync` · 웹 `useOwnRoomId`). 방은 초대 참여나
+          패스 결제 때 생겨서, 막 가입해 혼자 쓰는 사람은 방이 없다 — 예전에는 여기서 저장을 막아 그런 사람은
+          플랜을 하나도 만들 수 없었다(2026-10-19 심사용 새 계정). 홈도 방이 없으면 개인 목록을 읽는다.
+          화면을 열 때 묻지 못했을 수 있으니 저장 직전에 한 번 더 묻는다.
+        */
         if !isEditMode && resolvedRoomId == nil {
-            errorMessage = "플랜을 불러오지 못했어요. 화면을 다시 열어 주세요."
-            return
+            resolvedRoomId = env.boundRoomId
+            if resolvedRoomId == nil, let user: PlanUser = try? await env.api.send(Endpoint.user()) {
+                resolvedRoomId = user.roomId
+            }
         }
         let request = ScheduleWriteRequest(
             categoryName: category.name,
