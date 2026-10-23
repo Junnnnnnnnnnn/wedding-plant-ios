@@ -20,6 +20,9 @@ final class CategoryPickerParityUITests: XCTestCase {
     }
 
     private func dismissKeyboard(_ app: XCUIApplication) {
+        // 타일처럼 칸 바깥을 누르면 이미 내려가 있다(`KeyboardDismiss`, 2026-10-19 — 안드로이드 `clearFocusOnTap`)
+        sleep(1)
+        guard app.keyboards.firstMatch.exists else { return }
         // 키보드의 검색(return) — 칸이 초점을 놓아 키보드가 내려갑니다
         app.textFields["category.search"].typeText("\n")
         sleep(1)
@@ -38,6 +41,9 @@ final class CategoryPickerParityUITests: XCTestCase {
 
         // 최근 선택을 Android 캡처와 같게(웨딩홀 · 드레스) 만든다
         for name in ["드레스", "웨딩홀"] {
+            // 시트가 내려가는 동안에는 줄이 가려져 있다 — 눌릴 수 있을 때까지 기다린다
+            expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: open)
+            waitForExpectations(timeout: 10)
             open.tap()
             let item = tile(app, name)
             XCTAssertTrue(item.waitForExistence(timeout: 5)); item.tap()
@@ -96,7 +102,7 @@ final class CategoryPickerParityUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["tab.add"].waitForExistence(timeout: 10)); app.buttons["tab.add"].tap()
         let title = app.textFields["addplan.title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 5)); title.tap(); title.typeText("신혼집 준비\n")
+        XCTAssertTrue(title.waitForExistence(timeout: 15)); title.tap(); title.typeText("신혼집 준비\n")
         let open = app.buttons["addplan.category"]
         XCTAssertTrue(open.waitForExistence(timeout: 5)); open.tap()
         let heading = app.staticTexts["카테고리를 골라주세요"]
@@ -105,11 +111,12 @@ final class CategoryPickerParityUITests: XCTestCase {
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         // 목록을 내린다
         let list = app.scrollViews.element(boundBy: app.scrollViews.count - 1)
-        list.swipeUp(); list.swipeUp()
+        // 한 번만 천천히 — 빠르게 두 번 밀면 관성으로 내려간 거리가 매번 달라 아래의 끌기로 맨 위까지 못 올 때가 있다
+        list.swipeUp(velocity: .slow)
         XCTAssertFalse(first.isHittable, "목록이 내려가 첫 타일이 가려져야 한다")
         // 붙여 둔 제목을 잡고 아래로 끈다
         let start = heading.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 260)))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 360)))
         sleep(1)
         XCTAssertTrue(heading.exists, "목록을 내려 둔 채 머리를 끌면 시트가 닫히면 안 된다")
         XCTAssertTrue(first.waitForExistence(timeout: 3) && first.isHittable, "목록이 맨 위로 올라와야 한다")
