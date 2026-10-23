@@ -82,11 +82,11 @@ struct ScheduleDetailView: View {
         .task { await model.load(env: env, guest: guest) }
         .sheet(isPresented: $showChatShare) { ShareScheduleSheet(scheduleId: model.scheduleId, title: model.detail?.title ?? "") }
         .sheet(isPresented: $showFeed) {
-            FeedPostSheet(initialScheduleId: model.scheduleId) {
+            FeedPostSheet(initialScheduleId: model.scheduleId, onPosted: {
                 // 올렸으면 목록에서 빠진다 — 다시 받으면 피드 줄이 접힌다(안드로이드와 같음)
                 showFeed = false
                 Task { await model.loadPostables(env: env) }
-            }
+            })
         }
         .fullScreenCover(isPresented: $showEdit) {
             // 수정은 추가와 같은 화면이다. editId 만 넘기면 상세를 불러와 채운다.

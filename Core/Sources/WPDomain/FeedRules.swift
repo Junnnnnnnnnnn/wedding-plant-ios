@@ -151,4 +151,59 @@ public enum FeedRules {
 
         return OptimisticVote(myVote: tapped.rawValue, helpfulCount: count, isCancel: false)
     }
+
+    // MARK: - 카테고리 칩 (2026-10-22 — 올라온 후기에 있는 것만)
+
+    /// 칩 줄. 서버 목록(`GET /plan/feed/categories`, 많이 올라온 순) 그대로이되, **고른 카테고리가 목록에서 빠졌으면 끝에
+    /// 남겨 둔다** — 마지막 후기를 내려 칩까지 사라지면 무엇으로 걸러 보고 있는지도, `전체` 로 돌아가는 길도 안 보인다
+    /// (웹 `feedCategoryChips` · 안드로이드 `FeedCategories.chips`).
+    public static func chips(_ categories: [String], selected: String?) -> [String] {
+        guard let selected, !categories.contains(selected) else { return categories }
+        return categories + [selected]
+    }
+
+    // MARK: - 후기 사진 (최대 3장, WebP)
+
+    public static let maxPhotos = 3
+    /// 긴 변 상한(작으면 그대로)
+    public static let photoMaxEdge = 1280
+    /// 한 장 상한 1MB — 품질을 0.8 → 0.65 → 0.5 로 낮춰도 넘으면 거절
+    public static let photoMaxBytes = 1_048_576
+    public static let photoQualities: [Float] = [80, 65, 50]
+    public static let photoTooLarge = "사진이 너무 커요. 다른 사진을 골라 주세요."
+    public static let photoUnreadable = "이 사진은 열 수 없어요. JPG · PNG 사진으로 골라 주세요."
+
+    /// 고른 사진 중 담을 수: 남은 칸만큼 앞에서부터. 넘게 골랐으면 안내 문장도 준다.
+    public static func acceptPhotos(existing: Int, picked: Int) -> (count: Int, note: String?) {
+        let available = max(0, maxPhotos - existing)
+        let count = min(picked, available)
+        return (count, picked > available ? "사진은 \(maxPhotos)장까지예요. 앞의 \(count)장만 담았어요." : nil)
+    }
+
+    // MARK: - 고치기 (PATCH /plan/feed/{id})
+
+    /// 고치기 본문. 업체는 처음과 달라졌을 때만, 사진은 **보낼 키 목록이 연 순간의 키와 순서까지 다를 때만** 싣는다
+    /// (생략과 null 은 서로 다른 변경이다 — 사진을 건드리지 않으면 다른 기기에서 더한 사진을 덮지 않는다).
+    public static func editRequest(rating: Int, body: String, isAmountPublic: Bool, authorRole: String,
+                                   initialPlace: FeedPlace?, place: FeedPlace?,
+                                   baseImages: [String], images: [String]) -> FeedEditRequest {
+        let placeChange: FeedEditRequest.PlaceChange
+        if place == initialPlace { placeChange = .unchanged } else if let place { placeChange = .set(place) } else { placeChange = .cleared }
+        return FeedEditRequest(rating: rating, body: body, isAmountPublic: isAmountPublic, authorRole: authorRole,
+                               place: placeChange, images: images == baseImages ? nil : (images, baseImages))
+    }
+
+    /// 고치기 · 올리기 실패 문장(웹 `FeedPostModal` · 안드로이드 `FeedPostEditor.handleFailure`).
+    public enum EditFailure {
+        public static let photoRetry = "사진을 다시 올려야 해요. 한 번 더 눌러 주세요."
+        public static let notEditable = "이 후기는 고칠 수 없어요. 이미 내렸거나 가려진 후기예요."
+        public static let saveFailed = "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        public static let deleteFailed = "내리지 못했습니다. 잠시 후 다시 시도해 주세요."
+        public static let rebased = "다른 곳에서 이 후기의 사진이 바뀌어 지금 사진으로 다시 불러왔어요. 확인하고 한 번 더 눌러 주세요."
+        public static let changedElsewhere = "다른 곳에서 이 후기를 고쳤어요. 창을 닫고 다시 열어 주세요."
+        public static let slotUnavailable = "사진 보관소가 아직 연결되지 않았어요. 사진 없이 올려 주세요."
+        public static let slotFailed = "사진을 올릴 자리를 받지 못했어요. 잠시 후 다시 시도해 주세요."
+        public static let putFailed = "사진을 올리지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+        public static let photoReasons: Set<String> = ["PHOTO_NOT_UPLOADED", "PHOTO_NOT_WEBP"]
+    }
 }

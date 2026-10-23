@@ -48,6 +48,12 @@ actor DemoTransport: HTTPTransport {
         let path = request.url.path
         let json: String
 
+        // 견적 후기(올리기 · 고치기 · 내리기 · 사진 자리 · 칩)는 상태를 든 쪽이 맡는다
+        if path.contains("/plan/feed") || path.hasSuffix("/plan/place/search") || path.contains("/plan/moderation/"),
+           let handled = await DemoFeedStore.shared.respond(path: path, method: request.method, url: request.url, body: request.body) {
+            return HTTPResponse(status: handled.status, headers: ["Content-Type": "application/json"], body: Data(handled.json.utf8))
+        }
+
         if path.contains("/plan/auth/email/") {
             if path.hasSuffix("/check") {
                 let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: String]
@@ -73,7 +79,7 @@ actor DemoTransport: HTTPTransport {
             json = "{\"result\":true,\"data\":{\"fileId\":\(800 + uploadedFiles),\"uploadUrl\":\"https://demo.invalid/upload\"}}"
         } else if path.hasSuffix("/plan/place/search") {
             // 위치 검색(백엔드 카카오 프록시) — 엔터·검색 버튼이 결과를 띄우는지 보려고 한 곳만 돌려준다
-            json = "{\"result\":true,\"data\":{\"total\":1,\"list\":[{\"placeName\":\"서울특별시청\",\"addressName\":\"서울 중구 태평로1가 31\",\"roadAddressName\":\"서울 중구 세종대로 110\",\"lat\":37.5663,\"lng\":126.9779}]}}"
+            json = "{\"result\":true,\"data\":{\"total\":1,\"list\":[{\"placeId\":\"8001\",\"placeName\":\"서울특별시청\",\"addressName\":\"서울 중구 태평로1가 31\",\"roadAddressName\":\"서울 중구 세종대로 110\",\"lat\":37.5663,\"lng\":126.9779}]}}"
         } else if path.hasSuffix("/plan/my-invitation") {
             if request.method == .put, let data = request.body,
                var body = try JSONSerialization.jsonObject(with: data) as? [String: Any] {

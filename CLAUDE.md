@@ -120,6 +120,23 @@ Apple 지도(MapKit)를 쓰지 않는다 — 사용자 결정. `KakaoMapsSDK`(SP
   "지도를 불러오지 못했어요" 를 낸다(빈 회색 상자로 두지 않는다).
 - 시뮬레이터에서도 돈다(xcframework 에 simulator 조각이 있음) — `KakaoMapUITests` 가 세 화면을 확인한다.
 
+### 견적 후기 — 내 후기 고치기 · 사진 · 칩 (Android v40 · v41, 2026-10-23)
+
+Android `4a785da` · `55d40d0`(웹 `36e4712` · `6e0d6f8` · `0641491`) 이식. 확인은 `FeedParityUITests`(데모 `-WPFeedParity`)·
+`FeedEditorTests`·Core `FeedEditTests`, Android 와 나란한 캡처는 `docs/test-reports/2026-10-23-feed-parity/compare/`.
+
+- **내 후기에는 담기 · 투표가 없다** — `도움이 됐어요 N`(누를 수 없음) · `수정하기` · `공유하기`. 서버가 자기 글 투표를 아직
+  막지 않아 화면에서 없앤다. 상세 바닥은 `후기 수정하기`.
+- 올리기와 고치기는 **같은 시트**(`FeedPostSheet` + `FeedPostEditor`). 고치기 본문은 `FeedRules.editRequest` 한 곳 — 업체는
+  바뀌었을 때만, 사진은 **보낼 키가 연 순간의 키와 순서까지 다를 때만** `images` + `baseImages` 를 싣는다(별점만 고쳤는데
+  사진을 보내면 다른 기기에서 더한 사진이 지워진다). 409 `FEED_CHANGED` 면 서버의 지금 사진 + 새로 고른 사진으로 다시
+  맞춘다. 올리거나 내리는 동안 시트는 닫히지 않는다.
+- 사진은 **WebP 만**(`FeedPhotoPrep`, 긴 변 1280 · 품질 80→65→50 · 1MB). iOS ImageIO 는 WebP 를 쓰지 못해 libwebp
+  (SPM `libwebp-Xcode`)로 굽는다 — 원본(JPEG · HEIC)을 그대로 올리는 길을 만들지 말 것. 사진 권한은 묻지 않는다(PhotosPicker).
+- 칩은 `GET /plan/feed/categories`(올라온 후기에 있는 것만, 서버 순서). 고른 칩이 빠지면 끝에 남긴다(`FeedRules.chips`).
+  올림 · 내림 · 목록 신고 · 상세 신고 뒤에 다시 센다.
+- 업체 고르기는 `/plan/place/search` 프록시 — 일정을 고르면 그 좌표와 맞는 결과만 저절로 고른다.
+
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 
 안드로이드 `PassBilling`·`PassViewModel.purchase` 와 같은 순서다. 판정·문장은 `Core/Sources/WPDomain/PassPurchaseRules.swift`,

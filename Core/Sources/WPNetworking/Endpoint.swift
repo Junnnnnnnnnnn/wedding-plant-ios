@@ -326,9 +326,8 @@ public enum Endpoint {
 
     /// `GET /plan/place/search` — 장소 키워드 검색 (백엔드 프록시).
     ///
-    /// - Important: 이 엔드포인트는 **아직 백엔드에 없다.** 호출하면 404 가 온다.
-    ///   화면은 안내 문구로 처리하고, 서버에 생기면 그대로 붙게 만들 것.
-    ///   (카카오 REST 키를 앱 번들에 넣지 않으려고 프록시로 가는 설계다)
+    /// 카카오 REST 키는 서버에만 둔다. 결과의 `placeId` 로 후기가 같은 업체를 묶는다.
+    /// (카카오 REST 키를 앱 번들에 넣지 않으려고 프록시로 가는 설계다)
     public static func searchPlaces(query: String, size: Int = 10) -> HTTPRequest {
         HTTPRequest(
             path: "/plan/place/search",
@@ -423,6 +422,33 @@ public enum Endpoint {
     /// `POST /plan/feed` — 완료한 일정에 별점과 한 줄을 얹는다.
     public static func createFeedPost(_ body: FeedPostRequest) throws -> HTTPRequest {
         try .json(.post, "/plan/feed", body: body)
+    }
+
+    /// `GET /plan/feed/categories` — 피드 칩. **공개 후기가 있는 카테고리만**, 서버가 센 순서(많이 올라온 순) 그대로.
+    /// 토큰을 실으면 내가 차단 · 신고한 글을 뺀 수라 피드 목록과 같은 기준이다(칩을 눌러 빈 목록이 열리지 않는다).
+    public static func feedCategories() -> HTTPRequest {
+        HTTPRequest(path: "/plan/feed/categories")
+    }
+
+    /// `GET /plan/feed/public/{id}` — 후기 한 장. 토큰을 실어야 내 후기의 `imageKeys` 가 온다(409 뒤 다시 맞출 때).
+    public static func feedPost(id: Int) -> HTTPRequest {
+        HTTPRequest(path: "/plan/feed/public/\(id)")
+    }
+
+    /// `PATCH /plan/feed/{id}` — 내 후기 고치기. 응답은 고친 `FeedPost` 하나.
+    public static func updateFeedPost(id: Int, _ body: FeedEditRequest) throws -> HTTPRequest {
+        try .json(.patch, "/plan/feed/\(id)", body: body)
+    }
+
+    /// `DELETE /plan/feed/{id}` — 내 후기 내리기. 사진도 서버가 R2 에서 지운다. **404 는 성공으로 본다**(이미 내려감).
+    public static func deleteFeedPost(id: Int) -> HTTPRequest {
+        HTTPRequest(method: .delete, path: "/plan/feed/\(id)")
+    }
+
+    /// `POST /plan/feed/image` — 사진 한 장의 자리(WebP 만). 한 사람 하루 30장(넘으면 429), 보관소가 없으면 503.
+    public static func createFeedImage(sizeBytes: Int) throws -> HTTPRequest {
+        struct Body: Encodable { let contentType = "image/webp"; let sizeBytes: Int }
+        return try .json(.post, "/plan/feed/image", body: Body(sizeBytes: sizeBytes))
     }
 
     /// `POST /plan/feed/{id}/vote` — 도움이 돼요 / 안 돼요.

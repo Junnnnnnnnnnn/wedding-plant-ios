@@ -21,6 +21,8 @@ struct FeedView: View {
     @StateObject private var model = FeedViewModel()
     @State private var path = NavigationPath()
     @State private var showPostSheet = false
+    /// 목록 카드의 `수정하기` 로 연 내 후기
+    @State private var editing: FeedPost?
     @State private var copyPost: FeedPost?
     /// 탭 셸 위에 플랜 추가·수정을 연다(탭바가 남음 — Android `ADD_PLAN`). 셸 밖·다른 창 위면 예전처럼 전체 화면.
     @Environment(\.addPlanPresenter) private var addPlanPresenter
@@ -28,7 +30,11 @@ struct FeedView: View {
     var body: some View {
         NavigationStack(path: $path) {
             content
-        }.onChange(of: env.moderationRevision) { _, _ in Task { await model.load(env: env, replace: true) } }
+        }.onChange(of: env.moderationRevision) { _, _ in
+            // 다른 화면의 신고 · 차단 — 그 작성자의 다른 카테고리 글까지 빠지므로 칩도 다시 센다
+            Task { await model.load(env: env, replace: true) }
+            Task { await model.loadCategories(env: env) }
+        }
     }
 
     private var content: some View {
@@ -60,7 +66,8 @@ struct FeedView: View {
                                                                                                      amount: post.amount, location: post.title))) ?? false
                                     if !opened { copyPost = post }
                                 },
-                                onHidden: { model.hide(post.id) }
+                                onHidden: { Task { await model.hideAndRecount(post.id, env: env) } },
+                                onEdit: { editing = post }
                             )
                             if AdRules.adAfter(index: index, count: model.posts.count, first: 3, every: 8) {
                                 NativeAdSlot(placement: "feed.\(index)", style: .feed, horizontal: 16, top: 8, bottom: 8)
@@ -92,11 +99,15 @@ struct FeedView: View {
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            await model.loadCategories(env: env)
-            await model.load(env: env, replace: true)
+            async let chips: Void = model.loadCategories(env: env)
+            async let list: Void = model.load(env: env, replace: true)
+            _ = await (chips, list)
         }
         .navigationDestination(for: FeedPost.self) { post in
-            FeedDetailView(post: post, onUpdate: { model.replace($0) }, onHidden: { model.hide($0) })
+            FeedDetailView(post: post, onUpdate: { model.replace($0) },
+                           onHidden: { id in Task { await model.hideAndRecount(id, env: env) } },
+                           onSaved: { saved in Task { await model.applyEdited(saved, env: env) } },
+                           onDeleted: { id in Task { await model.applyDeleted(id, env: env) } })
         }
         .fullScreenCover(item: $copyPost) { post in
             AddPlanView(prefill: .init(title: post.title, categoryName: post.categoryName,
@@ -106,10 +117,15 @@ struct FeedView: View {
         }
         // 후기 작성은 별도 라우트가 아니라 **완료한 일정에서 여는 모달**이다.
         .sheet(isPresented: $showPostSheet) {
-            FeedPostSheet {
-                Task { await model.load(env: env, replace: true) }
-            }
-            .environmentObject(env)
+            FeedPostSheet(onPosted: { Task { await model.refreshAfterPost(env: env) } })
+                .environmentObject(env)
+        }
+        // 내 후기 고치기 — 올리기와 같은 시트를 고치기로 연다(웹 `FeedPostModal` 의 `editing`)
+        .sheet(item: $editing) { post in
+            FeedPostSheet(editing: post,
+                          onSaved: { saved in Task { await model.applyEdited(saved, env: env) } },
+                          onDeleted: { id in Task { await model.applyDeleted(id, env: env) } })
+                .environmentObject(env)
         }
     }
 
@@ -152,7 +168,8 @@ struct FeedView: View {
                 chip(label: "전체", selected: model.category == nil) {
                     Task { await model.setCategory(nil, env: env) }
                 }
-                ForEach(model.categories, id: \.self) { name in
+                // 고른 칩이 서버 목록에서 빠졌으면 끝에 남긴다 — 무엇으로 걸러 보는지, `전체` 로 돌아갈 길이 보이게
+                ForEach(FeedRules.chips(model.categories, selected: model.category), id: \.self) { name in
                     chip(label: name, selected: model.category == name) {
                         Task { await model.setCategory(name, env: env) }
                     }
@@ -237,6 +254,8 @@ struct FeedCard: View {
     var onCopy: () -> Void
     /// 신고·차단이 끝나 이 글을 목록에서 치울 때
     var onHidden: () -> Void = {}
+    /// 내 후기의 `수정하기`
+    var onEdit: () -> Void = {}
 
     @Environment(\.openURL) private var openURL
 
@@ -272,6 +291,11 @@ struct FeedCard: View {
                         .wpTypography(12.5, lineHeight: 20)
                         .foregroundStyle(Self.warmMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if !post.images.isEmpty {
+                    Spacer().frame(height: 10)
+                    FeedThumbnails(images: post.images)
                 }
 
                 Spacer().frame(height: 12)
@@ -363,19 +387,32 @@ struct FeedCard: View {
 
     /// **"도움이 안 돼요" 수는 절대 공개하지 않는다.** 정직하게 올린 후기에
     /// "안 돼요 12" 가 박히면 다음 사람이 안 올린다 — 아이콘만 둔다.
+    ///
+    /// **내 후기**는 `도움이 됐어요 N`(누를 수 없음) · `수정하기` · `공유하기` 만 — 내 글에 담기 · 투표가 있는 건
+    /// 맞지 않는다(2026-10-22 사용자 지적, 웹 `FeedCard`). 남의 후기는 투표 · 담기 · 공유.
     private var actionRow: some View {
         FlowRow(spacing: 8, lineSpacing: 8, verticalAlignment: .center) {
-            helpfulButton
-            notHelpfulButton
-            Button(action: onCopy) {
+            if post.isMine {
+                HelpfulCount(count: post.helpfulCount)
+            } else {
+                helpfulButton
+                notHelpfulButton
+            }
+            // 내 글은 원래 일정이 있으므로 담기 대신 수정한다
+            Button(action: post.isMine ? onEdit : onCopy) {
                 HStack(spacing: 4) {
-                    WPMaterialIcon(kind: .plus).frame(width: 14, height: 14)
-                    Text("내 플랜에 담기").wpTypography(12.5, .bold)
+                    if post.isMine {
+                        WPMaterialPathIcon(paths: FeedOutlinedPaths.edit, size: 14, color: WPColor.primary)
+                    } else {
+                        WPMaterialIcon(kind: .plus).frame(width: 14, height: 14)
+                    }
+                    Text(post.isMine ? "수정하기" : "내 플랜에 담기").wpTypography(12.5, .bold).lineLimit(1).fixedSize()
                 }.foregroundStyle(WPColor.primary)
                     .padding(.horizontal, 12).padding(.vertical, 6)
                     .background(Color.white, in: Capsule())
                     .overlay(Capsule().strokeBorder(WPColor.primary.opacity(0.2), lineWidth: 1))
-            }.buttonStyle(.plain).accessibilityIdentifier("feed.copy.\(post.id)")
+            }.buttonStyle(.plain).accessibilityIdentifier(post.isMine ? "feed.edit.\(post.id)" : "feed.copy.\(post.id)")
+            FeedShareButton(post: post)
         }
     }
 

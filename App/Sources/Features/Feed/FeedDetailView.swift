@@ -9,8 +9,9 @@ import WPUtils
 /// 짜임은 **지도 머리 → 머리글 → 회색 금액 카드(시세 자 포함) → 후기 → 투표 → 바닥 담기**다.
 /// 예전 iOS 는 분홍 머리 면에 제목을 얹어 안드로이드와 다른 화면이었다.
 ///
-/// ## 백엔드에 단건 조회가 없다
-/// 목록이 받아 둔 항목을 그대로 넘긴다 — `NavigationStack` 이 값을 실어 나른다.
+/// ## 목록이 받아 둔 항목을 그대로 넘긴다
+/// `NavigationStack` 이 값을 실어 나른다. 내 후기면 바닥이 `후기 수정하기` 이고, 고치면 서버 응답으로 화면을 바로
+/// 바꾼다(다시 받지 않음 — 업체를 바꿔 좌표가 달라졌으면 지도를 새 좌표로 다시 그린다). 내리면 목록으로 돌아간다.
 ///
 /// ## 지도
 /// **좌표가 없으면 지도 블록을 통째로 내지 않는다** — 정보가 없는데 168pt 를 먹는다.
@@ -24,6 +25,10 @@ struct FeedDetailView: View {
     var onUpdate: (FeedPost) -> Void = { _ in }
     /// 신고·차단으로 숨긴 글 — 목록이 같은 글을 지우게 알린다
     var onHidden: (Int) -> Void = { _ in }
+    /// 고친 내 후기 — 목록 카드도 같은 값으로
+    var onSaved: (FeedPost) -> Void = { _ in }
+    /// 내린 내 후기 — 목록에서 빼고 칩을 다시 센다
+    var onDeleted: (Int) -> Void = { _ in }
 
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
@@ -35,10 +40,12 @@ struct FeedDetailView: View {
     @State private var votePending = false
     @State private var showAddPlan = false
     @State private var mapConfirmOpen = false
+    @State private var editing: FeedPost?
     /// 탭 셸 위에 플랜 추가·수정을 연다(탭바가 남음 — Android `ADD_PLAN`). 셸 밖·다른 창 위면 예전처럼 전체 화면.
     @Environment(\.addPlanPresenter) private var addPlanPresenter
 
     private var item: FeedPost { current ?? post }
+    private var statsKey: String { "\(item.id)|\(item.categoryName)|\(item.amount.map { "\($0)" } ?? "-")" }
     private var statusBar: CGFloat { statusInset ?? wpStatusBarHeight }
 
     private static let muted = Color(hex: 0x9C9299)
@@ -84,10 +91,23 @@ struct FeedDetailView: View {
         .navigationBarBackButtonHidden()
         // Android 후기 상세(`FEED_DETAIL`)에는 하단 탭바가 없습니다
         .wpHidesTabBar()
-        .task {
-            // 금액이 비공개면 비교할 값이 없어 부르지도 않는다.
-            guard post.amount != nil, !post.categoryName.isEmpty else { return }
-            stats = try? await env.api.send(Endpoint.feedStats(categoryName: post.categoryName), decoding: FeedCategoryStats.self)
+        .task(id: statsKey) {
+            // 금액이 비공개면 비교할 값이 없어 부르지도 않는다. 고쳐서 금액을 가렸으면 자도 걷는다.
+            stats = nil
+            guard item.amount != nil, !item.categoryName.isEmpty else { return }
+            stats = try? await env.api.send(Endpoint.feedStats(categoryName: item.categoryName), decoding: FeedCategoryStats.self)
+        }
+        .sheet(item: $editing) { post in
+            FeedPostSheet(editing: post,
+                          onSaved: { saved in
+                              current = saved
+                              onSaved(saved)
+                          },
+                          onDeleted: { id in
+                              onDeleted(id)
+                              dismiss()
+                          })
+                .environmentObject(env)
         }
         .fullScreenCover(isPresented: $showAddPlan) {
             // 리텐션 축은 코어로 되돌리는 것 — 카테고리·업체명·금액이 채워진 채로 연다.
@@ -124,6 +144,8 @@ struct FeedDetailView: View {
             KakaoMapView(latitude: lat, longitude: lng, zoomLevel: 15)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
+                // 업체를 바꿔 고치면 새 좌표로 다시 그린다
+                .id("\(lat),\(lng)")
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { mapConfirmOpen = true }
@@ -252,6 +274,7 @@ struct FeedDetailView: View {
                 Text(text).wpTypography(14, lineHeight: 24.5).foregroundStyle(Color(hex: 0x3D3138))
                     .fixedSize(horizontal: false, vertical: true)
             }
+            FeedPhotoGrid(post: item)
             Color.clear.frame(height: 20)
             Hairline()
             Color.clear.frame(height: 16)
@@ -284,11 +307,17 @@ struct FeedDetailView: View {
 
     // MARK: - 투표
 
+    /// 내 후기는 누를 수 없는 `도움이 됐어요 N` 한 줄. 끝에 `공유하기`(안드로이드 b64cfe7 — 웹 상세는 업체명 줄 오른쪽).
     private var voteRow: some View {
-        HStack(spacing: 8) {
-            votePill("도움이 돼요 \(item.helpfulCount)", kind: .thumbUp, vote: .helpful)
-            // "안 돼요" 수는 화면에 절대 내지 않는다.
-            votePill("도움이 안 돼요", kind: .thumbDown, vote: .notHelpful)
+        FlowRow(spacing: 8, lineSpacing: 8, verticalAlignment: .center) {
+            if item.isMine {
+                HelpfulCount(count: item.helpfulCount)
+            } else {
+                votePill("도움이 돼요 \(item.helpfulCount)", kind: .thumbUp, vote: .helpful)
+                // "안 돼요" 수는 화면에 절대 내지 않는다.
+                votePill("도움이 안 돼요", kind: .thumbDown, vote: .notHelpful)
+            }
+            FeedShareButton(post: item)
         }
         .padding(.horizontal, 20).padding(.top, 20)
     }
@@ -311,7 +340,7 @@ struct FeedDetailView: View {
 
     /// 목록과 같은 규칙 — 같은 값을 다시 누르면 취소, 낙관적으로 그린다.
     private func vote(_ value: FeedRules.Vote) async {
-        guard !votePending else { return }
+        guard !item.isMine, !votePending else { return }
         let before = item
         let next = FeedRules.applyVote(current: before.myVote, helpfulCount: before.helpfulCount, tapped: value)
         var optimistic = before
@@ -340,19 +369,21 @@ struct FeedDetailView: View {
         VStack(spacing: 0) {
             Hairline()
             Button {
+                // 내 후기는 원래 일정이 있으므로 담기 대신 고친다(같은 분홍 면 · 같은 높이)
+                if item.isMine { editing = item; return }
                 let opened = addPlanPresenter?.open(AddPlanRequest(prefill: .init(title: item.title, categoryName: item.categoryName,
                                                                                   amount: item.amount, location: item.title))) ?? false
                 if !opened { showAddPlan = true }
             } label: {
                 HStack(spacing: 8) {
-                    WPMaterialPathIcon(paths: FeedIconPaths.add, size: 18, color: .white)
-                    Text("내 플랜에 담기").wpTypography(15, .bold).foregroundStyle(.white)
+                    WPMaterialPathIcon(paths: item.isMine ? FeedOutlinedPaths.edit : FeedIconPaths.add, size: 18, color: .white)
+                    Text(item.isMine ? "후기 수정하기" : "내 플랜에 담기").wpTypography(15, .bold).foregroundStyle(.white)
                 }
                 .frame(maxWidth: .infinity).frame(height: 52)
                 .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("feed.detail.copy")
+            .accessibilityIdentifier(item.isMine ? "feed.detail.edit" : "feed.detail.copy")
             .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20)
         }
         .background(Color.white)

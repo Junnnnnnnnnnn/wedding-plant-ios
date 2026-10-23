@@ -46,6 +46,12 @@ packages:
     url: https://github.com/kakao-mapsSDK/KakaoMapsSDK-SPM.git
     from: "2.12.19"
 
+  # 견적 후기 사진은 **WebP 만** 받는다(서버 검사 · R2 무료 용량). iOS ImageIO 는 WebP 를 읽기만 하고 쓰지 못해
+  # Google libwebp(BSD-3, `App/Resources/Licenses/libwebp-LICENSE.txt`)로 굽는다. 안드로이드는 OS 인코더를 쓴다.
+  libwebp:
+    url: https://github.com/SDWebImage/libwebp-Xcode.git
+    exactVersion: "1.6.0"
+
 settings:
   base:
     # App 타깃은 Windows 에서 컴파일 검증이 불가능하므로, 블라인드 작성 코드가
@@ -77,6 +83,9 @@ targets:
       - path: App/Resources/Images
         buildPhase: resources
       - path: App/Resources/Pass
+        buildPhase: resources
+      # 함께 묶어 배포하는 라이브러리의 저작권 고지(BSD 등은 바이너리 배포에도 고지를 요구한다)
+      - path: App/Resources/Licenses
         buildPhase: resources
       # Firebase 설정(FCM). 커밋하지 않으므로 보통 비어 있다.
       # `GoogleService-Info.plist` 를 이 폴더에 두고 xcodegen generate 를 다시 돌리면
@@ -164,6 +173,8 @@ targets:
         product: KakaoSDKUser
       - package: KakaoMapsSDK
         product: KakaoMapsSDK-SPM
+      - package: libwebp
+        product: libwebp
     info:
       path: App/Resources/Info.plist
       properties:

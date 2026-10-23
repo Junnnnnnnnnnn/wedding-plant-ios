@@ -54,6 +54,8 @@ public struct PlanCategoryPage: Codable, Hashable, Sendable {
 ///   화면은 "장소 검색은 준비 중" 안내를 띄운다. 생기면 그대로 붙는다.
 ///   (카카오 REST 키를 앱에 넣지 않으려고 백엔드 프록시로 가는 설계다)
 public struct PlaceSearchResult: Codable, Hashable, Sendable, Identifiable {
+    /// 카카오 장소 id — 후기가 같은 업체를 정확히 묶는 열쇠(백엔드 프록시가 함께 준다).
+    public var placeId: String?
     public var placeName: String
     public var addressName: String
     public var roadAddressName: String?
@@ -64,12 +66,14 @@ public struct PlaceSearchResult: Codable, Hashable, Sendable, Identifiable {
     public var id: String { "\(placeName)|\(lat)|\(lng)" }
 
     public init(
+        placeId: String? = nil,
         placeName: String = "",
         addressName: String = "",
         roadAddressName: String? = nil,
         lat: Double = 0,
         lng: Double = 0
     ) {
+        self.placeId = placeId
         self.placeName = placeName
         self.addressName = addressName
         self.roadAddressName = roadAddressName
@@ -79,6 +83,7 @@ public struct PlaceSearchResult: Codable, Hashable, Sendable, Identifiable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.placeId = try container.decodeIfPresent(String.self, forKey: .placeId)
         self.placeName = try container.decodeIfPresent(String.self, forKey: .placeName) ?? ""
         self.addressName = try container.decodeIfPresent(String.self, forKey: .addressName) ?? ""
         self.roadAddressName = try container.decodeIfPresent(String.self, forKey: .roadAddressName)
