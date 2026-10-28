@@ -95,7 +95,8 @@ struct FeedDetailView: View {
             // 금액이 비공개면 비교할 값이 없어 부르지도 않는다. 고쳐서 금액을 가렸으면 자도 걷는다.
             stats = nil
             guard item.amount != nil, !item.categoryName.isEmpty else { return }
-            stats = try? await env.api.send(Endpoint.feedStats(categoryName: item.categoryName), decoding: FeedCategoryStats.self)
+            let page = try? await env.api.send(Endpoint.feedStats(categoryName: item.categoryName), decoding: FeedStatsPage.self)
+            stats = page?.stats(for: item.categoryName)
         }
         .sheet(item: $editing) { post in
             FeedPostSheet(editing: post,

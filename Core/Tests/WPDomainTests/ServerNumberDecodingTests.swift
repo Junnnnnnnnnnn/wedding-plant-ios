@@ -24,3 +24,18 @@ final class ServerNumberDecodingTests: XCTestCase {
         XCTAssertEqual(item.locationLat ?? 0, 37.1, accuracy: 1e-9)
     }
 }
+
+/// 운영 `GET /plan/feed/stats` — 표본이 적으면 목록이 비어 온다. 0 으로 찬 통계를 만들지 않는다(FEED-04).
+final class FeedStatsPageTests: XCTestCase {
+    func testEmptyListGivesNoStats() throws {
+        let page = try JSONDecoder().decode(FeedStatsPage.self, from: Data(#"{"total":0,"list":[]}"#.utf8))
+        XCTAssertNil(page.stats(for: "웨딩홀"))
+    }
+
+    func testPicksTheMatchingCategory() throws {
+        let page = try JSONDecoder().decode(FeedStatsPage.self, from: Data(#"{"total":2,"list":[{"categoryName":"스튜디오","sampleCount":42,"median":520,"p25":380,"p75":700},{"categoryName":"웨딩홀","sampleCount":12,"median":"4000","p25":3000,"p75":5000}]}"#.utf8))
+        XCTAssertEqual(page.stats(for: "웨딩홀")?.median, 4000)
+        XCTAssertEqual(page.stats(for: "스튜디오")?.sampleCount, 42)
+        XCTAssertNil(page.stats(for: "드레스"))
+    }
+}

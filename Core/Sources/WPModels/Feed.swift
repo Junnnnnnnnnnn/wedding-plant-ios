@@ -523,3 +523,22 @@ public struct FeedEditRequest: Encodable, Hashable, Sendable {
         hasher.combine(place); hasher.combine(images?.keep); hasher.combine(images?.base)
     }
 }
+
+/// `GET /plan/feed/stats` — 카테고리마다의 금액 분포 목록. **표본이 적은 카테고리는 서버가 아예 내려 주지 않는다.**
+/// 예전 iOS 는 이 응답을 통계 하나로 읽어, 목록이 비면 0 으로 찬 통계가 되어 `웨딩홀 후기 0건 안에서 · 0만` 자를
+/// 그렸다(2026-10-28 iOS QA FEED-04, 운영 응답 `{"total":0,"list":[]}`). Android `getFeedStats` 처럼 목록에서 이름이
+/// 맞는 것만 쓰고, 없으면 자를 그리지 않는다.
+public struct FeedStatsPage: Decodable, Sendable {
+    public var list: [FeedCategoryStats]
+    public init(list: [FeedCategoryStats] = []) { self.list = list }
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        list = try c.decodeIfPresent([FeedCategoryStats].self, forKey: .list) ?? []
+    }
+    private enum CodingKeys: String, CodingKey { case list }
+
+    /// 그 카테고리의 통계 — 없거나 표본이 없으면 nil
+    public func stats(for categoryName: String) -> FeedCategoryStats? {
+        list.first { $0.categoryName == categoryName && $0.sampleCount > 0 }
+    }
+}
