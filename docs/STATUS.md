@@ -14,6 +14,8 @@
   실제로 고른 사진이 WebP(800×1600, 세로)로 올라가는 것을 확인했고, 그 과정에서 **저장하면 새 표지가 빈 정원으로 바뀌는** iOS 버그를
   찾아 `InvitationRules.mergePhotos`(Android 와 같음)로 고쳤다. 새 `InvitationPhotoAndWishesUITests`(사진 고르기 → 업로드 → 저장,
   홈 `새 축하 N` 두 번 실행).
+- 실기기(TestFlight 13) 보고: 구성 시트를 내리면 뚝 사라짐 → 진짜 바닥 시트로 바꿈(손을 따라 내려가 미끄러져 닫힘, Android 와
+  프레임 대조 07). 확인은 `InvitationLayoutSheetMotionUITests`.
 - 미검증: 실제 R2 업로드(운영 청첩장을 건드리지 않음).
 
 ## 2026-10-23 — Android v40 · v41 피드 이식 (1.0.1)

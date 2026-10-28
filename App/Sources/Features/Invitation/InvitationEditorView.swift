@@ -40,6 +40,12 @@ struct InvitationEditorView: View {
     @State private var contentFrame: CGRect = .zero
     /// 지금 초점이 있는 입력 칸(`InvitationField` 의 key, 계좌는 `account.<자리>.<칸>`)
     @State private var focusedField: String?
+    /// 구성 시트 높이 — 상태바 아래 8pt 까지(Android `AppBottomSheet`: 창 − 상태바 − 8dp)
+    private var layoutSheetHeight: CGFloat {
+        let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
+        let height = window?.bounds.height ?? UIScreen.main.bounds.height
+        return max(320, height - (window?.safeAreaInsets.top ?? 47) - 8)
+    }
     private var design: Binding<InvitationDesignBody> {
         Binding(get: { draft.design ?? InvitationRules.design(new: true) }, set: { draft.design = $0 })
     }
@@ -160,21 +166,20 @@ struct InvitationEditorView: View {
             }
         }
         // 숫자 칸의 `완료` 는 앱 전체 `KeyboardDismiss` 가 단다
-        .ignoresSafeArea(.keyboard, edges: .bottom).background(WPColor.invPaper.ignoresSafeArea()).overlay {
-            if layoutOpen {
-                ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.32).ignoresSafeArea().onTapGesture { layoutOpen = false }
-                    InvitationLayoutPanel(draft: $draft) { target = $0; layoutOpen = false }
-                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
-                        .padding(.top, 8).accessibilityIdentifier("invitation.layout")
-                        // 안드로이드 바닥 시트처럼 닫기 단추 없이 — 바깥을 누르거나 아래로 끌어 닫습니다
-                        .simultaneousGesture(DragGesture(minimumDistance: 24).onEnded { value in
-                            if value.translation.height > 120 && abs(value.translation.width) < value.translation.height { layoutOpen = false }
-                        })
-                        .accessibilityAction(.escape) { layoutOpen = false }
-                }
-            }
-        }.tint(WPColor.invAccent).interactiveDismissDisabled(draft != baseline || busy)
+        .ignoresSafeArea(.keyboard, edges: .bottom).background(WPColor.invPaper.ignoresSafeArea())
+        // 구성은 **진짜 바닥 시트**(Android `AppBottomSheet`) — 올라오고, 손가락을 따라 내려가고, 목록을 맨 위까지 올린 뒤에야
+        // 시트가 끌린다. 예전에는 `if layoutOpen` 덮개라 애니메이션 없이 툭 떴다가 손을 떼는 순간 뚝 사라졌다(2026-10-28 실기기 보고).
+        // 높이를 정해 주는 것은 `.large` 를 피하려고 — `.large` 면 뒤의 편집기가 카드처럼 줄어들어 Android(어둡게만)와 다르다.
+        .sheet(isPresented: $layoutOpen) {
+            InvitationLayoutPanel(draft: $draft) { target = $0; layoutOpen = false }
+                .accessibilityElement(children: .contain).accessibilityIdentifier("invitation.layout")
+                .presentationDetents([.height(layoutSheetHeight)])
+                .presentationDragIndicator(.hidden)
+                .presentationCornerRadius(28)
+                .presentationBackground(WPColor.invPaper)
+                .tint(WPColor.invAccent)
+        }
+        .tint(WPColor.invAccent).interactiveDismissDisabled(draft != baseline || busy)
             .task {
                 // 기존 청첩장 `고치기`는 미리보기부터(Android 2c2fb4c, 2026-10-27) — 구성은 아래 `구성` 단추로 연다.
                 // 새 청첩장만 어떤 칸을 채울지 고르게 구성부터 펼친다. 칸을 받고 열면(`?focus=`) 그 자리의 입력부터.

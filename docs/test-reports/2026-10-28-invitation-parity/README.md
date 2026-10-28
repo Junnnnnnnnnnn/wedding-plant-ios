@@ -15,3 +15,14 @@ iOS 시뮬레이터(데모 모드, `InvitationEditorEntryUITests` · `Invitation
 
 - iOS 가 시뮬레이터에 쓴 파일: `RIFF … Web/P image, VP8, 800x1600`(원본 3000×1500 + EXIF 6). 데모 서버는 `image/webp` 가 아니면 사진 자리를 거절한다.
 - Android 첫 실행의 01 · 04 · 05 는 막 켠 에뮬레이터의 "System UI isn't responding" 창에 가려 다시 찍었다(앱 문제 아님).
+
+## 구성 시트 내리기 (실기기 보고 뒤, 2026-10-28)
+
+TestFlight 13 녹화: 구성 시트를 끌어 내리면 애니메이션 없이 **뚝 사라졌다**(띄울 때도 툭 나타남). 시트가 `if layoutOpen` 덮개라
+움직임이 없었다. 진짜 바닥 시트(`.sheet` + 정한 높이 · 모서리 28 · 종이색)로 바꿨다 — 올라오고, 손가락을 따라 내려가고, 목록을
+맨 위까지 올린 뒤에야 시트가 끌리며, 조금 끌다 놓으면 제자리로 돌아온다(Android `AppBottomSheet` 와 같음).
+
+[07](compare/07-layout-sheet-drag-dismiss.png): Android 는 계측 테스트에서 손가락을 6단계로 내리며 화면을 찍었고(이 에뮬레이터는
+`screenrecord` 가 검게 찍힌다), iOS 는 `InvitationLayoutSheetMotionUITests` 를 `simctl io recordVideo` 로 찍은 프레임이다. 양쪽 모두
+손을 따라 내려간 뒤 여러 프레임에 걸쳐 미끄러져 닫힌다. 뒤 화면을 어둡게 하는 정도는 iOS 시스템 값(약 23%)으로 Android(32%)보다
+조금 옅다.
