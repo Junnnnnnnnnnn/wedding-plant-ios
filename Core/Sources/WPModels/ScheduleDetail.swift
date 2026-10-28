@@ -99,8 +99,8 @@ public struct ScheduleDetail: Codable, Hashable, Sendable, Identifiable {
         self._amount = try container.decode(LooseDouble.self, forKey: .amount)
         self.startDate = try container.decodeIfPresent(String.self, forKey: .startDate)
         self.location = try container.decodeIfPresent(String.self, forKey: .location)
-        self.locationLat = try container.decodeIfPresent(Double.self, forKey: .locationLat)
-        self.locationLng = try container.decodeIfPresent(Double.self, forKey: .locationLng)
+        self.locationLat = try container.decodeIfPresent(LooseDouble.self, forKey: .locationLat)?.wrappedValue
+        self.locationLng = try container.decodeIfPresent(LooseDouble.self, forKey: .locationLng)?.wrappedValue
         self.memo = try container.decodeIfPresent(String.self, forKey: .memo)
         self.addCategoryNameList = try container.decodeIfPresent([String].self, forKey: .addCategoryNameList) ?? []
         self.status = try container.decodeIfPresent(String.self, forKey: .status)

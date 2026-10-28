@@ -123,8 +123,8 @@ public struct FeedPost: Codable, Hashable, Sendable, Identifiable {
         self.region = try c.decodeIfPresent(String.self, forKey: .region)
         self.address = try c.decodeIfPresent(String.self, forKey: .address)
         self.placeId = try c.decodeIfPresent(String.self, forKey: .placeId)
-        self.lat = try c.decodeIfPresent(Double.self, forKey: .lat)
-        self.lng = try c.decodeIfPresent(Double.self, forKey: .lng)
+        self.lat = try c.decodeIfPresent(LooseDouble.self, forKey: .lat)?.wrappedValue
+        self.lng = try c.decodeIfPresent(LooseDouble.self, forKey: .lng)?.wrappedValue
         self.rating = try c.decodeIfPresent(Int.self, forKey: .rating) ?? 0
         self.body = try c.decodeIfPresent(String.self, forKey: .body)
         self.authorDDay = try c.decodeIfPresent(Int.self, forKey: .authorDDay)
@@ -219,8 +219,8 @@ public struct PostableSchedule: Codable, Hashable, Sendable, Identifiable {
         self.title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
         self.amount = try c.decode(LooseDouble.self, forKey: .amount).wrappedValue
         self.location = try c.decodeIfPresent(String.self, forKey: .location)
-        self.locationLat = try c.decodeIfPresent(Double.self, forKey: .locationLat)
-        self.locationLng = try c.decodeIfPresent(Double.self, forKey: .locationLng)
+        self.locationLat = try c.decodeIfPresent(LooseDouble.self, forKey: .locationLat)?.wrappedValue
+        self.locationLng = try c.decodeIfPresent(LooseDouble.self, forKey: .locationLng)?.wrappedValue
         self.startDate = try c.decodeIfPresent(String.self, forKey: .startDate)
     }
 }

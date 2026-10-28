@@ -92,6 +92,14 @@ final class ScheduleDetailViewModel: ObservableObject {
             if permission == nil, let user: PlanUser = try? await env.api.send(Endpoint.user()), user.roomId == resolved {
                 permission = user.members?.first { $0.planUserId.lowercased() == me?.lowercased() }?.permission
             }
+            /*
+              방이 정해지지 않고 들어온 **내 개인 플랜**이면 방장이다(Android `resolveAccess` — 내 전체 목록에 있으면 OWNER).
+              예전에는 방 멤버 목록에서만 권한을 찾아, 방이 없는 혼자 쓰는 사람은 자기 일정 상세에 `완료로 표시` ·
+              `수정하기` · `삭제` 가 하나도 없었다(2026-10-28 iOS QA DET-01, 새 계정).
+            */
+            if permission == nil, roomId == nil || roomId == resolved, await ownsPersonalSchedule(env: env) {
+                permission = .owner
+            }
             // 화면이 로딩 카드를 직접 그리므로 전역 오버레이는 띄우지 않는다.
             detail = try await env.api.send(
                 Endpoint.schedule(id: scheduleId),
@@ -106,6 +114,18 @@ final class ScheduleDetailViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// 내 개인 목록(`/plan/schedule/list`, 방 없음)에 이 일정이 있는가 — 모든 쪽을 넘겨 본다(달력 보드와 같은 길)
+    private func ownsPersonalSchedule(env: AppEnvironment) async -> Bool {
+        var pages = SchedulePages(), page = 1
+        while page <= 100 {
+            guard let result: SchedulePage = try? await env.api.send(Endpoint.allSchedules(roomId: nil, page: page)) else { return false }
+            if result.list.contains(where: { $0.id == scheduleId }) { return true }
+            guard let done = try? pages.append(result), !done else { return false }
+            page += 1
+        }
+        return false
     }
 
     /// 안드로이드 `FeedViewModel.loadPostables` — 못 받으면 빈 목록(= 피드 줄을 뺌)으로 둔다.

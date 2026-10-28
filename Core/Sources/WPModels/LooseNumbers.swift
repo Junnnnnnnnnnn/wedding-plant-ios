@@ -49,6 +49,9 @@ extension KeyedDecodingContainer {
 
 // Monetary values must preserve fractional ten-thousand-won units.
 @propertyWrapper
+/// 숫자를 문자열로 줘도(`"0.00000000"`) 읽는다 — Android 는 kotlinx `isLenient` 라 받는데 iOS 는 Double 로만 읽어, 운영 서버가
+/// 일정 상세의 `locationLat`·`locationLng` 를 문자열로 주자 **일정 상세가 통째로 열리지 않았다**(2026-10-28 iOS QA DET-01).
+/// 서버에서 오는 숫자(금액 · 좌표)는 이것으로 읽는다.
 public struct LooseDouble: Codable, Hashable, Sendable {
     public var wrappedValue: Double?
 

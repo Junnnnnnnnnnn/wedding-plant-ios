@@ -199,8 +199,8 @@ public struct BragPlanItem: Codable, Hashable, Sendable, Identifiable {
         self.status = try c.decodeIfPresent(String.self, forKey: .status)
         self.isPaidRaw = try c.decodeIfPresent(Bool.self, forKey: .isPaidRaw)
         self.location = try c.decodeIfPresent(String.self, forKey: .location)
-        self.lat = try c.decodeIfPresent(Double.self, forKey: .lat)
-        self.lng = try c.decodeIfPresent(Double.self, forKey: .lng)
+        self.lat = try c.decodeIfPresent(LooseDouble.self, forKey: .lat)?.wrappedValue
+        self.lng = try c.decodeIfPresent(LooseDouble.self, forKey: .lng)?.wrappedValue
     }
 }
 

@@ -87,8 +87,8 @@ public struct PlaceSearchResult: Codable, Hashable, Sendable, Identifiable {
         self.placeName = try container.decodeIfPresent(String.self, forKey: .placeName) ?? ""
         self.addressName = try container.decodeIfPresent(String.self, forKey: .addressName) ?? ""
         self.roadAddressName = try container.decodeIfPresent(String.self, forKey: .roadAddressName)
-        self.lat = try container.decodeIfPresent(Double.self, forKey: .lat) ?? 0
-        self.lng = try container.decodeIfPresent(Double.self, forKey: .lng) ?? 0
+        self.lat = try container.decodeIfPresent(LooseDouble.self, forKey: .lat)?.wrappedValue ?? 0
+        self.lng = try container.decodeIfPresent(LooseDouble.self, forKey: .lng)?.wrappedValue ?? 0
     }
 }
 

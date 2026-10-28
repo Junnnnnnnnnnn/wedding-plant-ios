@@ -622,6 +622,8 @@ private struct HomeScrollReader: ViewModifier {
 /// - 목록에서 올라오는 굴림은 anchor 에서 한 번 선다.
 /// - 머리 면이 창보다 크면(가로 · 큰 글꼴) 머리 면 구간은 붙지 않는다.
 private struct HomeHeadSnap: ScrollTargetBehavior {
+    /// Android `SNAP_VELOCITY = 300.dp`(초당)
+    static let snapVelocity: CGFloat = 300
     var anchor: CGFloat
     var viewport: CGFloat
     var statusBar: CGFloat
@@ -637,11 +639,14 @@ private struct HomeHeadSnap: ScrollTargetBehavior {
             if y < anchor { target.rect.origin.y = anchor }
             return
         }
-        // 머리 면 구간 — anchor 를 못 넘고, 놓으면 굴린 방향(없으면 가까운 쪽)으로 간다
+        // 머리 면 구간 — anchor 를 못 넘고, 놓을 때 **빠르게** 굴렸으면 그 방향, 아니면 가까운 쪽으로 간다(Android
+        // `headSnapTarget`, 300dp/s). 예전에는 놓은 뒤 멈출 자리를 시작 자리와 비교해, 천천히 조금만(화면 1/5) 끌어도 위로
+        // 움직였으니 제목 자리로 붙었다(2026-10-28 iOS QA HOME-03 — 기대는 맨 위로 되돌아감).
         if y >= anchor { target.rect.origin.y = anchor; return }
-        if y > start + 0.5 { target.rect.origin.y = anchor }
-        else if y < start - 0.5 { target.rect.origin.y = 0 }
-        else { target.rect.origin.y = y < anchor / 2 ? 0 : anchor }
+        let velocity = context.velocity.dy
+        if velocity > Self.snapVelocity { target.rect.origin.y = anchor }
+        else if velocity < -Self.snapVelocity { target.rect.origin.y = 0 }
+        else { target.rect.origin.y = target.rect.minY * 2 >= anchor ? anchor : 0 }
     }
 }
 

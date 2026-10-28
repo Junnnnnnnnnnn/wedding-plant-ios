@@ -47,6 +47,38 @@ final class SchedulePermissionTests: XCTestCase {
     }
 }
 
+/// 방이 없는 혼자 쓰는 사람의 개인 일정 — 내 전체 목록에 있으면 방장(Android `resolveAccess`). 2026-10-28 iOS QA 새 계정에서
+/// 자기 일정 상세에 완료 · 수정 · 삭제가 하나도 없던 것. 운영 응답처럼 좌표가 문자열이어도 열린다.
+final class SoloSchedulePermissionTests: XCTestCase {
+    @MainActor func testSoloUserOwnsPersonalSchedule() async {
+        let transport = SoloTransport()
+        let store = InMemoryTokenStore(token: DemoData.token), base = URL(string: "https://example.test")!
+        let env = AppEnvironment(api: APIClient(baseURL: base, transport: transport, tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)
+        let suite = "solo-permission-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = ScheduleDetailViewModel(scheduleId: 64)
+        await model.load(env: env, guest: GuestStore(defaults: defaults))
+        XCTAssertNil(model.errorMessage, "좌표가 문자열이어도 상세가 열린다")
+        XCTAssertEqual(model.detail?.title, "QA-기본-01")
+        XCTAssertTrue(model.canWrite, "내 개인 일정이면 완료 · 수정 · 삭제를 낸다")
+        XCTAssertTrue(model.canSeeDocuments)
+    }
+}
+
+private actor SoloTransport: HTTPTransport {
+    func send(_ request: PreparedRequest) async throws -> HTTPResponse {
+        let json: String
+        switch request.url.path {
+        case "/plan/room/list": json = #"{"result":true,"data":{"total":0,"list":[]}}"#
+        case "/plan/schedule/list": json = #"{"result":true,"data":{"total":1,"list":[{"id":64,"title":"QA-기본-01","categoryName":"웨딩홀","amount":120,"status":"NORMAL"}]}}"#
+        case "/plan/schedule/64": json = #"{"result":true,"data":{"id":64,"categoryName":"웨딩홀","title":"QA-기본-01","amount":120,"startDate":"2026-10-28","startTime":null,"location":"","locationLat":"0.00000000","locationLng":"0.00000000","memo":"","payType":"CREDIT","status":"NORMAL","isPaid":false}}"#
+        default: json = #"{"result":true,"data":{"id":"demo-user","name":"QA"}}"#
+        }
+        return HTTPResponse(status: 200, headers: [:], body: Data(json.utf8))
+    }
+}
+
 private actor PermissionTransport: HTTPTransport {
     let role: String
     var unavailable = false
