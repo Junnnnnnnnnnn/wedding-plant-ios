@@ -56,7 +56,10 @@ final class FeedParityUITests: XCTestCase {
         XCTAssertTrue(element(app, "feed.detail.copy").waitForExistence(timeout: 5))
         capture(app, "a5-detail-other-top")
         let share = element(app, "feed.share.721")
-        for _ in 0..<4 where !(share.exists && share.isHittable) { app.swipeUp() }
+        // `isHittable` 은 바닥의 `내 플랜에 담기` 줄에 가린 것도 참이라(표본이 적어 금액 자가 빠지면 공유 줄이 그 밑에 걸린다)
+        // 바닥 줄 위로 올라올 때까지 굴린다
+        let copyBar = element(app, "feed.detail.copy")
+        for _ in 0..<4 where !(share.exists && share.isHittable && share.frame.maxY < copyBar.frame.minY - 8) { app.swipeUp() }
         XCTAssertTrue(element(app, "feed.photo.2").exists)
         XCTAssertFalse(element(app, "feed.photo.3").exists)
         capture(app, "a6-detail-other-photos")

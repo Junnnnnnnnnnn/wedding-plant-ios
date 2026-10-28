@@ -60,14 +60,12 @@ final class InvitationPhotoAndWishesUITests: XCTestCase {
         sleep(5)
         capture(app, "home-wishes-fresh-later")
 
-        // 청첩장 칸에서 보고 돌아오면 줄어든다
+        // 청첩장 칸에서 보고 돌아오면 줄어든다 — 카드는 둘러보기 탭의 청첩장 칸으로 옮기므로(Android `Routes.feed(EXPLORE_INVITATION)`)
+        // 돌아오는 길은 뒤로가기가 아니라 홈 탭이다
         app.buttons["main.invitationGarden"].tap()
         XCTAssertTrue(app.buttons["청첩장 고치기"].waitForExistence(timeout: 10))
         sleep(2)
-        app.navigationBars.buttons.firstMatch.exists ? app.navigationBars.buttons.firstMatch.tap() : app.swipeRight()
-        if !app.staticTexts["청첩장 공개 중 · 하객 5명"].waitForExistence(timeout: 5) {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.5)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)))
-        }
+        app.buttons["tab.home"].tap()
         XCTAssertTrue(app.staticTexts["청첩장 공개 중 · 하객 5명"].waitForExistence(timeout: 10), "칸에서 본 수가 기준이 된다")
         capture(app, "home-wishes-after-studio")
     }
