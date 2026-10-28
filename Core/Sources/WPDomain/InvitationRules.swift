@@ -17,6 +17,15 @@ public enum InvitationRules {
     public static let photoContentType = "image/webp"
     /// 20장이 찬 채 표지를 바꾸면 옛 표지 자리를 새 사진이 맡는다 — 그 자리에서 말한다(Android `addPhotos`)
     public static let coverReplacedNote = "사진이 20장이라 원래 표지 대신 새 사진을 넣었어요."
+    /// 저장 응답의 사진을 받을 때 — 서버 순서 · 키를 따르되, 서버가 주소를 싣지 않은 사진은 이 기기에 있던 주소(막 올린 사진의
+    /// 로컬 파일)를 지킨다. 그대로 갈아 끼우면 방금 고른 표지가 저장하는 순간 빈 정원으로 바뀌었다(Android `mergePhotos`).
+    public static func mergePhotos(local: [InvitationPhotoDto], remote: [InvitationPhotoDto]) -> [InvitationPhotoDto] {
+        remote.map { photo in
+            var merged = photo
+            if merged.url?.isEmpty ?? true { merged.url = local.first { $0.key == photo.key }?.url }
+            return merged
+        }
+    }
     /// 새 표지를 맨 앞에. 20장이 차 있으면 옛 표지(맨 앞)를 뺀다(Android `withCover`)
     public static func withCover<Photo>(_ photos: [Photo], _ cover: Photo) -> [Photo] {
         photos.count < photoLimit ? [cover] + photos : [cover] + photos.dropFirst()

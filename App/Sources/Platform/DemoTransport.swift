@@ -17,6 +17,20 @@ actor DemoTransport: HTTPTransport {
         if ProcessInfo.processInfo.arguments.contains("-WPExistingInvitation") {
             invitation = ["slug": "demo-couple", "title": "우리, 결혼합니다", "groom": "민준", "bride": "지수", "published": false]
         }
+        // `-WPResetInvitationSeen` — 지난 실행이 남긴 `새 축하` 읽음 기준을 지우고 시작한다(UI 테스트)
+        if ProcessInfo.processInfo.arguments.contains("-WPResetInvitationSeen") { InvitationSeenStore.clear() }
+        // `-WPInvitationPublished` — 공개 중인 청첩장(댓글 관리 켜짐). 홈의 `새 축하 N` 을 보려고 쓴다
+        if ProcessInfo.processInfo.arguments.contains("-WPInvitationPublished") {
+            invitation = ["slug": "demo-couple", "title": "우리, 결혼합니다", "groom": "현진", "bride": "미주", "published": true, "updatedAt": "demo-1"]
+        }
+    }
+    /// 이 실행에서 받은 청첩장 사진 자리 수 — 키를 겹치지 않게
+    private var invitationPhotos = 0
+    /// `-WPInvitationGuestsTotal N` — 방명록에 N 명. 없으면 0 명
+    private var guestTotal: Int {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "-WPInvitationGuestsTotal"), index + 1 < args.count else { return 0 }
+        return Int(args[index + 1]) ?? 0
     }
     /// 로딩 상태가 화면에 보이도록 약간의 지연을 준다.
     var latency: Duration = .milliseconds(200)
@@ -115,7 +129,21 @@ actor DemoTransport: HTTPTransport {
             }
             json = String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": reminder]), as: UTF8.self)
         } else if path.contains("/plan/invitation/") && path.hasSuffix("/guestbook") {
-            json = "{\"result\":true,\"data\":{\"wishes\":[],\"total\":0}}"
+            let names = ["하은", "도윤", "서연", "지호", "민서", "예준", "수아", "시우"]
+            let wishes: [[String: Any]] = (0..<guestTotal).map { index in
+                ["id": "w\(index)", "name": names[index % names.count], "message": "결혼 축하해요 \(index + 1)", "avatar": index % 6,
+                 "createdAt": String(format: "2026-10-%02dT09:00:00.000Z", 1 + index % 27)]
+            }
+            json = String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": ["wishes": wishes, "total": guestTotal]]), as: UTF8.self)
+        } else if path.hasSuffix("/plan/my-invitation/photo") {
+            // 서버처럼 형식을 본다 — 앱이 WebP 로 바꿔 올리지 않으면 여기서 거절돼 화면에 오류가 뜬다(UI 테스트가 본다)
+            let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: Any]
+            guard body?["contentType"] as? String == "image/webp" else {
+                return HTTPResponse(status: 400, headers: ["Content-Type": "application/json"],
+                                    body: Data("{\"result\":false,\"message\":\"데모: WebP 사진만 받아요.\"}".utf8))
+            }
+            invitationPhotos += 1
+            json = "{\"result\":true,\"data\":{\"key\":\"invitation/1/demo-\(invitationPhotos).webp\",\"uploadUrl\":\"https://demo.invalid/invitation\"}}"
         } else if path.hasSuffix("/plan/auth/kakao/login") {
             json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
         } else if path.contains("total-amount") {

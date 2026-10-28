@@ -10,8 +10,11 @@
 - 검증: Core 425개, 앱 단위 테스트 59개(새 `InvitationPhotoPrepTests` — EXIF 회전 · HEIC · 투명 PNG 흰 바탕 · 거절 문구),
   새 `InvitationEditorEntryUITests`(새 청첩장은 구성부터 · 기존은 미리보기부터 · `구성` 단추), 기존 청첩장 UI 테스트
   (키보드 · 카카오맵 · 광고 · 저장→공개 · 패스 권한) 통과. 운영 서버에는 요청하지 않았다.
-- 미검증: 실제 R2 업로드(운영 청첩장을 건드리지 않음). Android 리포트에는 캡처 파일이 없어 화면 1:1 대조 대신 양쪽 테스트의 같은
-  단정(구성 시트가 뜨는지 · 입력 칸이 0개인지)으로 맞췄다.
+- Android 에뮬레이터와 iOS 시뮬레이터 1:1: [6쌍](test-reports/2026-10-28-invitation-parity/README.md). 시뮬레이터에서 사진 앱으로
+  실제로 고른 사진이 WebP(800×1600, 세로)로 올라가는 것을 확인했고, 그 과정에서 **저장하면 새 표지가 빈 정원으로 바뀌는** iOS 버그를
+  찾아 `InvitationRules.mergePhotos`(Android 와 같음)로 고쳤다. 새 `InvitationPhotoAndWishesUITests`(사진 고르기 → 업로드 → 저장,
+  홈 `새 축하 N` 두 번 실행).
+- 미검증: 실제 R2 업로드(운영 청첩장을 건드리지 않음).
 
 ## 2026-10-23 — Android v40 · v41 피드 이식 (1.0.1)
 

@@ -502,7 +502,8 @@ struct InvitationEditorView: View {
         guard !busy else { return }; busy = true; error = nil; defer { busy = false }
         do {
             let result: MyInvitation = try await env.api.send(Endpoint.saveInvitation(.init(content: InvitationRules.sanitize(draft), createOnly: saved == nil && draft.updatedAt.isEmpty)))
-            guard let content = result.invitation else { throw APIError.emptyData }
+            guard var content = result.invitation else { throw APIError.emptyData }
+            content.photos = InvitationRules.mergePhotos(local: draft.photos, remote: content.photos)
             baseline = content; draft = content; savedNotice = true
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             if let key = storageKey { UserDefaults.standard.removeObject(forKey: key) }
