@@ -124,10 +124,13 @@ final class ScheduleDetailViewModel: ObservableObject {
         let toCompleted = !current.isCompleted
         statusPending = true
         do {
-            try await env.api.sendIgnoringData(
+            let response = try await env.api.sendRaw(
                 Endpoint.updateScheduleStatus(id: current.id, status: toCompleted ? .completed : .normal)
             )
             detail?.status = toCompleted ? "COMPLETED" : "NORMAL"
+            // 완료일 때 받은 isPaid(계산값, 늘 true)를 그대로 두면 되돌린 화면이 `예정 · 결제함` 이 된다(Android 7523938)
+            detail?.isPaidRaw = PlanRules.isPaidAfterStatusChange(
+                responseIsPaid: StatusChangeResult.isPaid(fromEnvelope: response.body), toCompleted: toCompleted, before: current.isPaidRaw)
             statusPending = false
             if toCompleted { await loadPostables(env: env) } else { postableIds = nil }
         } catch {

@@ -201,7 +201,7 @@ public enum Endpoint {
         HTTPRequest(method: .delete, path: "/plan/schedule/\(id)")
     }
 
-    /// 체크박스 토글. 계획 중 <-> 완료.
+    /// 체크박스 토글. 계획 중 <-> 완료. 응답 `data.isPaid` 는 **바꾼 뒤** 상태로 다시 계산한 결제 값이다(`StatusChangeResult`).
     public static func updateScheduleStatus(id: Int, status: ScheduleListStatus) throws -> HTTPRequest {
         try .json(.patch, "/plan/schedule/status/\(id)", body: ["status": status.rawValue])
     }

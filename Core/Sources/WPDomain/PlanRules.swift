@@ -12,6 +12,18 @@ public enum PlanRules {
     // MARK: - D-Day
 
     /// 결혼식까지 남은 일수. 지났으면 음수. 날짜가 없으면 nil.
+    /// 상태(예정 ↔ 완료)를 바꾼 뒤 화면에 둘 결제 칸 값 — Android `PlanRules.isPaidAfterStatusChange`(7523938).
+    ///
+    /// 서버가 주는 `isPaid` 는 저장된 칸이 아니라 백엔드 `isSchedulePaid()` 로 **계산한 값**이라 완료한 플랜이면 늘 `true` 다.
+    /// 완료일 때 받아 둔 그 `true` 를 들고 예정으로 되돌리면, 결제한 적 없는 일정에 `예정 · 결제함` 이 떴다(2026-10-28 QA).
+    /// 상태 변경 응답은 **바꾼 뒤** 상태로 다시 계산해 주므로 그 값을 쓴다 — 예정이면 곧 저장된 칸이다.
+    ///
+    /// 응답에 값이 없으면(옛 서버, 응답 전의 낙관적 표시) 예정으로 가는 쪽은 `nil`(결제 안 함으로 읽힘)로 둔다.
+    /// 모르면서 `결제함` 이라고 하는 것보다, 미리 낸 계약금 표시가 다시 받을 때까지 잠깐 빠지는 편이 덜 틀린다.
+    public static func isPaidAfterStatusChange(responseIsPaid: Bool?, toCompleted: Bool, before: Bool?) -> Bool? {
+        responseIsPaid ?? (toCompleted ? before : nil)
+    }
+
     public static func dDay(weddingDate: KstDate?, now: Date = Date()) -> Int? {
         weddingDate?.daysFromToday(now: now)
     }

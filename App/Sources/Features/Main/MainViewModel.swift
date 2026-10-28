@@ -326,9 +326,13 @@ final class MainViewModel: ObservableObject {
         defer { togglingIds.remove(item.id) }
 
         do {
-            try await env.api.sendIgnoringData(
+            let response = try await env.api.sendRaw(
                 Endpoint.updateScheduleStatus(id: item.id, status: toCompleted ? .completed : .normal)
             )
+            // 서버가 바꾼 뒤로 다시 계산한 결제 값을 옮긴 카드에 적는다(`결제함` 배지 · 이번 주 결제할 것이 이 값을 본다)
+            setPaid(item.id, status: toCompleted ? .completed : ScheduleStatus(rawValue: "NORMAL"),
+                    isPaid: PlanRules.isPaidAfterStatusChange(
+                        responseIsPaid: StatusChangeResult.isPaid(fromEnvelope: response.body), toCompleted: toCompleted, before: item.isPaidRaw))
         } catch {
             // 롤백
             (planned, completed, plannedTotal, completedTotal) = snapshot
@@ -336,9 +340,20 @@ final class MainViewModel: ObservableObject {
         }
     }
 
+    /// 그 상태로 옮겨진 카드에만 적는다. 응답 전에 끝난 새로고침이 옛 목록으로 카드를 되돌려 놓았으면, 완료 때의
+    /// 결제 값(계산값 true)이 예정 카드에 붙어 `결제함` 이 뜬다(Android `withPaid`).
+    private func setPaid(_ id: Int, status: ScheduleStatus?, isPaid: Bool?) {
+        func patch(_ list: inout [ScheduleItem]) {
+            for index in list.indices where list[index].id == id && list[index].status == status { list[index].isPaidRaw = isPaid }
+        }
+        patch(&planned); patch(&completed)
+    }
+
     private func move(_ item: ScheduleItem, toCompleted: Bool) {
         var moved = item
         moved.status = toCompleted ? .completed : ScheduleStatus(rawValue: "NORMAL")
+        // 응답 전 낙관적 표시 — 완료일 때 받은 isPaid 는 계산값(늘 true)이라 예정으로 옮길 때 들고 가지 않는다
+        moved.isPaidRaw = PlanRules.isPaidAfterStatusChange(responseIsPaid: nil, toCompleted: toCompleted, before: item.isPaidRaw)
 
         if toCompleted {
             planned.removeAll { $0.id == item.id }

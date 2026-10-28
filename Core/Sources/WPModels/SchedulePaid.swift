@@ -1,7 +1,10 @@
 import Foundation
 
 /// Android와 같은 결제 규칙: 완료 일정은 항상 결제, 예정 일정은 저장된 결제 값.
-/// 수정 시에는 원래 isPaidRaw를 보존해야 완료를 취소했을 때 결제 상태가 복원된다.
+///
+/// - Important: 서버가 주는 `isPaid` 는 저장된 칸이 아니라 **계산값**(완료이거나 결제 칸 체크)이라 완료한 플랜이면 늘 `true` 다.
+///   완료한 플랜을 고칠 때 그 값을 결제 칸으로 되돌려 보내면 서버에 체크로 굳고(→ `isPaid` 키를 보내지 않는다),
+///   예정으로 되돌린 뒤에도 들고 있으면 `예정 · 결제함` 이 뜬다(→ 상태 변경 응답의 값을 쓴다, `PlanRules.isPaidAfterStatusChange`).
 public protocol SchedulePayable {
     /// 백엔드가 내려준 원값.
     ///
@@ -52,5 +55,19 @@ extension SchedulePayable {
         if !done && paid { return .paidAhead }
         if done && !paid { return .unpaidDone }
         return nil
+    }
+}
+
+/// `PATCH /plan/schedule/status/{id}` 의 응답 — 바꾼 뒤로 다시 계산한 결제 값. 옛 서버는 `data` 를 안 줄 수 있어 모두 선택이다.
+public struct StatusChangeResult: Decodable, Sendable, Equatable {
+    public var isPaid: Bool?
+    public init(isPaid: Bool? = nil) { self.isPaid = isPaid }
+
+    /// 봉투 `{ result, data: { isPaid } }` 에서 결제 값만 꺼낸다. 못 읽으면 nil — **상태 변경은 성공으로 둔다**
+    /// (비었다고 실패로 보면 바뀌었는데 되돌아간 것처럼 보인다, Android `updateScheduleStatus`).
+    public static func isPaid(fromEnvelope body: Data) -> Bool? {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let data = object["data"] as? [String: Any] else { return nil }
+        return data["isPaid"] as? Bool
     }
 }

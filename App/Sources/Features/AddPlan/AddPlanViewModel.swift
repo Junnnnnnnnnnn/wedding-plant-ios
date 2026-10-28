@@ -34,7 +34,6 @@ final class AddPlanViewModel: ObservableObject {
     /// 예정이어도 이미 쓴 돈이다. 입력은 금액 바로 아래 체크다.
     @Published var isPaid = false
     @Published var completed = false
-    private var originalPaid: Bool?
     @Published var location = ""
     @Published var locationLat: Double = 0
     @Published var locationLng: Double = 0
@@ -240,7 +239,6 @@ final class AddPlanViewModel: ObservableObject {
         if id < 0 {
             guard let item = guest.findSchedule(id: id) else { return }
             completed = item.isScheduleCompleted
-            originalPaid = item.isPaidRaw
             apply(
                 title: item.title,
                 categoryName: item.categoryName,
@@ -266,7 +264,6 @@ final class AddPlanViewModel: ObservableObject {
                 decoding: ScheduleDetail.self
             )
             completed = detail.isScheduleCompleted
-            originalPaid = detail.isPaidRaw
             apply(
                 title: detail.title,
                 categoryName: detail.categoryName,
@@ -493,7 +490,13 @@ final class AddPlanViewModel: ObservableObject {
             // 실제로 피드의 `내 플랜에 담기` 가 roomId 없이 열리고 있었다.
             roomId: isEditMode ? nil : resolvedRoomId,
             addCategoryNameList: addedCategories.isEmpty ? nil : addedCategories,
-            isPaid: completed ? originalPaid : isPaid,
+            /*
+              완료한 플랜은 결제 칸을 **보내지 않는다**(PATCH 에서 빠진 키는 서버가 저장된 칸을 그대로 둔다). 예전에는 불러올 때
+              받은 `isPaid` 를 "원래 값" 으로 되돌려 보냈는데, 그 값은 저장된 칸이 아니라 백엔드 `isSchedulePaid()` 계산값이라
+              완료면 늘 `true` 였다 — 완료한 플랜을 한 번 고치면 결제 칸이 `true` 로 굳어, 나중에 예정으로 되돌렸을 때 고른 적
+              없는 `예정 · 결제함` 이 남았다(Android 7523938, 2026-10-28 QA).
+            */
+            isPaid: completed ? nil : isPaid,
             // 날짜가 미정이면 시각도 뜻이 없다. 수정에서 지우려면 **빈 문자열**을
             // 보내야 한다 — 키를 빼면 PATCH 시맨틱상 "변경 없음" 이라 남는다.
             startTime: dateUndecided ? "" : (startTime ?? "")
