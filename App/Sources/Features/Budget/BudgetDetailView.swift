@@ -334,7 +334,9 @@ private struct BudgetExportButton: View {
     }
 
     private func load() async {
-        guard let roomId else { return }
+        // 방이 없는 혼자 쓰는 사람은 패스도 없다 — 자물쇠를 단 채 내서 준비 패스 소개로 가게 한다(Android `PassExportButton` 은
+        // 방이 없어도 받기를 마치고 잠긴 단추를 낸다). 예전에는 여기서 돌아가 단추가 영영 안 떴다(2026-10-28 iOS QA BUD-04).
+        guard let roomId else { pass = PassState(hasPass: false); return }
         if let state: PassState = try? await env.api.send(Endpoint.pass(roomId: roomId)) { pass = state }
     }
 }
