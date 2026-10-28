@@ -272,6 +272,7 @@ final class AppEnvironment: ObservableObject {
     func signOut() async {
         resetAds()
         await tokenStore.clear()
+        InvitationSeenStore.clear()
         isAuthenticated = false
         planComplete = nil
         boundRoom = .unknown

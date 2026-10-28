@@ -2,6 +2,7 @@ import SwiftUI
 import WPDomain
 import WPModels
 import WPNetworking
+import WPUtils
 
 @MainActor final class InvitationStore: ObservableObject {
     @Published var result: MyInvitation?
@@ -13,6 +14,11 @@ import WPNetworking
     @Published var planVenue: String?
     /// 공개·비공개 뒤의 한 줄 — 안드로이드 `InvitationRules.PUBLISHED_NOTE` · `UNPUBLISHED_NOTE`
     @Published var shareNote: String?
+    /// 홈의 `새 축하 N`(청첩장 칸에서 본 뒤로 늘어난 축하 수). 칸은 늘 0 — 칸에서 받은 하객까지가 "본 것" 이다
+    @Published var fresh = 0
+    /// 청첩장 칸이면 받은 하객 수를 "본 것" 으로 적고, 홈이면 그 수와 비교한다(Android `InvitationStudioViewModel` · `HomeInvitationViewModel`)
+    let marksSeen: Bool
+    init(marksSeen: Bool = false) { self.marksSeen = marksSeen }
     var state: InvitationRules.StudioState {
         InvitationRules.studioState(loaded: result != nil, failed: error != nil && result == nil, hasInvitation: result?.invitation != nil, canEdit: result?.canEdit == true)
     }
@@ -38,9 +44,26 @@ import WPNetworking
                 do {
                     let page: InvitationGuestbook = try await env.api.send(Endpoint.invitationGuestbook(slug: invitation.slug))
                     wishes = page.wishes; total = page.total ?? page.wishes.count
-                } catch { total = nil }
-            } else { wishes = []; total = nil }
+                    await countFresh(env)
+                } catch { total = nil; fresh = 0 }
+            } else { wishes = []; total = nil; fresh = 0 }
         } catch { self.error = error.localizedDescription }
+    }
+    /// 칸이면 지금 수를 본 것으로 적는다. 홈은 본 수와 빼고, 이 기기에서 처음이면 지금 수를 기준으로 삼아 0 —
+    /// 이미 칸에서 다 읽은 사람에게 새 축하를 지어내지 않는다. 홈이 다시 앞으로 올 때(칸에서 읽고 돌아옴)도 부른다.
+    func countFresh(_ env: AppEnvironment) async {
+        guard let slug = result?.invitation?.slug, let total,
+              let account = await env.tokenStore.currentToken().flatMap({ JWTDecoder.planUserId(from: $0) }) else { fresh = 0; return }
+        if marksSeen {
+            InvitationSeenStore.markSeen(account: account, slug: slug, total: total)
+            fresh = 0
+        } else {
+            let seen = InvitationSeenStore.seen(account: account, slug: slug) ?? {
+                InvitationSeenStore.markSeen(account: account, slug: slug, total: total)
+                return total
+            }()
+            fresh = InvitationRules.freshWishes(total: total, seen: seen)
+        }
     }
     func publish(_ published: Bool, env: AppEnvironment) async {
         guard !busy, var content = result?.invitation else { return }
@@ -57,7 +80,7 @@ struct InvitationStudioView: View {
     var titleSlot: AnyView? = nil
     var motionEnabled = true
     @EnvironmentObject private var env: AppEnvironment
-    @StateObject private var model = InvitationStore()
+    @StateObject private var model = InvitationStore(marksSeen: true)
     private struct EditTarget: Identifiable { let id: String }
     @State private var editTarget: EditTarget?
     @State private var preview = false

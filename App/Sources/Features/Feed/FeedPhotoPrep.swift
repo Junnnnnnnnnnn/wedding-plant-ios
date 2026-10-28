@@ -52,6 +52,12 @@ enum FeedPhotoPrep {
     }
 
     static func encode(_ image: CGImage) throws -> Data {
+        try encode(image, qualities: FeedRules.photoQualities, maxBytes: FeedRules.photoMaxBytes, failure: FeedRules.photoTooLarge)
+    }
+
+    /// 품질을 차례로 내려 가며 `maxBytes` 이하가 되는 첫 WebP. `opaqueWhite` 면 흰 바탕에 그려 투명을 없앤다
+    /// (청첩장 — 웹 `fillStyle = "#fff"`). 청첩장 사진도 이것을 쓴다(`InvitationPhotoPrep`).
+    static func encode(_ image: CGImage, qualities: [Float], maxBytes: Int, failure: String, opaqueWhite: Bool = false) throws -> Data {
         let width = image.width, height = image.height
         let stride = width * 4
         var pixels = [UInt8](repeating: 0, count: stride * height)
@@ -59,26 +65,31 @@ enum FeedPhotoPrep {
             guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
                                           bytesPerRow: stride, space: CGColorSpaceCreateDeviceRGB(),
                                           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            let rect = CGRect(x: 0, y: 0, width: width, height: height)
+            if opaqueWhite {
+                context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+                context.fill(rect)
+            }
+            context.draw(image, in: rect)
             return true
         }
-        guard drawn else { throw Failure(message: FeedRules.photoTooLarge) }
+        guard drawn else { throw Failure(message: failure) }
         // CGContext 는 미리 곱한 알파만 그린다 — libwebp 는 곱하지 않은 RGBA 를 받는다(사진 대부분은 불투명이라 그대로)
         for index in Swift.stride(from: 0, to: pixels.count, by: 4) {
             let alpha = Int(pixels[index + 3])
             guard alpha > 0, alpha < 255 else { continue }
             for channel in 0..<3 { pixels[index + channel] = UInt8(min(255, Int(pixels[index + channel]) * 255 / alpha)) }
         }
-        for quality in FeedRules.photoQualities {
+        for quality in qualities {
             var output: UnsafeMutablePointer<UInt8>?
             let size = pixels.withUnsafeBufferPointer { buffer in
                 WebPEncodeRGBA(buffer.baseAddress, Int32(width), Int32(height), Int32(stride), quality, &output)
             }
             defer { WebPFree(output) }
-            if size > 0, size <= FeedRules.photoMaxBytes, let output {
+            if size > 0, size <= maxBytes, let output {
                 return Data(bytes: output, count: size)
             }
         }
-        throw Failure(message: FeedRules.photoTooLarge)
+        throw Failure(message: failure)
     }
 }

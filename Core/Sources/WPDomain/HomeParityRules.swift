@@ -68,6 +68,12 @@ extension InvitationRules {
         )
     }
 
+    /// `새 축하 N` — 방명록 수 − 청첩장 칸에서 마지막으로 본 수. 둘 중 하나라도 모르면 0(Android `freshWishes`)
+    public static func freshWishes(total: Int?, seen: Int?) -> Int {
+        guard let total, let seen else { return 0 }
+        return max(0, total - seen)
+    }
+
     /// 안드로이드 `latestWish` — `createdAt` 이 가장 늦은 글. 시각이 없으면 받은 첫 장, 이름이 비면 `하객`,
     /// 줄바꿈은 한 줄로 편다(카드에 한 줄만 보인다).
     public static func homeLatestWish(_ wishes: [(name: String, message: String, createdAt: String)]) -> HomeWishLine? {

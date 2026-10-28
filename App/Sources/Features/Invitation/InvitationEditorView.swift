@@ -32,6 +32,8 @@ struct InvitationEditorView: View {
     @State private var conflict = false
     @State private var error: String?
     @State private var pendingDraft: InvitationContent?
+    /// 새 청첩장이 이어서 고치기를 묻는 중이면 구성은 **답한 뒤에** 연다(Android `layoutAfterResume`) — 시트가 묻는 창을 가린다
+    @State private var layoutAfterRestore = false
     @State private var storageKey: String?
     /// 키보드가 편집 칸(머리 줄 아래)의 아래쪽을 덮는 높이 — 미리보기는 그대로 두고 패널만 이만큼 올립니다
     @State private var keyboardOverlap: CGFloat = 0
@@ -174,7 +176,9 @@ struct InvitationEditorView: View {
             }
         }.tint(WPColor.invAccent).interactiveDismissDisabled(draft != baseline || busy)
             .task {
-                layoutOpen = initialFocus == "layout"
+                // 기존 청첩장 `고치기`는 미리보기부터(Android 2c2fb4c, 2026-10-27) — 구성은 아래 `구성` 단추로 연다.
+                // 새 청첩장만 어떤 칸을 채울지 고르게 구성부터 펼친다. 칸을 받고 열면(`?focus=`) 그 자리의 입력부터.
+                let openLayout = initialFocus == "layout" && saved == nil
                 target = initialFocus == "layout" || initialFocus.isEmpty ? nil : initialFocus
                 draft = saved ?? InvitationRules.draft()
                 if saved == nil { draft.weddingDate = planDate; draft.venue = planVenue ?? "" }
@@ -184,6 +188,11 @@ struct InvitationEditorView: View {
                 // Use account identity, never the token itself, for local draft isolation.
                 storageKey = "invitation.draft.\(env.baseURL.absoluteString).\(roomId ?? 0).\(JWTDecoder.planUserId(from: token) ?? "unknown")"
                 if !env.isDemo, let key = storageKey, let data = UserDefaults.standard.data(forKey: key), let local = try? JSONDecoder().decode(InvitationContent.self, from: data), local != baseline { pendingDraft = local; restore = true }
+                if restore { layoutAfterRestore = openLayout } else { layoutOpen = openLayout }
+            }
+            .onChange(of: restore) { _, showing in
+                // 이어서 고치든 버리든(창 바깥으로 닫아도) 답한 뒤에 — 기존 청첩장은 미리보기 그대로
+                if !showing && layoutAfterRestore { layoutAfterRestore = false; layoutOpen = true }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { keyboardChanged($0, hiding: false) }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { keyboardChanged($0, hiding: true) }
@@ -329,10 +338,10 @@ struct InvitationEditorView: View {
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(WPColor.invLine)).padding(.top, 12)
             } else if let index = draft.photos.firstIndex(where: { $0.key == selectedPhoto }) {
                 HStack(spacing: 6) {
-                    photoAction("표지로", icon: InvIcon.star, enabled: index > 0) { let photo = draft.photos.remove(at: index); draft.photos.insert(photo, at: 0) }
-                    photoAction("앞으로", icon: InvIcon.chevronLeft, enabled: index > 0) { draft.photos.swapAt(index, index - 1) }
-                    photoAction("뒤로", icon: InvIcon.chevronRight, enabled: index < draft.photos.count - 1) { draft.photos.swapAt(index, index + 1) }
-                    photoAction("빼기", icon: InvIcon.x, enabled: true, danger: true) { draft.photos.remove(at: index); selectedPhoto = nil }
+                    photoAction("표지로", icon: InvIcon.star, enabled: !busy && index > 0) { let photo = draft.photos.remove(at: index); draft.photos.insert(photo, at: 0) }
+                    photoAction("앞으로", icon: InvIcon.chevronLeft, enabled: !busy && index > 0) { draft.photos.swapAt(index, index - 1) }
+                    photoAction("뒤로", icon: InvIcon.chevronRight, enabled: !busy && index < draft.photos.count - 1) { draft.photos.swapAt(index, index + 1) }
+                    photoAction("빼기", icon: InvIcon.x, enabled: !busy, danger: true) { draft.photos.remove(at: index); selectedPhoto = nil }
                 }.padding(.top, 10)
                 note("\(index + 1)번 사진을 골랐어요. 순서를 바꾸거나 표지로 올릴 수 있어요.", top: 8)
             } else {
@@ -504,24 +513,36 @@ struct InvitationEditorView: View {
             } else { self.error = "다른 사람이 저장한 내용을 불러오지 못했어요. 다시 시도해 주세요." }
         } catch { self.error = error.localizedDescription }
     }
+    /// 고른 사진을 WebP 로 다시 만들어 바로 올린다. 초안은 **올린 뒤에야** 바뀐다 — 실패하면 원래 사진(20장 표지 포함)이 그대로 남는다
+    /// (Android `preparingCover` 가 막는 "새 사진을 읽다 실패했는데 원래 표지가 빠짐" 이 여기서는 생기지 않는다).
     private func uploadPhotos() async {
-        guard !busy else { return }; busy = true; error = nil; defer { busy = false; photos = []; pickingCover = false }
+        guard !busy, !photos.isEmpty else { return }
+        busy = true; error = nil
+        let asCover = pickingCover
+        defer { busy = false; photos = []; pickingCover = false }
+        // 표지는 한 장 — 20장이 차 있어도 바꿀 수 있다(옛 표지 자리를 새 사진이 맡음). 사진첩 추가는 남은 칸만큼.
+        let picks = asCover ? Array(photos.prefix(1)) : Array(photos.prefix(max(0, InvitationRules.photoLimit - draft.photos.count)))
         do {
-            for item in photos.prefix(max(0, 20 - draft.photos.count)) {
-                guard let raw = try await item.loadTransferable(type: Data.self), let image = UIImage(data: raw) else { throw APIError.backend(message: "사진을 읽지 못했어요.") }
-                let ratio = min(1, 1600 / max(image.size.width, image.size.height))
-                let size = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
-                let format = UIGraphicsImageRendererFormat(); format.scale = 1
-                let prepared = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-                guard let bytes = prepared.jpegData(compressionQuality: 0.85), bytes.count <= 8 * 1024 * 1024 else { throw APIError.backend(message: "사진 한 장은 8MB까지 올릴 수 있어요.") }
-                let slot: InvitationPhotoSlot = try await env.api.send(Endpoint.invitationPhoto(contentType: "image/jpeg", sizeBytes: bytes.count))
-                try await SignedStorage.upload(url: slot.uploadUrl, contentType: "image/jpeg", bytes: bytes)
+            for item in picks {
+                guard let raw = try await item.loadTransferable(type: Data.self) else { throw APIError.backend(message: InvitationPhotoPrep.unreadable) }
+                let bytes: Data
+                do { bytes = try await InvitationPhotoPrep.prepare(raw) }
+                catch let failure as FeedPhotoPrep.Failure { throw APIError.backend(message: failure.message) }
+                guard bytes.count <= InvitationRules.photoMaxUploadBytes else { throw APIError.backend(message: "사진 한 장은 8MB까지 올릴 수 있어요.") }
+                let slot: InvitationPhotoSlot = try await env.api.send(Endpoint.invitationPhoto(contentType: InvitationRules.photoContentType, sizeBytes: bytes.count))
+                try await SignedStorage.upload(url: slot.uploadUrl, contentType: InvitationRules.photoContentType, bytes: bytes)
                 let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("InvitationPhotos", isDirectory: true)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                let local = directory.appendingPathComponent(UUID().uuidString + ".jpg")
+                let local = directory.appendingPathComponent(UUID().uuidString + ".webp")
                 try bytes.write(to: local, options: .atomic)
-                if pickingCover { draft.photos.insert(.init(key: slot.key, url: local.absoluteString), at: 0) }
-                else { draft.photos.append(.init(key: slot.key, url: local.absoluteString)) }
+                let photo = InvitationPhotoDto(key: slot.key, url: local.absoluteString)
+                if asCover {
+                    let replaced = draft.photos.count >= InvitationRules.photoLimit
+                    draft.photos = InvitationRules.withCover(draft.photos, photo)
+                    if replaced { error = InvitationRules.coverReplacedNote }
+                } else if draft.photos.count < InvitationRules.photoLimit {
+                    draft.photos.append(photo)
+                }
             }
         } catch { self.error = error.localizedDescription }
     }

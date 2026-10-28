@@ -137,6 +137,21 @@ Android `4a785da` · `55d40d0`(웹 `36e4712` · `6e0d6f8` · `0641491`) 이식. 
   올림 · 내림 · 목록 신고 · 상세 신고 뒤에 다시 센다.
 - 업체 고르기는 `/plan/place/search` 프록시 — 일정을 고르면 그 좌표와 맞는 결과만 저절로 고른다.
 
+### 청첩장 편집기 — 사진 WebP · 미리보기부터 (Android v42 · v43, 2026-10-28)
+
+Android `c857963` · `1e62d83` · `2c2fb4c` 이식. 확인은 `InvitationPhotoPrepTests` · `InvitationEditorEntryUITests` · Core
+`InvitationPhotoRulesTests`.
+
+- 청첩장 사진도 **WebP 80**(`InvitationPhotoPrep` — 긴 변 1600 · 흰 바탕 · 결과 8MB 이하, `image/webp` 로 자리 받기 · PUT).
+  웹 e227871 과 같다. 디코드 · 인코드는 피드와 같은 `FeedPhotoPrep` 을 쓴다. 예전에 올린 JPEG 키는 그대로 둔다(서버가 둘 다 받음).
+- **이미 있는 청첩장의 `고치기`는 미리보기부터**, 구성은 아래 `구성` 단추로. 새 청첩장만 구성 시트부터, 칸을 받고 열면 그 입력부터.
+  새 청첩장이 이어서 고치기를 묻는 중이면 구성은 답한 뒤에 연다.
+- 20장이 찬 채 표지를 바꾸면 옛 표지 자리를 새 사진이 맡는다(`InvitationRules.withCover`). iOS 는 고른 순간 올리고 **올린 뒤에야**
+  초안을 바꿔서, 읽다 실패해도 원래 20장이 그대로 남는다(Android 는 저장 때 올려 `preparingCover` 로 같은 것을 지킨다).
+  사진을 올리는 동안 표지로 · 앞으로 · 뒤로 · 빼기는 잠근다.
+- 홈의 `새 축하 N` 은 **청첩장(주소)마다 · 계정마다** 본 수와 뺀다(`InvitationSeenStore`). 청첩장 칸이 받은 하객 수를 본 것으로
+  적고, 홈은 이 기기에서 처음이면 지금 수를 기준으로 삼아 0 이다. 로그아웃 때 지운다.
+
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 
 안드로이드 `PassBilling`·`PassViewModel.purchase` 와 같은 순서다. 판정·문장은 `Core/Sources/WPDomain/PassPurchaseRules.swift`,

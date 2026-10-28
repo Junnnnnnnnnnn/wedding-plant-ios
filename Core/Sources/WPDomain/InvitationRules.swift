@@ -8,6 +8,19 @@ public enum InvitationRules {
     public static let exampleGroom = "현진"
     public static let exampleBride = "미주"
     public static let photoLimit = 20
+    /// 고른 사진을 다시 만드는 크기·품질 — 긴 변 1600px, **WebP 80**(Android `PHOTO_WEBP_QUALITY` · 웹 e227871).
+    /// R2 무료 용량 때문에 WebP 로 올린다(같은 크기의 JPEG 85 보다 20~55% 작음). 서버는 JPEG 도 받아 예전 사진은 그대로다.
+    public static let photoMaxEdge = 1600
+    public static let photoWebpQuality: Float = 80
+    /// 서버가 받는 한 장의 크기(presign 의 `sizeBytes` 상한)
+    public static let photoMaxUploadBytes = 8 * 1024 * 1024
+    public static let photoContentType = "image/webp"
+    /// 20장이 찬 채 표지를 바꾸면 옛 표지 자리를 새 사진이 맡는다 — 그 자리에서 말한다(Android `addPhotos`)
+    public static let coverReplacedNote = "사진이 20장이라 원래 표지 대신 새 사진을 넣었어요."
+    /// 새 표지를 맨 앞에. 20장이 차 있으면 옛 표지(맨 앞)를 뺀다(Android `withCover`)
+    public static func withCover<Photo>(_ photos: [Photo], _ cover: Photo) -> [Photo] {
+        photos.count < photoLimit ? [cover] + photos : [cover] + photos.dropFirst()
+    }
     public static let sectionTypes = ["message", "couple", "gallery", "calendar", "location", "notice", "accounts", "guestbook"]
     public static let sectionLabels = ["초대의 말", "신랑 · 신부", "사진첩", "예식 일시", "오시는 길", "안내 말씀", "계좌 입력", "댓글 관리"]
     public static let accountSeats = [("groom","신랑"),("groom","아버지"),("groom","어머니"),("bride","신부"),("bride","아버지"),("bride","어머니")]

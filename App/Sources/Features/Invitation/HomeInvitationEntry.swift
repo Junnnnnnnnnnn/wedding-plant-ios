@@ -83,7 +83,7 @@ struct HomeInvitationEntry: View {
         let latest = InvitationRules.homeLatestWish(model.wishes.map { (name: $0.name, message: $0.message, createdAt: $0.createdAt) })
         let text = empty
             ? InvitationRules.homeEmptyText(planDate: planDate, planVenue: planVenue)
-            : InvitationRules.homeMineText(published: published, guestbookOn: guestbookOn, guests: model.total, fresh: 0, latest: latest)
+            : InvitationRules.homeMineText(published: published, guestbookOn: guestbookOn, guests: model.total, fresh: model.fresh, latest: latest)
         // 아래 줄이 하객이 쓴 글이면 한 줄로 자른다 — 우리 문장은 어절로 꺾는다
         let wishNote = !empty && published && guestbookOn && (model.total ?? 0) > 0 && latest != nil
         let groom = (invitation?.groom).flatMap { $0.isEmpty ? nil : $0 } ?? "신랑"

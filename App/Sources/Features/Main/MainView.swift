@@ -207,6 +207,8 @@ struct MainView: View {
             await invitation.load(env)
             await env.refreshAdEligibility()
         }
+        // 청첩장 칸에서 축하를 읽고 돌아오면 `새 축하 N` 이 다시 받기 전에도 줄어든다(Android `HomeInvitationViewModel`)
+        .onAppear { Task { await invitation.countFresh(env) } }
         .navigationDestination(for: Int.self) { scheduleId in
             ScheduleDetailView(scheduleId: scheduleId, roomId: model.roomIdValue)
         }
