@@ -26,6 +26,7 @@ struct UserView: View {
     private var shownDate: KstDate { bound ? (env.boundRoomPlan.flatMap { KstDate(dateString: $0.weddingDate) } ?? model.date) : model.date }
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 0) {
                 ProfileHeader(name: model.name, date: shownDate, loading: model.loading)
@@ -47,6 +48,16 @@ struct UserView: View {
         }
         // 아래로 끌면 키보드가 따라 내려간다(플랜 추가와 같음)
         .scrollDismissesKeyboard(.interactively)
+        // 탈퇴 · 로그아웃 확인 상자가 열리면 끝까지 굴려 단추가 탭바 뒤에 숨지 않게(Android 8ab1b3d — 열려도 화면이 따라
+        // 내려가지 않아 단추가 탭바에 가렸다. 2026-10-28 iOS QA PROF-05 에서도 상자 아래가 탭바 밑에 걸렸다)
+        .onChange(of: confirmWithdraw || confirmSignOut) { _, open in
+            guard open else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(60))
+                withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("user.bottom", anchor: .bottom) }
+            }
+        }
+        }
         .background(WPColor.background)
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
@@ -203,7 +214,7 @@ struct UserView: View {
                 }
             }
 
-            Spacer().frame(height: 40)
+            Spacer().frame(height: 40).id("user.bottom")
         }
     }
 
