@@ -84,6 +84,9 @@ targets:
         buildPhase: resources
       - path: App/Resources/Pass
         buildPhase: resources
+      # 새 버전 알림의 "뽁"(Android `res/raw/pop.wav` 그대로 — 직접 합성한 소리라 저작권 없음)
+      - path: App/Resources/Sounds
+        buildPhase: resources
       # 함께 묶어 배포하는 라이브러리의 저작권 고지(BSD 등은 바이너리 배포에도 고지를 요구한다)
       - path: App/Resources/Licenses
         buildPhase: resources

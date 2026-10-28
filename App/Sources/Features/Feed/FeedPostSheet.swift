@@ -142,7 +142,8 @@ struct FeedPostSheet: View {
     @ViewBuilder private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !isEdit {
-                Text("이름 없이 공개돼요. 공유 링크로 누구나 볼 수 있습니다.".wpKeepAll).wpTypography(13).foregroundStyle(WPColor.textPrimary)
+                // 후기 상세가 사이트맵 · 검색 결과에 실린다(웹 74bb7c0, 2026-10-27 · Android 69749f3) — 올리기 전에 먼저 말한다
+                Text("이름 없이 공개돼요. 로그인하지 않은 사람과 검색 결과에도 보일 수 있어요.".wpKeepAll).wpTypography(13).foregroundStyle(WPColor.textPrimary)
                     .fixedSize(horizontal: false, vertical: true).padding(.bottom, 16)
             }
             if let editing {

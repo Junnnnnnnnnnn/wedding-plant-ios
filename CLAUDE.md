@@ -152,6 +152,13 @@ Android `c857963` · `1e62d83` · `2c2fb4c` 이식. 확인은 `InvitationPhotoPr
 - 홈의 `새 축하 N` 은 **청첩장(주소)마다 · 계정마다** 본 수와 뺀다(`InvitationSeenStore`). 청첩장 칸이 받은 하객 수를 본 것으로
   적고, 홈은 이 기기에서 처음이면 지금 수를 기준으로 삼아 0 이다. 로그아웃 때 지운다.
 
+### 새 버전 알림 (Android 373ec6f, 2026-10-28)
+
+`Features/Update/AppUpdatePrompt.swift` · Core `UpdateRules`. 앱을 켜거나 **백그라운드에서** 돌아올 때(`inactive` 는 아님) App Store 공개
+조회(`itunes.apple.com/lookup?bundleId=`)를 10초 안에 받아, 설치본보다 새 버전이면 늘 `업데이트 / 나중에`. 나중에는 이번만 닫는다 —
+숨김 시간 · 꼭 해야 하는 업데이트는 **없다**(Android 가 버렸다). 실패는 "최신" 으로 적지 않는다. 안내는 경고 창 높이의 자기 창이라
+시트 · 전체 화면 위에도 뜬다. 데모는 운영 스토어에 묻지 않고, `-WPStoreVersion 9.9.9` 로 가짜 스토어를 쓴다(`AppUpdatePromptUITests`).
+
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 
 안드로이드 `PassBilling`·`PassViewModel.purchase` 와 같은 순서다. 판정·문장은 `Core/Sources/WPDomain/PassPurchaseRules.swift`,

@@ -1,5 +1,16 @@
 # 현재 상태 / 인수인계
 
+## 2026-10-28 — Android v44 · v45 이식 (새 버전 알림 · 내보내기 시트 · 후기 안내)
+
+- Android `main` `7622e73` 까지(3커밋). [1:1 대조 4쌍](test-reports/2026-10-28-android-v45/README.md).
+- **새 버전 알림을 실제로 띄운다**(373ec6f). 카드는 예전에 모양만 옮겨 두고 판정이 없었다. Android 가 꼭 해야 하는 업데이트 ·
+  24시간 숨김 · 30분 간격을 버리고 "새 버전이면 늘 업데이트 / 나중에" 로 바꿔, iOS 는 App Store 공개 조회로 같은 규칙을 쓴다
+  (`AppUpdatePrompt` · Core `UpdateRules`). 켤 때 · 백그라운드에서 돌아올 때만 묻고, 실패는 "최신" 으로 적지 않는다. 안내는 자기
+  창이라 시트 위에도 뜬다. "뽁" 소리는 Android `pop.wav` 그대로(무음 스위치를 따름).
+- 내보내기 시트에서 웹 · Android 와 같이 글 여섯 줄을 뺐다(7622e73). 대조 중 기간 칩 줄바꿈 차이를 찾아 고쳤다.
+- 새 후기 안내 문구(69749f3).
+- 검증: Core 430, 앱 단위 테스트, `AppUpdatePromptUITests` 2 · `ExportSheetParityUITests` · `FeedParityUITests` 새 후기.
+
 ## 2026-10-28 — Android v42 · v43 청첩장 이식
 
 - Android `main` `2c2fb4c` 까지 받았다(4커밋, 청첩장만). 청첩장 사진 JPEG 85 → **WebP 80**(c857963 · 웹 e227871), 기존 청첩장

@@ -82,8 +82,7 @@ final class PassVisualParityTests: XCTestCase {
             ("vault-download-all", "vault", AnyView(PassDownloadView(roomId: 1))),
             ("plans-yearly", "locked", AnyView(PassPlansView(roomId: 1))),
             ("plans-lifetime", "lifetime", AnyView(PassPlansView(roomId: 1))),
-            ("update-card", "locked", AnyView(UpdateDialog(force: false, onUpdate: {}, onLater: {}).background(Color(white: 0.5)))),
-            ("update-card-force", "locked", AnyView(UpdateDialog(force: true, onUpdate: {}, onLater: {}).background(Color(white: 0.5)))),
+            ("update-card", "locked", AnyView(UpdateDialog(onUpdate: {}, onLater: {}).background(Color(white: 0.5)))),
         ]
         for (name, mode, view) in shots {
             let env = AppEnvironment(api: APIClient(baseURL: base, transport: DocsReviewTransport(mode: mode), tokenStore: store), tokenStore: store, baseURL: base, isDemo: true)

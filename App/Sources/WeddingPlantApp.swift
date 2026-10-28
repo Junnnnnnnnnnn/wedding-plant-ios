@@ -10,6 +10,8 @@ struct WeddingPlantApp: App {
     @StateObject private var push = PushService()
     @StateObject private var notifications = InAppNotifications()
     @Environment(\.scenePhase) private var scenePhase
+    /// 새 버전 알림은 **들어올 때**(켬 · 백그라운드에서 돌아옴)만 묻는다 — 잠깐 `inactive`(제어 센터 · 권한 창)는 세지 않는다
+    @State private var cameFromBackground = true
 
     /// `-WPShareCode ABC123` 로 넘긴 값.
     private static func launchShareCode() -> String? {
@@ -67,6 +69,13 @@ struct WeddingPlantApp: App {
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    if phase == .active && cameFromBackground {
+                        cameFromBackground = false
+                        AppUpdatePrompt.shared.enter()
+                    } else if phase == .background {
+                        cameFromBackground = true
+                        AppUpdatePrompt.shared.leave()
+                    }
                     if phase == .active {
                         Task {
                             await notifications.start(env: env, push: push); await env.refreshAdEligibility()

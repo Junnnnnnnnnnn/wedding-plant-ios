@@ -121,8 +121,8 @@ struct CalendarExportBody: View {
             Capsule().fill(WPColor.sheetHandle).frame(width: 38, height: 4).padding(.top, 10).padding(.bottom, 6)
             // 머리
             HStack(alignment: .top, spacing: 0) {
+                // 머리 글(KEEP OUR PLANS)은 웹과 같이 뺐다(웹 39406e5 · Android 7622e73, 2026-10-28 사용자 디자인 피드백) — 제목이 맨 위
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("KEEP OUR PLANS").tracking(1.8).wpTypography(10, .bold).foregroundStyle(WPColor.exportEyebrow)
                     Text("우리의 준비, 한 장에 담기").tracking(-0.5).wpTypography(23, .bold).foregroundStyle(WPColor.exportInk)
                     Text("마음에 드는 양식을 고르고 엑셀 또는 PDF로 간직하세요.".wpKeepAll).wpTypography(14, lineHeight: 20)
                         .foregroundStyle(WPColor.exportMuted).fixedSize(horizontal: false, vertical: true)
@@ -132,6 +132,8 @@ struct CalendarExportBody: View {
                     WPMaterialPathIcon(paths: WPIconPaths.closeFilled, size: 20, color: WPColor.exportMuted)
                         .frame(width: 40, height: 40).contentShape(Circle())
                 }
+                // 닫기 X 의 가운데를 제목 첫 줄에 맞춘다(머리 글이 빠져 제목이 맨 위)
+                .offset(y: -8)
                 .buttonStyle(.plain).disabled(busy).accessibilityLabel("다운로드 창 닫기").accessibilityIdentifier("export.close")
             }
             .padding(.leading, 24).padding(.trailing, 12).padding(.top, 8).padding(.bottom, 20)
@@ -154,11 +156,11 @@ struct CalendarExportBody: View {
             // 아래 고정 줄 — 무엇을 받는지 요약하고 받기
             Rectangle().fill(WPColor.exportLine).frame(height: 1)
             HStack(spacing: 12) {
+                // 둘째 줄("내 일정 다운로드는 준비 패스에 포함돼요" / 예시 안내)은 웹과 같이 뺐다(2026-10-28).
+                // 앱은 패스가 없으면 이 시트를 열기 전에 막고 준비 패스 소개를 연다 — 따로 알릴 것이 없다
                 VStack(alignment: .leading, spacing: 4) {
                     Text((sample ? "예시 데이터로 양식을 확인해 보세요" : "\(scopedItems.count)개 일정 · \(template.label)").wpKeepAll)
                         .wpTypography(12, .bold).foregroundStyle(WPColor.exportSummary)
-                    Text((sample ? "실제 내 일정은 포함되지 않아요." : "내 일정 다운로드는 준비 패스에 포함돼요.").wpKeepAll)
-                        .wpTypography(11).foregroundStyle(WPColor.exportNote)
                     if let actionError { Text(actionError.wpKeepAll).wpTypography(12).foregroundStyle(WPColor.exportError) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,8 +205,6 @@ struct CalendarExportBody: View {
                     .buttonStyle(.plain).disabled(busy).accessibilityLabel(isPdf ? "PDF" : "엑셀")
                 }
             }
-            Text(pdf ? "공유하고 인쇄하기 좋은 A4 가로 타임라인" : "첫 장은 요약, 둘째 장부터 고쳐 쓰는 표")
-                .wpTypography(11).foregroundStyle(WPColor.exportNote).padding(.top, 8)
         }
     }
 
@@ -245,8 +245,11 @@ struct CalendarExportBody: View {
                 ForEach([false, true], id: \.self) { isMonth in
                     let on = currentMonth == isMonth
                     Button { currentMonth = isMonth } label: {
+                        // Android 는 390 폭에서 `전체 기간 · 날짜 미정 포함` 이 한 줄에 딱 맞는데 iOS 는 반올림으로 둘째 줄로 꺾였다
+                        // (2026-10-28 1:1 대조) — 한 줄을 지키고 모자라면 10% 까지만 줄인다
                         Text(CalendarExport.scopeLabel(isMonth ? month : nil)).wpTypography(13, on ? .bold : .regular)
                             .foregroundStyle(on ? WPColor.exportAccent : WPColor.exportChipText)
+                            .lineLimit(1).minimumScaleFactor(0.9)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal, 8).padding(.vertical, 12)
@@ -304,21 +307,13 @@ struct CalendarExportBody: View {
                 }
             }
             .padding(.top, 16)
-            Text(template.detail).wpTypography(12, .bold).foregroundStyle(WPColor.exportPreviewLabel).padding(.top, 16)
-            Text(previewNote.wpKeepAll).wpTypography(11, lineHeight: 18).foregroundStyle(WPColor.exportNote)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+            // 미리보기 아래 설명 두 줄(양식 요약 · 파일 설명)은 웹과 같이 뺐다(2026-10-28)
         }
         .padding(20)
         .frame(maxWidth: .infinity)
         .background(WPColor.exportPreviewBg)
     }
 
-    private var previewNote: String {
-        (pdf ? "A4 가로 · 왼쪽 기둥에 두 사람과 D-day, 오른쪽은 달마다 이어지는 타임라인이에요."
-            : "첫 시트 \"한눈에\"에 요약과 막대, 둘째 시트부터 표가 있어요" + (template == .monthly ? "(달마다 한 시트)" : "") + ". 합계는 수식이라 고치면 따라 바뀌어요.")
-            + " " + (template == .budget ? "일정 완료와 결제 여부를 따로 구분하고, 금액 미정은 합계에서 빼요." : "날짜순이고, 날짜 미정 일정은 맨 끝에 담아요.")
-            + " 미리보기는 일부만 보여 줘요."
-    }
 }
 
 /// 양식 카드의 작은 종이 그림(웹 w-12 썸네일)
@@ -581,10 +576,8 @@ extension ExportTemplate {
 extension WPColor {
     static let exportPaper = Color(hex: 0xFFFDFB)
     static let exportInk = Color(hex: 0x30262D)
-    static let exportEyebrow = Color(hex: 0xA88797)
     static let exportMuted = Color(hex: 0x8B7D85)
     static let exportLine = Color(hex: 0xEEE7E9)
-    static let exportNote = Color(hex: 0x9B8B94)
     static let exportDesc = Color(hex: 0x95848F)
     static let exportAccent = Color(hex: 0xAC496F)
     static let exportAccentLine = Color(hex: 0xD57A9F)
