@@ -17,6 +17,8 @@ struct HomeInvitationEntry: View {
     var planDate: String? = nil
     var planVenue: String? = nil
     @State private var creating = false
+    /// 탭 셸 안이면 둘러보기의 `청첩장` 칸으로 **탭처럼** 옮긴다(Android). 셸 밖이면 예전처럼 청첩장 화면을 쌓는다.
+    @Environment(\.openExplore) private var openExplore
 
     var body: some View {
         Group {
@@ -33,7 +35,7 @@ struct HomeInvitationEntry: View {
     // MARK: - 줄 (패스 없음)
 
     private var row: some View {
-        NavigationLink { InvitationStudioView() } label: {
+        StudioLink(open: openExplore) {
             VStack(spacing: 0) {
                 HomeInviteColor.line.frame(height: 1).padding(.horizontal, 20)
                 HStack(spacing: 0) {
@@ -90,7 +92,7 @@ struct HomeInvitationEntry: View {
         let bride = (invitation?.bride).flatMap { $0.isEmpty ? nil : $0 } ?? "신부"
         let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
 
-        return NavigationLink { InvitationStudioView() } label: {
+        return StudioLink(open: openExplore) {
                 VStack(alignment: .leading, spacing: 0) {
                     SeasideGardenView(
                         wishes: model.wishes,
@@ -206,4 +208,20 @@ enum HomeInviteColor {
         "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7",
         "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
     ]
+}
+
+/// 청첩장 첫 화면으로 가는 입구 — 셸 안이면 둘러보기 탭의 `청첩장` 칸으로 옮기고(Android `Routes.feed(EXPLORE_INVITATION)`,
+/// 2026-10-28 iOS QA HOME-12: 예전에는 홈 위에 청첩장 화면을 쌓아 탭바가 홈에 남고 뒤로 단추가 머리 글과 겹쳤다),
+/// 셸 밖이면 쌓는다.
+private struct StudioLink<Label: View>: View {
+    var open: ((ExploreSection) -> Void)?
+    @ViewBuilder var label: () -> Label
+
+    var body: some View {
+        if let open {
+            Button { open(.invitation) } label: { label() }
+        } else {
+            NavigationLink { InvitationStudioView() } label: { label() }
+        }
+    }
 }

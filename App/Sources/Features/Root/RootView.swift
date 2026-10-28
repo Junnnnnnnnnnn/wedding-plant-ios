@@ -278,6 +278,9 @@ private struct AddPlanPresenterKey: EnvironmentKey {
 private struct AddPlanCloseKey: EnvironmentKey {
     static let defaultValue: (() -> Void)? = nil
 }
+private struct OpenExploreKey: EnvironmentKey {
+    static let defaultValue: ((ExploreSection) -> Void)? = nil
+}
 extension EnvironmentValues {
     /// 탭 셸 안이면 플랜 추가·수정을 셸 위에 엽니다(탭바가 남음). 셸 밖(테스트·단독 창)에서는 비어 있습니다.
     var addPlanPresenter: AddPlanPresenter? {
@@ -288,6 +291,12 @@ extension EnvironmentValues {
     var addPlanClose: (() -> Void)? {
         get { self[AddPlanCloseKey.self] }
         set { self[AddPlanCloseKey.self] = newValue }
+    }
+    /// 둘러보기 탭의 한 칸으로 **탭처럼** 옮긴다(Android `Routes.feed(EXPLORE_INVITATION)`) — 홈의 청첩장 줄 · 정원 카드.
+    /// 셸 밖이면 비어 있다.
+    var openExplore: ((ExploreSection) -> Void)? {
+        get { self[OpenExploreKey.self] }
+        set { self[OpenExploreKey.self] = newValue }
     }
 }
 
@@ -302,6 +311,12 @@ struct MainTabShell: View {
     @StateObject private var tabBar = TabBarVisibility()
     @StateObject private var addPlan = AddPlanPresenter()
     @StateObject private var detail = ScheduleDetailPresenter()
+    /// 홈 탭의 데이터 — 탭을 오가도 남는다(MainView 참고)
+    @StateObject private var homeModel = MainViewModel()
+    @StateObject private var homeInvitation = InvitationStore()
+    @StateObject private var homeBrag = BragToggleViewModel()
+    /// 둘러보기를 열 때 처음 볼 칸. 하단 탭으로 열면 피드, 홈의 청첩장 입구로 열면 청첩장
+    @State private var exploreStart: ExploreSection = .feed
     /// Android `showTabBar = onTabScreen && !imeVisible` — 키보드가 떠 있으면 탭바를 내린다
     /// (입력이 많은 플랜 추가에서 탭바가 키보드 위로 떠 입력 칸을 가리지 않게. 채팅 입력도 같음).
     @State private var keyboardUp = false
@@ -321,16 +336,20 @@ struct MainTabShell: View {
                         }.task { await env.refreshBoundRoom() }
                     } else {
                     switch tab {
-                    case .home, .add: MainView()
+                    case .home, .add: MainView(model: homeModel, invitation: homeInvitation, bragToggle: homeBrag)
                     case .schedule: CalendarView(roomId: env.boundRoomId, showsClose: false)
                     case .rooms: CoupleChatTab()
-                    case .explore: ExploreView()
+                    case .explore: ExploreView(initial: exploreStart).id(exploreStart)
                     }
                     }
                 }.id(revision).frame(maxWidth: .infinity, maxHeight: .infinity)
                     .environment(\.tabBarVisibility, tabBar)
                     .environment(\.addPlanPresenter, addPlan)
                     .environment(\.scheduleDetailPresenter, detail)
+                    .environment(\.openExplore, { section in
+                        addPlan.close(); detail.close()
+                        exploreStart = section; tab = .explore; revision = UUID()
+                    })
                     // 덮인 화면은 보이지 않으니 손쓰기(VoiceOver·UI 테스트)에서도 뺀다
                     .accessibilityHidden(adding || detailOpen)
 
@@ -360,8 +379,9 @@ struct MainTabShell: View {
             if (adding || detailOpen || !tabBar.hidden) && !keyboardUp {
                 BottomTabBar(
                     // 플랜 추가가 떠 있으면 가운데 `+` 가 켜진다 — 다른 탭은 꺼진다(Android `fromRoute(ADD_PLAN) = ADD`)
-                    // 일정 상세는 홈이 켜진다(Android `fromRoute(SCHEDULE_DETAIL)` → HOME)
-                    active: Binding(get: { adding ? .add : detailOpen ? .home : tab }, set: { tab = $0 }),
+                    // 일정 상세는 **연 탭**이 켜진다(Android 8ab1b3d `TabType.fromBackStack` — 일정 탭에서 연 상세에 홈이
+                    // 켜지던 것을 고침). 상세는 지금 탭 위에 덮이므로 그 탭이다.
+                    active: Binding(get: { adding ? .add : tab }, set: { tab = $0 }),
                     unreadCount: notifications.unreadCount,
                     onAdd: {
                         // 이미 플랜 추가면 그대로(Android `currentRoute != ADD_PLAN` 일 때만 연다)
@@ -369,7 +389,7 @@ struct MainTabShell: View {
                         addPlan.open(AddPlanRequest(roomId: env.boundRoomId) { revision = UUID() })
                     },
                     // 다른 탭(같은 탭 포함)을 누르면 플랜 추가는 빠지고 그 탭이 처음부터 열린다(Android popToRoot)
-                    onSelect: { addPlan.close(); detail.close(); revision = UUID() }
+                    onSelect: { addPlan.close(); detail.close(); exploreStart = .feed; revision = UUID() }
                 )
             }
         }.background(WPColor.background)

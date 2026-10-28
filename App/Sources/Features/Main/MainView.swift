@@ -67,14 +67,17 @@ let mainGuideSteps: [GuideStep] = [
 struct MainView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var guest: GuestStore
-    @StateObject private var model = MainViewModel()
-    @StateObject private var invitation = InvitationStore()
+    /// 받아 둔 홈 데이터는 **탭 셸이 들고 있다**(Android: 탭을 오가도 MainViewModel 은 살아 있고 화면 상태만 새로 시작).
+    /// 홈이 들고 있으면 둘러보기에 갔다 돌아올 때마다 새로 만들어져 뼈대가 다시 깜빡였다(2026-10-28 iOS QA HOME-07).
+    /// 스크롤 · 머리 면 자리는 이 화면의 상태라 탭을 다시 열면 맨 위에서 시작한다.
+    @ObservedObject var model: MainViewModel
+    @ObservedObject var invitation: InvitationStore
     @State private var path = NavigationPath()
     @State private var showAddPlan = false
     /// 탭 셸 위에 플랜 추가를 연다(탭바가 남음 — Android `ADD_PLAN`). 셸 밖이면 예전처럼 전체 화면.
     @Environment(\.addPlanPresenter) private var addPlanPresenter
     /// `/plan/brag/my` 를 홈이 다시 그릴 때마다 또 부르지 않도록 하나로 들고 있는다.
-    @StateObject private var bragToggle = BragToggleViewModel()
+    @ObservedObject var bragToggle: BragToggleViewModel
     @State private var showInvite = false
     @State private var showPass = false
     @EnvironmentObject private var guide: GuideController

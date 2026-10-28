@@ -25,7 +25,7 @@ final class AllScreenComparisonTests: XCTestCase {
         let post = try JSONDecoder().decode(FeedPost.self, from: JSONSerialization.data(withJSONObject: posts[0]))
         let screens: [(String, AnyView)] = [
             ("landing", AnyView(LandingView())),
-            ("home", AnyView(MainView())),
+            ("home", AnyView(MainView(model: MainViewModel(), invitation: InvitationStore(), bragToggle: BragToggleViewModel()))),
             ("budget", AnyView(BudgetDetailView())),
             ("profile", AnyView(UserView())),
             ("calendar", AnyView(CalendarView())),
@@ -52,8 +52,8 @@ final class AllScreenComparisonTests: XCTestCase {
             ("pick-error", AnyView(PickPlanSheet(roomId: 1, model: ChatViewModel(chatRoomId: 1, planRoomId: 1)))),
             ("documents-empty", AnyView(NavigationStack { PassDownloadView(roomId: 1) })),
             ("documents-error", AnyView(NavigationStack { PassDownloadView(roomId: 1) })),
-            ("home-empty", AnyView(MainView())),
-            ("home-over", AnyView(MainView())),
+            ("home-empty", AnyView(MainView(model: MainViewModel(), invitation: InvitationStore(), bragToggle: BragToggleViewModel()))),
+            ("home-over", AnyView(MainView(model: MainViewModel(), invitation: InvitationStore(), bragToggle: BragToggleViewModel()))),
             ("docs-active", AnyView(PassDocumentsView(scheduleId: 1, canAdd: true))),
             ("docs-files", AnyView(PassDocumentsView(scheduleId: 1, canAdd: true))),
             ("docs-expired", AnyView(PassDocumentsView(scheduleId: 1, canAdd: true))),
