@@ -187,8 +187,10 @@ struct MainView: View {
         // **전환하는 동안 가림막으로 덮는다.** 안 덮으면 방을 묻는 사이에 화면이
         // 이미 내 개인 플랜을 그려서, 개인 플랜이 떴다가 방 플랜으로 바뀌는 게
         // 그대로 보인다. **불투명이어야 한다** — 반투명이면 큰 숫자가 비친다.
+        // 아직 아무것도 받지 않았으면(뼈대가 깔려 있음) 덮지 않는다 — 덮으면 앱을 켤 때마다 흰 면 + 스피너가 1초쯤 먼저
+        // 보였다(2026-10-28 iOS QA HOME-01, Android 는 받는 동안 뼈대). 덮는 것은 이미 그린 숫자가 있을 때와 오류일 때다.
         .overlay {
-            if env.boundRoom.needsCover {
+            if env.boundRoom.needsCover && (env.boundRoomError != nil || !model.planLoading) {
                 ZStack {
                     Color.white.ignoresSafeArea()
                     if let error = env.boundRoomError {

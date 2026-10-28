@@ -36,6 +36,17 @@ final class MoneyParityTests: XCTestCase {
         XCTAssertEqual(MoneyInput.accept(".5", previous: ""), "0.5")
         XCTAssertEqual(MoneyInput.accept("1.2.3", previous: "1.2"), "1.2")
         XCTAssertEqual(MoneyInput.accept("9999999999", previous: "10"), "10")
+    }
+
+    /// Android `PlanRules.normalizeDigits` — 앞의 0 을 떼고 혼자 남은 0 과 소수의 0 은 둔다(2026-10-28 iOS QA ONB-03 · ADD-05)
+    func testLeadingZerosAreDroppedLikeAndroid() {
+        XCTAssertEqual(MoneyInput.accept("0500", previous: "050"), "500")
+        XCTAssertEqual(MoneyInput.accept("0300", previous: ""), "300")
+        XCTAssertEqual(MoneyInput.accept("00", previous: "0"), "0")
+        XCTAssertEqual(MoneyInput.accept("0", previous: ""), "0")
+        XCTAssertEqual(MoneyInput.accept("0.5", previous: "0."), "0.5")
+        XCTAssertEqual(MoneyInput.accept("007.5", previous: ""), "7.5")
+        XCTAssertEqual(MoneyInput.accept("05000000", previous: "0500000", maxDigits: 7), "5000000", "앞 0 을 떼고 나서 자릿수를 센다")
         XCTAssertEqual(MoneyInput.accept("-5", previous: "5"), "5")
     }
 }

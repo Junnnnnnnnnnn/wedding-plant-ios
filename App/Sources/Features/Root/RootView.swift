@@ -28,7 +28,10 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if !env.isAuthenticated {
+            if !env.authChecked {
+                // 토큰을 읽기 전 — 로그인한 사람에게 로그인 화면을 비추지 않는다(HOME-01)
+                AuthSplash()
+            } else if !env.isAuthenticated {
                 LandingView()
             } else if env.planComplete == false {
                 // 온보딩은 셸(탭바)을 달지 않는다 — 중간에 홈으로 새면 안 된다.
@@ -309,7 +312,9 @@ struct MainTabShell: View {
         VStack(spacing: 0) {
             ZStack {
                 Group {
-                    if env.boundRoom.needsCover && (tab == .home || tab == .schedule || tab == .add) {
+                    // 홈(·플랜 추가 위의 홈)은 덮지 않는다 — MainView 가 방을 먼저 묻고 받으며, 받는 동안 뼈대를 낸다(오류면
+                    // 스스로 덮고 다시 시도). 여기서 덮으면 앱을 켤 때마다 흰 면 + 스피너가 먼저 보였다(2026-10-28 iOS QA HOME-01).
+                    if env.boundRoom.needsCover && tab == .schedule {
                         VStack(spacing: 16) {
                             if let error = env.boundRoomError { Text(error); Button("다시 시도") { Task { await env.refreshBoundRoom() } } }
                             else { ProgressView() }

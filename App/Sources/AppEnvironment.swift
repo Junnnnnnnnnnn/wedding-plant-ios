@@ -21,6 +21,9 @@ final class AppEnvironment: ObservableObject {
     /// 로그인 여부. 화면 전환 판단에 쓴다.
     @Published var moderationRevision = 0
     @Published var isAuthenticated: Bool = false
+    /// 저장된 토큰을 한 번이라도 읽었는가. 읽기 전에는 로그인 화면이 아니라 시작 화면을 둔다 — 예전에는 `isAuthenticated`
+    /// 의 처음 값(false)으로 로그인 화면이 0.3초쯤 비친 뒤 홈으로 넘어가, 로그인한 사람이 로그아웃된 줄 알았다(2026-10-28 iOS QA HOME-01).
+    @Published var authChecked = false
 
     /// Own-plan eligibility, resolved by the same server endpoint as the invitation entry.
     @Published private(set) var adGate: AdGate = .unknown
@@ -171,6 +174,7 @@ final class AppEnvironment: ObservableObject {
                 isDemo: true
             )
             env.isAuthenticated = !loggedOut
+            env.authChecked = true
             // 데모는 네트워크를 기다리지 않고 바로 화면을 낸다.
             env.planComplete = loggedOut ? nil : !forceOnboarding
             env.boundRoom = .notBound
@@ -210,6 +214,7 @@ final class AppEnvironment: ObservableObject {
         let token = await tokenStore.currentToken()
         let hasToken = !(token ?? "").isEmpty
         isAuthenticated = hasToken
+        authChecked = true
         guard hasToken else {
             planComplete = nil
             return
