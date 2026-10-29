@@ -33,6 +33,7 @@ struct FeedPostSheet: View {
     @State private var loadFailed = false
     @State private var pickerItems: [PhotosPickerItem] = []
     @FocusState private var keywordFocused: Bool
+    @FocusState private var bodyFocused: Bool
     @State private var headHeight: CGFloat = 100
     @State private var bodyHeight: CGFloat = 200
     @State private var footHeight: CGFloat = 0
@@ -330,12 +331,20 @@ struct FeedPostSheet: View {
             TextField("", text: Binding(get: { editor.body }, set: { if $0.count <= 500, !editor.busy { editor.body = $0 } }), axis: .vertical)
                 .font(Font(WPTypeface.tmoney.uiFont(13.5, .regular)))
                 .foregroundStyle(WPColor.textPrimary).tint(WPColor.primary)
+                .focused($bodyFocused)
                 .accessibilityIdentifier("feed.post.body")
         }
         .frame(maxWidth: .infinity, minHeight: 84 - 28, alignment: .topLeading)
         .padding(14)
         .background(WPColor.stone50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(WPColor.stone200, lineWidth: 1))
+        /*
+          상자의 빈 곳 · 안쪽 여백을 눌러도 칸을 누른 것으로(Android `BodyInput` 의 상자 전체 초점, iOS 요청서 01 · 2026-10-28).
+          칸은 글 줄 높이뿐이라 글이 짧으면 아래 여백이 "빈 곳" 이 되어 키보드가 안 올라왔다. 덮개 단추를 씌우지 않고 뒤 면의
+          누름만 받는다 — 칸 위의 누름 · 길게 눌러 고르기는 칸이 먼저 가져간다.
+        */
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture { if !editor.busy { bodyFocused = true } }
     }
 
     // MARK: - 사진

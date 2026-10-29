@@ -39,7 +39,9 @@ final class AllScreenReviewUITests: XCTestCase {
     func testCalendarMonthAndDayActions() {
         let app = launch(); app.buttons["tab.schedule"].tap()
         let next = app.buttons["calendar.next"]
-        XCTAssertTrue(next.waitForExistence(timeout: 5)); shot(app, "calendar-current"); next.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        app.buttons["calendar.view.calendar"].tap() // 처음에는 보드
+        shot(app, "calendar-current"); next.tap()
         shot(app, "calendar-next"); app.buttons["calendar.prev"].tap()
         let days = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'calendar.day.'"))
         XCTAssertGreaterThan(days.count, 7)
@@ -53,7 +55,7 @@ final class AllScreenReviewUITests: XCTestCase {
     }
     func testFeedWriteForm() {
         let app = launch(); app.buttons["tab.explore"].tap()
-        let write = app.buttons["내 후기 올리기"]
+        let write = app.buttons["feed.post.open"]
         XCTAssertTrue(write.waitForExistence(timeout: 5)); write.tap()
         // 시트 제목은 Android `FeedPostSheet` 와 같은 「견적 후기 올리기」
         XCTAssertTrue(app.staticTexts["견적 후기 올리기"].waitForExistence(timeout: 5))

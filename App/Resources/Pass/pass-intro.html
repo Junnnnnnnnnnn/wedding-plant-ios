@@ -170,7 +170,10 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
 .card-perspective{perspective:none}.card-face.front{background:none;border:0;box-shadow:none;overflow:hidden}.card-face.front>:not(canvas){display:none}.card-face.front:before,.card-face.front:after{display:none}
 .stage[data-active-scene="5"] .story-nav{visibility:hidden;pointer-events:none}
 .scroll-hint{padding:12px 22px;line-height:19.5px;gap:16px;min-height:46px}.scroll-hint:after{display:none}.scroll-hint .icon{width:16px;height:16px}
-.final-copy{left:24px!important;right:24px!important;width:auto!important;text-align:center}.final-copy .eyebrow{justify-content:center;gap:8px;font-size:9px;line-height:13.5px;letter-spacing:.12em}.final-copy .eyebrow:before,.final-copy .eyebrow:after{content:'';display:block;width:18px;height:1px;background:#efa4c799}
+.final-copy{left:24px!important;right:24px!important;width:auto!important;text-align:center}
+/* 앱의 흐름(높이 600 이하)에서는 이 구역이 position:relative 라 위의 left:24px 가 구역 전체를 오른쪽으로 24px 밀었다
+   (iOS 요청서 03 — 버튼 · 제목이 오른쪽으로 치우침). 무대(.stage)가 이미 좌우 24 를 비우므로 여기서는 밀지 않는다. */
+@media(max-height:600px){.final-copy{left:0!important;right:0!important}}.final-copy .eyebrow{justify-content:center;gap:8px;font-size:9px;line-height:13.5px;letter-spacing:.12em}.final-copy .eyebrow:before,.final-copy .eyebrow:after{content:'';display:block;width:18px;height:1px;background:#efa4c799}
 .final-copy h2{font-size:28px;line-height:36px;letter-spacing:-.06em;margin-top:10px}.final-copy h2 br{display:none}.final-copy h2 span:before{content:' '}
 .final-copy>p{font-size:12px;line-height:19px;margin-top:10px}.pass-promise{justify-content:center;gap:6px;margin-top:14px}.pass-promise span{font-size:10px;line-height:15px;padding:6px 10px}
 .final-copy .primary{font-size:14px;line-height:21px;gap:20px;padding:14px 24px;min-height:48px;margin-top:18px}.final-copy .fine{font-size:10px;line-height:16px;margin-top:12px}
@@ -458,7 +461,7 @@ html,body{background:#0b090f;-webkit-text-size-adjust:100%}
         node.style.opacity = opacity.toFixed(3);
         node.style.visibility = opacity > .002 || flow ? 'visible' : 'hidden';
         if (mobile && !flow) node.style.transform = `translateY(${offset}px)`;
-        else node.style.transform = `translate(${offset * (node.classList.contains('left') ? -1 : 1)}px,-50%)`;
+        else node.style.transform = `translate(${flow ? 0 : offset * (node.classList.contains('left') ? -1 : 1)}px,-50%)`; // 앱의 흐름(flow)은 장면이 이어 굴러 페이드 오프셋이 남는다 — 가로로 밀면 마무리 구역이 오른쪽으로 35px 치우쳤다(iOS 요청서 03)
         node.inert = openingActive || (!active && !flow);
         node.setAttribute('aria-hidden', String(openingActive || (!active && !flow)));
       }

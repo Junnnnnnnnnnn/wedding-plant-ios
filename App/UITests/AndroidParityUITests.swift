@@ -113,7 +113,7 @@ final class AndroidParityUITests: XCTestCase {
     func testExploreHeadersAndBragNavigation() {
         let app = launch(); app.buttons["tab.explore"].tap()
         XCTAssertTrue(app.staticTexts["다른 커플은 얼마 썼을까"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["내 후기 올리기"].exists)
+        XCTAssertTrue(app.buttons["feed.post.open"].exists)
         XCTAssertTrue(app.staticTexts["받은 도움"].exists)
         capture(app, "parity-explore-feed")
         app.buttons["explore.brag"].tap()

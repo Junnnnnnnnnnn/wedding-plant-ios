@@ -108,10 +108,21 @@ final class FeedViewModel: ObservableObject {
         if replace { await loadMyStatus(env: env) }
     }
 
-    /// 사이드는 부가 정보다. 실패해도 목록은 그대로 본다.
+    /// 돌아올 때(상세 · 다른 탭 · 앱 활성화) 목록은 그대로 두고 `+` 옆 작성 가능 개수만 다시 받는다(Android 8c1068b
+    /// `refreshMyStatus` — PC 에서 일정을 완료하고 돌아와도 수가 맞게, iOS 요청서 06).
+    func refreshMyStatus(env: AppEnvironment) async { await loadMyStatus(env: env) }
+
+    /// 사이드는 부가 정보다. 실패해도 목록은 그대로 본다. **실패하면 받아 둔 값을 지우지 않고**(지우면 배지가 사라졌다
+    /// 돌아온다), 겹친 요청은 늦게 온 옛 답이 새 답을 덮지 않게 순번으로 거른다.
     private func loadMyStatus(env: AppEnvironment) async {
-        myStatus = try? await env.api.send(Endpoint.feedMyStatus(), decoding: FeedMyStatus.self)
+        guard env.isAuthenticated else { return }
+        statusGeneration += 1
+        let generation = statusGeneration
+        guard let status = try? await env.api.send(Endpoint.feedMyStatus(), decoding: FeedMyStatus.self),
+              generation == statusGeneration else { return }
+        myStatus = status
     }
+    private var statusGeneration = 0
 
     /// 칩을 서버에서 다시 센다. **실패하면 받아 둔 칩을 그대로 둔다**(처음이면 `전체` 하나) — 실패 문구는 내지 않는다.
     /// 칩이 바뀌는 순간(첫 후기가 새 칩을, 마지막 후기가 칩을 없앤다)마다 부른다: 올림 · 내림 · 목록 신고 · 상세 신고.

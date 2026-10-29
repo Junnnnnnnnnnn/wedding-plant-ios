@@ -52,8 +52,8 @@ struct InvitationLandingDetails: View {
                         if empty, planDate != nil || planVenue != nil {
                             Text([planDate == nil ? nil : "날짜", planVenue == nil ? nil : "장소"].compactMap { $0 }.joined(separator: "·") + "는 채워 뒀어요").font(font(11)).opacity(0.85)
                         } else if !empty {
-                            // 안드로이드 `PassPlans.FROM_LABEL`
-                            Text("월 7,900원부터").font(font(11)).opacity(0.85)
+                            // 안드로이드 `PassPlans.FROM_LABEL` — 고정 원화 가격을 약속하지 않는다(가격은 App Store 상품값 · 나라마다 통화가 다름)
+                            Text("월간 · 년간 · 평생").font(font(11)).opacity(0.85)
                         }
                     }
                 }.buttonStyle(InvitationLandingButton(primary: true)).accessibilityIdentifier("invitation.primary")

@@ -49,6 +49,19 @@ final class AddPlanViewModel: ObservableObject {
     @Published var loadingDetail = false
     @Published var saving = false
     @Published var saved = false
+    /// 등록은 끝났고 완료 처리만 남았다 — 다시 누르면 **같은 id 만** 완료한다(생성 POST 를 두 번 보내지 않는다)
+    @Published private(set) var completionPending = false
+    /// 지난 날짜로 만든 플랜의 id · 저장한 방(완료 처리만 실패했을 때 다시 쓸 것)
+    private var createdPastPlan: (id: Int?, roomId: Int?)?
+    /// 완료 처리와 함께 시작한 서류 올리기 — 다시 시도할 때 또 올리지 않고 이것을 기다린다
+    private var pendingUpload: Task<Void, Never>?
+
+    /// 지난 날짜의 새 플랜 — 결제 칸을 켠 채 잠그고 저장하면 완료로 등록한다(Android `UiState.autoCompletePast`)
+    var autoCompletePast: Bool {
+        PlanRules.completeNewPastPlan(date: dateUndecided ? nil : date, isEdit: isEditMode, today: KstDate.today())
+    }
+    /// 저장 중 · 저장 뒤 · 완료 처리만 남은 동안은 폼을 고치지 않는다(고친 값이 서버에 가지 않는다)
+    var formLocked: Bool { saving || saved || completionPending }
     @Published var remainingBudget: Double?
     private var resolvedRoomId: Int?
     /// `/plan/user` 가 **성공**했고 방이 없었다 — "모른다" 와 가른다
@@ -173,6 +186,7 @@ final class AddPlanViewModel: ObservableObject {
         // 담아 둔 서류를 새 일정에 올리는 중이면 몇 번째인지 보여 기다리는 까닭을 말한다
         if let uploadingDocs { return "서류 올리는 중 \(uploadingDocs.index + 1)/\(uploadingDocs.total)" }
         if saving { return isEditMode ? "수정 중..." : "저장 중..." }
+        if completionPending { return "완료 처리 다시 시도" }
         return isEditMode ? "수정하기" : "플랜 저장하기"
     }
 
@@ -458,6 +472,13 @@ final class AddPlanViewModel: ObservableObject {
         // 방금 고른 파일을 읽는 중이면 마저 담고 저장한다
         for reader in readers { await reader.value }
 
+        // 이미 만들어 두고 완료 처리만 실패했다 — 그 플랜만 완료한다
+        if let created = createdPastPlan {
+            await completeCreatedPastPlan(env: env, id: created.id, roomId: created.roomId)
+            return
+        }
+        let completePast = autoCompletePast
+
         /*
           방이 없으면 **개인 일정으로 저장한다**(Android `targetRoomAsync` · 웹 `useOwnRoomId`). 방은 초대 참여나
           패스 결제 때 생겨서, 막 가입해 혼자 쓰는 사람은 방이 없다 — 예전에는 여기서 저장을 막아 그런 사람은
@@ -496,7 +517,7 @@ final class AddPlanViewModel: ObservableObject {
               완료면 늘 `true` 였다 — 완료한 플랜을 한 번 고치면 결제 칸이 `true` 로 굳어, 나중에 예정으로 되돌렸을 때 고른 적
               없는 `예정 · 결제함` 이 남았다(Android 7523938, 2026-10-28 QA).
             */
-            isPaid: completed ? nil : isPaid,
+            isPaid: completed ? nil : (isPaid || completePast),
             // 날짜가 미정이면 시각도 뜻이 없다. 수정에서 지우려면 **빈 문자열**을
             // 보내야 한다 — 키를 빼면 PATCH 시맨틱상 "변경 없음" 이라 남는다.
             startTime: dateUndecided ? "" : (startTime ?? "")
@@ -509,7 +530,20 @@ final class AddPlanViewModel: ObservableObject {
                 // POST /plan/schedule 은 `{ id }` 를 돌려준다(백엔드 PostPlanScheduleResponse) — 담아 둔 서류를 붙일 자리
                 let response = try await env.api.sendRaw(Endpoint.createSchedule(request))
                 try Self.checkEnvelope(response.body)
-                await uploadPendingDocs(env: env, scheduleId: Self.createdId(response.body))
+                let id = Self.createdId(response.body)
+                if completePast {
+                    /*
+                      생성 API 는 상태를 받지 않는다 — 만든 뒤 그 id 로 완료 처리를 따로 부른다. 여기서부터는 생성을 되풀이하지
+                      않는다(완료만 실패해도 다시 누르면 완료만). 서류는 바로 올리기 시작하되, 긴 올리기가 완료 처리를 막지 않게
+                      기다림은 뒤로 미룬다(Android `startPendingDocs`).
+                    */
+                    createdPastPlan = (id, resolvedRoomId)
+                    completionPending = true
+                    startPendingDocs(env: env, scheduleId: id)
+                    await completeCreatedPastPlan(env: env, id: id, roomId: resolvedRoomId)
+                    return
+                }
+                await uploadPendingDocs(env: env, scheduleId: id)
             }
             if (Double(amount) ?? 0) > 0 {
                 var query = Endpoint.amountDetail(roomId: resolvedRoomId.map(String.init)); query.timeout = 3
@@ -519,6 +553,32 @@ final class AddPlanViewModel: ObservableObject {
         } catch {
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    /// 지난 날짜로 만든 플랜을 완료로 바꾸고 마무리한다. 실패하면 `completionPending` 을 남겨 다시 누를 때 이것만 한다.
+    /// 저장 버튼의 Task 는 화면이 사라져도 취소되지 않아(구조화되지 않은 Task) 이미 시작한 완료 처리는 끝까지 간다.
+    private func completeCreatedPastPlan(env: AppEnvironment, id: Int?, roomId: Int?) async {
+        do {
+            guard let id else { throw APIError.backend(message: "등록된 플랜 번호를 확인하지 못했어요.") }
+            try await env.api.sendIgnoringData(Endpoint.updateScheduleStatus(id: id, status: .completed))
+        } catch {
+            errorMessage = "플랜은 등록됐지만 완료 처리하지 못했어요. 다시 누르면 등록한 플랜의 완료 처리만 재시도해요."
+            return
+        }
+        await pendingUpload?.value
+        uploadingDocs = nil
+        if (Double(amount) ?? 0) > 0 {
+            var query = Endpoint.amountDetail(roomId: roomId.map(String.init)); query.timeout = 3
+            if let amount: AmountDetail = try? await env.api.send(query) { remainingBudget = amount.initialCapital - amount.totalPlannedAndUsedAmount }
+        }
+        completionPending = false
+        saved = true
+    }
+
+    /// 서류 올리기를 시작만 한다(완료 처리와 나란히). 한 번만 — 다시 시도에서 또 올리지 않는다.
+    private func startPendingDocs(env: AppEnvironment, scheduleId: Int?) {
+        guard pendingUpload == nil, !pendingDocs.isEmpty else { return }
+        pendingUpload = Task { [weak self] in await self?.uploadPendingDocs(env: env, scheduleId: scheduleId) }
     }
 
     // MARK: - 서류 담기
@@ -541,7 +601,7 @@ final class AddPlanViewModel: ObservableObject {
     }
 
     private func stage(_ read: @escaping () async throws -> [Result<PendingDoc, Error>]) {
-        guard editId == nil, !saved, !uploadsStarted else { return }
+        guard editId == nil, !formLocked, !uploadsStarted else { return }
         readingDocs = true
         let task = Task { [weak self] in
             let checked = (try? await read()) ?? [.failure(DocUploadError(message: "파일을 읽지 못했어요. 다시 선택해 주세요."))]
@@ -567,7 +627,7 @@ final class AddPlanViewModel: ObservableObject {
 
     /// 담아 둔 서류를 뺀다 — 아직 올리지 않았으니 되돌릴 일이 없어 묻지 않는다
     func removePendingDoc(_ doc: PendingDoc) {
-        guard !saving, !saved else { return }
+        guard !formLocked else { return }
         pendingDocs.removeAll { $0 == doc }
         PendingDocReader.discard([doc])
         docsMessage = nil
@@ -579,7 +639,7 @@ final class AddPlanViewModel: ObservableObject {
      */
     private func uploadPendingDocs(env: AppEnvironment, scheduleId: Int?) async {
         let docs = pendingDocs
-        guard editId == nil, !docs.isEmpty else { return }
+        guard editId == nil, !docs.isEmpty, !uploadsStarted else { return }
         uploadsStarted = true
         guard let scheduleId else {
             PendingDocReader.discard(docs)
@@ -623,14 +683,14 @@ final class AddPlanViewModel: ObservableObject {
             title: title.trimmingCharacters(in: .whitespaces),
             amount: Double(amount) ?? 0,
             startDate: dateUndecided ? nil : date.dateString,
-            status: ScheduleStatus(rawValue: "NORMAL"),
+            status: ScheduleStatus(rawValue: autoCompletePast ? "COMPLETED" : "NORMAL"),
             location: location.trimmingCharacters(in: .whitespaces),
             locationLat: locationLat,
             locationLng: locationLng,
             memo: memo.trimmingCharacters(in: .whitespaces),
             payType: PayType(rawValue: payType.rawValue),
             addCategoryNameList: addedCategories,
-            isPaid: isPaid,
+            isPaid: isPaid || autoCompletePast,
             startTime: dateUndecided ? nil : startTime
         )
         guest.addSchedule(item)

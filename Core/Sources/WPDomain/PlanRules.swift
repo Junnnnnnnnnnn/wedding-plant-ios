@@ -9,6 +9,13 @@ import WPUtils
 /// UI·네트워크 의존이 없어 Windows 에서 전부 유닛테스트로 검증된다.
 public enum PlanRules {
 
+    /// 지난 날짜의 **신규** 기록만 완료로 등록한다(Android 8c1068b `completeNewPastPlan`, iOS 요청서 07). 수정 · 오늘 · 미래 ·
+    /// 날짜 미정은 사용자가 고른 상태를 그대로 둔다. `today` 는 KST 오늘을 넘긴다(기기 시간대를 타지 않게).
+    public static func completeNewPastPlan(date: KstDate?, isEdit: Bool, today: KstDate) -> Bool {
+        guard !isEdit, let date else { return false }
+        return date < today
+    }
+
     // MARK: - D-Day
 
     /// 결혼식까지 남은 일수. 지났으면 음수. 날짜가 없으면 nil.

@@ -24,11 +24,16 @@ final class CalendarViewModel: ObservableObject {
     @Published private(set) var loadedOnce = false
     @Published private(set) var calendarError: String?
     @Published private(set) var listError: String?
-    @Published private(set) var view: MobileView = .calendar
+    /// 처음에는 **보드**(Android 8c1068b `view = MobileView.LIST`, iOS 요청서 02 · 2026-10-28 사용자). 달 한 장이 아니라
+    /// 지난 · 다음 · 미정 · 완료 일정이 다 모여 있어 처음 보기에 낫다. 보드는 자기 목록(`upcoming`)을 받는다 — 달력 한 달의
+    /// 응답으로 채우면 다른 달 일정이 빠진다.
+    @Published private(set) var view: MobileView = .board
     /// 달력 아래 그날 목록의 날짜. **처음부터 오늘**이라 목록이 비지 않는다.
     @Published private(set) var selectedDate: KstDate = KstDate.today()
     /// 보드 뷰 — 전체 일정. 보드를 처음 열 때 받는다.
-    @Published private(set) var upcoming: [ScheduleItem] = []
+    @Published private(set) var upcoming: [ScheduleItem] = [] { didSet { boardGroups = CalendarGrid.boardGroups(upcoming) } }
+    /// 보드의 달 묶음 — 목록이 바뀔 때 한 번만 짓는다(화면을 그릴 때마다 묶으면 굴릴 때마다 다시 정렬했다, 요청서 08)
+    @Published private(set) var boardGroups: [(label: String, items: [ScheduleItem])] = []
     @Published private(set) var upcomingLoaded = false
 
     /// 읽기 권한이면 추가 버튼을 감춘다. 메인에서 이미 알고 있는 값을 받아 온다.

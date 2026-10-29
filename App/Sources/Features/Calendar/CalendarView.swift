@@ -109,7 +109,7 @@ struct CalendarView: View {
                 } else {
                     BoardList(
                         loaded: model.upcomingLoaded,
-                        items: model.upcoming,
+                        groups: model.boardGroups,
                         onOpen: { openDetail($0) }
                     )
                 }
@@ -145,7 +145,8 @@ struct CalendarView: View {
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden()
-        .task { await model.load(env: env, guest: guest) }
+        // 처음부터 보드라 달력과 보드 목록을 함께 받는다(Android `init { refresh() }`)
+        .task { await model.refresh(env: env, guest: guest) }
         // 시트 안에서는 NavigationStack 으로 push 할 수 없어 커버로 띄운다.
         // 돌아오면 다시 받는다(안드로이드 `RefreshOnResume`) — 상세에서 완료·삭제했을 수 있다.
         .fullScreenCover(item: $openSchedule, onDismiss: {
@@ -261,8 +262,9 @@ struct CalendarView: View {
 
             // 달력 ↔ 보드. 웹 `mt-4 grid grid-cols-2 gap-0.5 rounded-[10px] bg-white/20 p-[3px]`
             HStack(spacing: 2) {
-                viewTab(.calendar, "달력", identifier: "calendar.view.calendar")
-                viewTab(.board, "보드", identifier: "calendar.view.board")
+                // 아이콘을 붙인 이름(Android 8c1068b `📅 달력` · `🗂️ 보드`, 요청서 02 — 사용자가 고른 글자 그대로)
+                viewTab(.calendar, "📅 달력", identifier: "calendar.view.calendar")
+                viewTab(.board, "🗂️ 보드", identifier: "calendar.view.board")
             }
             .padding(3)
             .background(Color.white.opacity(0.2), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -648,47 +650,53 @@ private struct DayPlanCard: View {
 /// 날짜 미정이 맨 앞, 그 뒤로 달 순서, 묶음 안에서 완료한 것은 아래로.
 private struct BoardList: View {
     var loaded: Bool
-    var items: [ScheduleItem]
+    var groups: [(label: String, items: [ScheduleItem])]
     var onOpen: (Int) -> Void
 
+    /// 카드를 한 장씩 짓는다(Android 8c1068b `LazyColumn`, 요청서 08). 화면 전체(머리 면 · 달력)를 LazyVStack 으로 감싸면
+    /// 달력 모드에서 스크롤 영역의 접근성 질의가 끝나지 않아(UI 테스트 223초 시간 초과) 게으른 자리는 보드 목록으로 좁힌다.
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !loaded {
-                // 뼈대도 카드 모양으로(웹 min-h-20 · r15 · 10 간격)
-                ForEach(0..<5, id: \.self) { _ in
-                    SkeletonBox(height: 80, corner: 15).padding(.top, 10)
-                }
-            } else if items.isEmpty {
-                Text("아직 일정이 없어요")
-                    .font(WPFont.hak(14))
-                    .foregroundStyle(WPColor.fgSubtle)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 40)
-            } else {
-                let groups = CalendarGrid.boardGroups(items)
-                ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
-                    HStack(alignment: .lastTextBaseline, spacing: 6) {
-                        Text(group.label)
-                            .font(WPFont.hak(13.5, .bold))
-                            .foregroundStyle(WPColor.fgNeutral)
-                        Text(verbatim: "\(group.items.count)개")
-                            .font(WPFont.hak(11.5))
-                            .foregroundStyle(WPColor.passSheetFaint)
-                    }
-                    .padding(.horizontal, 4)
-                    .padding(.top, index == 0 ? 4 : 20)
-                    .padding(.bottom, 4)
+        LazyVStack(spacing: 0) { rows }
+    }
 
-                    ForEach(group.items) { item in
-                        DateTileRow(item: item) { onOpen(item.id) }
-                            .padding(.top, 10)
-                    }
+    @ViewBuilder private var rows: some View {
+        Color.clear.frame(height: 16)
+        if !loaded {
+            // 뼈대도 카드 모양으로(웹 min-h-20 · r15 · 10 간격)
+            // 키는 Android 처럼 갈래마다 따로(`board-loading-N` · `board-plan-id`) — 한 LazyVStack 안에서 뼈대(0…4)와 일정 id 가
+            // 같은 숫자면 받은 뒤의 카드가 뼈대 모양을 물려받아 빈 회색 상자로 남았다
+            ForEach((0..<5).map { "board-loading-\($0)" }, id: \.self) { _ in
+                SkeletonBox(height: 80, corner: 15).padding(.top, 10).padding(.horizontal, 16)
+            }
+        } else if groups.isEmpty {
+            Text("아직 일정이 없어요")
+                .font(WPFont.hak(14))
+                .foregroundStyle(WPColor.fgSubtle)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 40)
+        } else {
+            ForEach(Array(groups.enumerated()), id: \.element.label) { index, group in
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(group.label)
+                        .font(WPFont.hak(13.5, .bold))
+                        .foregroundStyle(WPColor.fgNeutral)
+                    Text(verbatim: "\(group.items.count)개")
+                        .font(WPFont.hak(11.5))
+                        .foregroundStyle(WPColor.passSheetFaint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, index == 0 ? 4 : 20)
+                .padding(.bottom, 4)
+
+                ForEach(group.items.map { ("board-plan-\($0.id)", $0) }, id: \.0) { _, item in
+                    DateTileRow(item: item) { onOpen(item.id) }
+                        .padding(.top, 10)
+                        .padding(.horizontal, 16)
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 24)
+        Color.clear.frame(height: 24)
     }
 }
 

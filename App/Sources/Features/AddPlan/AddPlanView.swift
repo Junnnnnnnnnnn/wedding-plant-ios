@@ -78,7 +78,7 @@ struct AddPlanView: View {
                             // 저장 중 · 저장 뒤에는 폼을 고치지 않는다(Android `formLocked`) — 새 플랜은 담아 둔 서류를 올리느라
                             // `저장 중` 이 몇 초씩 이어지는데, 그사이 고친 제목 · 금액은 서버에 가지 않고 완료 카드에만 보였다.
                             sheet
-                                .allowsHitTesting(!(model.saving || model.saved))
+                                .allowsHitTesting(!model.formLocked)
 
                             if let message = model.errorMessage {
                                 InfoBanner(message: message, actionLabel: "닫기") {
@@ -96,7 +96,7 @@ struct AddPlanView: View {
                                 Spacer().frame(height: 16)
                                 PendingDocsCard(
                                     hasPass: hasPass, docs: model.pendingDocs, message: model.docsMessage,
-                                    busy: model.saving || model.saved, reading: model.readingDocs,
+                                    busy: model.formLocked, reading: model.readingDocs,
                                     onOpenPass: { showPassIntro = true },
                                     onPickPhotos: { model.addPendingPhotos($0) },
                                     onPickPdfs: { model.addPendingPdfs($0) },
@@ -289,6 +289,13 @@ struct AddPlanView: View {
             // **금액 바로 아래에 둔다.** 돈 이야기라 금액 옆이 맞고, 일정 완료(상세)와는 다른 축이다.
             Spacer().frame(height: 10)
             paidToggle
+            if model.autoCompletePast {
+                Text("지난 날짜의 새 플랜은 결제·완료 상태로 등록돼요.".wpKeepAll)
+                    .wpTypography(12).foregroundStyle(WPColor.gray500)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("addplan.pastNotice")
+            }
             // 영수증은 **결제 체크 바로 아래**(결제한 순간이 영수증을 쥔 순간). 패스가 있으면 어디에 붙이는지만
             // 알리고 다시 팔지 않는다(Android · 웹 f6f0405).
             if model.isPaid, let hasPass = model.receiptPass {
@@ -301,8 +308,10 @@ struct AddPlanView: View {
     /// 웹 `data-paid-toggle` — "이미 결제했어요".
     private var paidToggle: some View {
         // 완료한 플랜은 결제한 것 — 켠 채 잠근다(Android `checked = isPaidNow || completed`)
-        let checked = model.isPaid || model.completed
-        return Button { if !model.completed { model.isPaid.toggle() } } label: {
+        // 지난 날짜의 새 플랜도 켠 채 잠근다(Android 8c1068b `autoCompletePast`)
+        let locked = model.completed || model.autoCompletePast
+        let checked = model.isPaid || locked
+        return Button { if !locked, !model.formLocked { model.isPaid.toggle() } } label: {
             HStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)

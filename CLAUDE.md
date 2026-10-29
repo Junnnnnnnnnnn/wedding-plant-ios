@@ -159,6 +159,23 @@ Android `c857963` · `1e62d83` · `2c2fb4c` 이식. 확인은 `InvitationPhotoPr
 숨김 시간 · 꼭 해야 하는 업데이트는 **없다**(Android 가 버렸다). 실패는 "최신" 으로 적지 않는다. 안내는 경고 창 높이의 자기 창이라
 시트 · 전체 화면 위에도 뜬다. 데모는 운영 스토어에 묻지 않고, `-WPStoreVersion 9.9.9` 로 가짜 스토어를 쓴다(`AppUpdatePromptUITests`).
 
+### iOS 요청서 8건 (Android 8c1068b · v46, 2026-10-29)
+
+비교 보고서는 `docs/test-reports/2026-10-29-android-parity/index.html`, 장면은 `IOSHandoffParityUITests`.
+
+- **일정 탭은 보드로 시작**하고 전환은 `📅 달력` · `🗂️ 보드`(사용자가 고른 글자). 보드 목록만 `LazyVStack` 으로 카드를 한 장씩 짓는다 —
+  화면 전체(머리 면 · 달력)를 LazyVStack 으로 감싸면 달력 모드에서 스크롤 영역 접근성 질의가 끝나지 않았다(UI 테스트 시간 초과). **갈래마다 키를 따로**(`board-loading-N` · `board-plan-id`): 뼈대(0…4)와 일정 id 가
+  같은 숫자면 받은 카드가 뼈대 모양을 물려받아 빈 회색 상자로 남았다. 달력 칸을 누르는 UI 테스트는 먼저 `calendar.view.calendar`.
+- **지난 날짜의 새 플랜은 결제함 · 완료**(`PlanRules.completeNewPastPlan`, KST 오늘). 결제 칸을 켠 채 잠그고, 생성(`isPaid=true`) 뒤
+  그 id 로 `PATCH /plan/schedule/status` — 생성 API 는 상태를 받지 않는다. 완료만 실패하면 `완료 처리 다시 시도` 로 **완료만** 다시 한다
+  (생성 POST 1번). 수정 · 오늘 · 미래 · 미정은 그대로.
+- 피드 `+` 옆 숫자는 서버의 `postableScheduleCount` 그대로(못 받으면 숫자 없음, 0 은 0). 돌아올 때 개수만 다시 받고, 실패하면 받아 둔
+  값을 두고, 늦은 답은 순번으로 버린다. 버튼 식별자는 `feed.post.open`(라벨이 수를 품어 라벨로 찾지 말 것).
+- 가격 옆에 **고정 원화 문구를 두지 않는다**(`365일 동안` · `월간 · 년간 · 평생`). 통화는 App Store 계정 나라를 따른다 —
+  미국 계정에서 `$4.99` 는 정상이다.
+- 패스 소개(웹뷰)의 마무리 구역: 앱의 흐름(높이 600 이하)에서는 `position:relative` 라 `left` 로 밀지 않는다(24pt 치우침).
+  웹뷰 요소의 접근성 프레임은 그려진 자리와 ±20pt 어긋나니 위치는 캡처 픽셀로 잰다.
+
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 
 안드로이드 `PassBilling`·`PassViewModel.purchase` 와 같은 순서다. 판정·문장은 `Core/Sources/WPDomain/PassPurchaseRules.swift`,

@@ -6,6 +6,9 @@ struct ExploreHead<Extra: View>: View {
     let stats: [(String, String)]
     let loading: Bool
     var action: (() -> Void)? = nil
+    /// `+` 옆 숫자 — 서버가 판정한 **아직 올릴 수 있는** 완료 일정 수(Android `FeedPostButton`). 받기 전이면 nil 이라
+    /// 숫자를 내지 않고, 서버가 0 을 주면 0 을 낸다(모름과 없음을 가른다).
+    var actionCount: Int? = nil
     @ViewBuilder var extra: Extra
 
     var body: some View {
@@ -14,7 +17,19 @@ struct ExploreHead<Extra: View>: View {
                 switcher
                 Spacer(minLength: 8)
                 if let action {
-                    Button(action: action) { WPMaterialIcon(kind: .plus).frame(width: 22, height: 22).foregroundStyle(.white).frame(width: 36, height: 38) }.accessibilityLabel("내 후기 올리기")
+                    Button(action: action) {
+                        HStack(spacing: 4) {
+                            WPMaterialIcon(kind: .plus).frame(width: 22, height: 22).foregroundStyle(.white)
+                            if let actionCount {
+                                Text(verbatim: "\(actionCount)").font(WPFont.hak(12, .bold)).foregroundStyle(WPColor.primary)
+                                    .lineLimit(1).fixedSize()
+                                    .padding(.horizontal, 7).padding(.vertical, 3).background(.white, in: Capsule())
+                            }
+                        }.padding(.horizontal, 7).frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(actionCount.map { "내 후기 올리기, 작성 가능한 후기 \($0)개" } ?? "내 후기 올리기")
+                    .accessibilityIdentifier("feed.post.open")
                 }
             }
             Text(headline.wpKeepAll).wpTypography(22, .bold, lineHeight: 29).tracking(-0.44).foregroundStyle(.white).padding(.top, 16)

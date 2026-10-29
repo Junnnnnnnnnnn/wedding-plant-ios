@@ -47,7 +47,7 @@ struct PassPlansView: View {
     private struct Plan { let id, name, duration: String; let price: Int; let tag: String?; let solid: Bool }
     private let plans = [
         Plan(id: "prep_pass_monthly", name: "월간", duration: "30일 동안", price: 7_900, tag: nil, solid: false),
-        Plan(id: "prep_pass_yearly", name: "년간", duration: "365일 · 월 3,250원꼴", price: 39_000, tag: "가장 많이 골라요", solid: true),
+        Plan(id: "prep_pass_yearly", name: "년간", duration: "365일 동안", price: 39_000, tag: "가장 많이 골라요", solid: true),
         Plan(id: "prep_pass_lifetime", name: "평생", duration: "결혼 뒤에도 계속", price: 69_000, tag: "기록 보관", solid: false),
     ]
     private var active: Bool { state?.hasPass == true && state?.expired != true }

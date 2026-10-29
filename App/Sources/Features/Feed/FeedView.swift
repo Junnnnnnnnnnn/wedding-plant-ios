@@ -18,6 +18,8 @@ import WPUtils
 struct FeedView: View {
     var titleSlot: AnyView? = nil
     @EnvironmentObject private var env: AppEnvironment
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var appeared = false
     @StateObject private var model = FeedViewModel()
     @State private var path = NavigationPath()
     @State private var showPostSheet = false
@@ -103,6 +105,9 @@ struct FeedView: View {
             async let list: Void = model.load(env: env, replace: true)
             _ = await (chips, list)
         }
+        // 상세 · 다른 탭에서 돌아오거나 앱이 다시 앞으로 오면 작성 가능 개수만 다시 받는다(목록 위치는 그대로)
+        .onAppear { if appeared { Task { await model.refreshMyStatus(env: env) } } else { appeared = true } }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.refreshMyStatus(env: env) } } }
         .navigationDestination(for: FeedPost.self) { post in
             FeedDetailView(post: post, onUpdate: { model.replace($0) },
                            onHidden: { id in Task { await model.hideAndRecount(id, env: env) } },
@@ -135,7 +140,8 @@ struct FeedView: View {
         ExploreHead(switcher: titleSlot ?? AnyView(Text("견적 후기").wpTypography(18, .bold).foregroundStyle(.white)),
                     headline: "다른 커플은 얼마 썼을까",
                     stats: [("후기", "\(model.total)개")] + (env.isAuthenticated ? [("내 후기", "\(model.myStatus?.postCount ?? 0)개"), ("받은 도움", "\(model.myStatus?.receivedHelpfulCount ?? 0)")] : []),
-                    loading: model.loading && model.posts.isEmpty, action: { showPostSheet = true }) {
+                    loading: model.loading && model.posts.isEmpty, action: { showPostSheet = true },
+                    actionCount: env.isAuthenticated ? model.myStatus?.postableScheduleCount : nil) {
             if let status = model.myStatus, status.postableScheduleCount > 0 {
                 Button { showPostSheet = true } label: {
                     HStack(spacing: 12) {

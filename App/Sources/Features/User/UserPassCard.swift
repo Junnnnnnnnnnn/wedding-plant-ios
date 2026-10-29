@@ -31,7 +31,7 @@ struct UserPassCard: View {
                                 .foregroundStyle(Color(hex: 0xBA1C68)).padding(.horizontal, 9).padding(.vertical, 3)
                                 .background(Color(hex: 0xFFF1F7), in: Capsule())
                         } else {
-                            WPTmoneyText(text: "월 7,900원부터", size: 14, bold: true, color: UIColor(Color(hex: 0xBA1C68)))
+                            WPTmoneyText(text: "월간 · 년간 · 평생", size: 14, bold: true, color: UIColor(Color(hex: 0xBA1C68)))
                         }
                     }
                     if state.hasPass {

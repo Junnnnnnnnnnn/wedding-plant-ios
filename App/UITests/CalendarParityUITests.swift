@@ -31,6 +31,9 @@ final class CalendarParityUITests: XCTestCase {
         XCTAssertFalse(app.buttons["calendar.export"].exists)
         XCTAssertTrue(app.buttons["calendar.add"].exists)
         XCTAssertTrue(app.buttons["calendar.view.board"].exists)
+        // 처음에는 보드(Android 8c1068b) — 달력 상태를 보려고 달력으로 바꾼다
+        XCTAssertTrue(app.buttons["calendar.view.board"].isSelected, "일정 탭은 보드로 시작한다")
+        app.buttons["calendar.view.calendar"].tap()
         settle()
         capture(app, "cal-month")
 
@@ -82,6 +85,8 @@ final class CalendarParityUITests: XCTestCase {
     func testDetailFromCalendarKeepsTabBar() {
         let app = launch()
         XCTAssertTrue(app.buttons["tab.schedule"].waitForExistence(timeout: 10)); app.buttons["tab.schedule"].tap()
+        // 처음에는 보드 — 그날 목록에서 여는 길을 보려고 달력으로
+        XCTAssertTrue(app.buttons["calendar.view.calendar"].waitForExistence(timeout: 5)); app.buttons["calendar.view.calendar"].tap()
         let plan = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'calendar.plan.'")).firstMatch
         if !plan.waitForExistence(timeout: 5) {
             // 오늘에 일정이 없으면 일정 칩이 있는 날을 고른다

@@ -319,6 +319,9 @@ private struct BudgetExportButton: View {
                     .padding(.vertical, 14)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(hex: 0xF0E3EA), lineWidth: 1))
+                    // 준비 패스 카드와 같은 무지개 회전 테두리(Android `PassExportButton.passHighlightBorder(16.dp)`, iOS 요청서 05).
+                    // 패스가 있든 없든 돈다 — 산 사람은 내려받기, 아닌 사람은 패스 소개로 가는 갈래는 그대로. 누름은 받지 않는다.
+                    .overlay(PassHighlightBorder(radius: 16))
                     .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
