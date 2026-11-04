@@ -236,6 +236,8 @@ final class MainViewModel: ObservableObject {
                 members = user.members ?? []
             }
             readOnly = PlanRules.isReadOnly(members: members, planUserId: planUserId)
+            // 받았으면 지난 실패 안내를 걷는다. 예전에는 한 번 뜬 띠가 다시 잘 받아도 `닫기` 를 누를 때까지 남았다.
+            errorMessage = nil
         } catch let error as APIError {
             if error.requiresReauthentication {
                 sessionExpired = true
@@ -244,7 +246,8 @@ final class MainViewModel: ObservableObject {
             }
             return
         } catch {
-            errorMessage = error.localizedDescription
+            // 화면을 떠나 취소된 것은 실패가 아니다 — 보던 값을 그대로 두고 조용히 끝낸다.
+            if !error.isCancellation { errorMessage = error.localizedDescription }
             return
         }
 
@@ -333,10 +336,11 @@ final class MainViewModel: ObservableObject {
             setPaid(item.id, status: toCompleted ? .completed : ScheduleStatus(rawValue: "NORMAL"),
                     isPaid: PlanRules.isPaidAfterStatusChange(
                         responseIsPaid: StatusChangeResult.isPaid(fromEnvelope: response.body), toCompleted: toCompleted, before: item.isPaidRaw))
+            env.noteSchedulesChanged()
         } catch {
             // 롤백
             (planned, completed, plannedTotal, completedTotal) = snapshot
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 

@@ -55,3 +55,15 @@ extension APIError: LocalizedError {
         self == .unauthorized
     }
 }
+
+extension Error {
+    /// 화면을 떠나 요청이 취소됐는지. **오류로 보여 주지 않는다** — 사용자가 한 일은 "다른 화면으로 갔다" 뿐이다.
+    ///
+    /// 실제 전송(`URLSessionTransport`)은 -999 를 `CancellationError` 로 바꿔 올리지만, 다른 길(직접 부른 URLSession ·
+    /// 감싼 오류)도 같은 판정을 쓰게 URLError 도 본다.
+    public var isCancellation: Bool {
+        if self is CancellationError { return true }
+        if let url = self as? URLError, url.code == .cancelled { return true }
+        return false
+    }
+}

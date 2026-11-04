@@ -55,7 +55,7 @@ final class BragViewModel: ObservableObject {
             total = result.total
             page = nextPage
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 
@@ -72,7 +72,7 @@ final class BragViewModel: ObservableObject {
             hide(bragId)
             if myStatus != nil { myStatus?.published = false }
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 
@@ -116,7 +116,7 @@ final class BragViewModel: ObservableObject {
         } catch {
             guard let now = posts.firstIndex(where: { $0.bragId == post.bragId }) else { return }
             posts[now] = before
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 }
@@ -141,7 +141,7 @@ final class BragDetailViewModel: ObservableObject {
         do {
             detail = try await env.api.send(Endpoint.brag(id: id), decoding: BragDetail.self)
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 }
@@ -176,7 +176,7 @@ final class BragToggleViewModel: ObservableObject {
                 body: Body(title: title.trimmingCharacters(in: .whitespacesAndNewlines))))
             await load(env: env)
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 
@@ -190,7 +190,7 @@ final class BragToggleViewModel: ObservableObject {
             try await env.api.sendIgnoringData(Endpoint.unpublishBrag())
             await load(env: env)
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 }

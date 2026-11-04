@@ -112,7 +112,7 @@ final class ScheduleDetailViewModel: ObservableObject {
             errorMessage = error.errorDescription
             sessionExpired = error.requiresReauthentication
         } catch {
-            errorMessage = error.localizedDescription
+            if !error.isCancellation { errorMessage = error.localizedDescription }
         }
     }
 
@@ -152,6 +152,7 @@ final class ScheduleDetailViewModel: ObservableObject {
             detail?.isPaidRaw = PlanRules.isPaidAfterStatusChange(
                 responseIsPaid: StatusChangeResult.isPaid(fromEnvelope: response.body), toCompleted: toCompleted, before: current.isPaidRaw)
             statusPending = false
+            env.noteSchedulesChanged()
             if toCompleted { await loadPostables(env: env) } else { postableIds = nil }
         } catch {
             statusPending = false
@@ -178,6 +179,7 @@ final class ScheduleDetailViewModel: ObservableObject {
         do {
             // DELETE 는 200 + 빈 본문으로 온다. 본문 파싱 실패로 성공을 뒤집으면 안 된다.
             try await env.api.sendIgnoringData(Endpoint.deleteSchedule(id: id))
+            env.noteSchedulesChanged()
             deleted = true
         } catch {
             // 서버 응답 원문을 그대로 노출하지 않는다 (웹·안드로이드와 동일).

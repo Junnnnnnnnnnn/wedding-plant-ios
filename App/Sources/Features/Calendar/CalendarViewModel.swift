@@ -146,6 +146,8 @@ final class CalendarViewModel: ObservableObject {
             switch result {
             case .failure(let error):
                 loading = false
+                // 화면을 떠나 취소된 것은 실패가 아니다 — 받아 둔 달력을 그대로 둔다
+                if error.isCancellation { return }
                 calendarError = (error as? APIError)?.errorDescription ?? error.localizedDescription
                 return
             case .success(let page):
@@ -185,6 +187,8 @@ final class CalendarViewModel: ObservableObject {
             upcomingLoaded = true
         } catch {
             guard sequence == upcomingSequence else { return }
+            // 취소면 받아 둔 보드를 지우지 않는다 — 지우면 상세를 닫고 돌아올 때 보드가 뼈대로 깜빡였다
+            if error.isCancellation { return }
             upcomingLoaded = false
             listError = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }

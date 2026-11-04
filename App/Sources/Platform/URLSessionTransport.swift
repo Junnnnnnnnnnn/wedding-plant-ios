@@ -35,6 +35,12 @@ struct URLSessionTransport: HTTPTransport {
             return HTTPResponse(status: http.statusCode, headers: headers, body: data)
         } catch let error as APIError {
             throw error
+        } catch let error as URLError where error.code == .cancelled {
+            // **취소는 연결 실패가 아니다.** 화면을 떠나 `.task` 가 취소되면 URLSession 이 -999 를 던진다. 예전에는 이것을
+            // `transport`("네트워크에 연결할 수 없습니다.")로 바꿔, 일정에서 완료하고 홈으로 오면 매번 그 띠가 떴다(2026-11-04).
+            throw CancellationError()
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let error as URLError where error.code == .timedOut {
             throw APIError.timedOut
         } catch {

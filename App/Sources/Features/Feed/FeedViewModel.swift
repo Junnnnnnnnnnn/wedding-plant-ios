@@ -102,7 +102,7 @@ final class FeedViewModel: ObservableObject {
             page = replace ? span : nextPage
         } catch {
             guard generation == loadGeneration else { return }
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
 
         if replace { await loadMyStatus(env: env) }
@@ -192,7 +192,7 @@ final class FeedViewModel: ObservableObject {
             guard let now = posts.firstIndex(where: { $0.id == post.id }) else { return }
             posts[now].myVote = before.myVote
             posts[now].helpfulCount = before.helpfulCount
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 

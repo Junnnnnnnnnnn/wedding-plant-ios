@@ -189,6 +189,23 @@ Android `c857963` · `1e62d83` · `2c2fb4c` 이식. 확인은 `InvitationPhotoPr
   `웨딩 플랜트 앱으로 열기` 버튼이 이 스킴으로 연다. 웹은 아이폰에서 스킴으로 **자동 이동하지 않는다**(앱이 없으면 사파리 경고).
 - 받는 길은 둘 다 `.onOpenURL` → `AppEnvironment.handle(url:)` → `ShareLink.invite` 이고 카카오 · 구글 처리를 **먼저** 본다.
 - 애플 CDN 이 AASA 를 하루쯤 캐시한다. 바로 보려면 기기의 설정 → 개발자 → Associated Domains Development 를 켠다.
+- **`.onOpenURL` 은 카카오 SDK 초기화보다 먼저 올 수 있다**(꺼진 앱을 초대 주소로 켤 때). `AuthApi.isKakaoTalkLoginUrl` 은
+  초기화 전이면 `try!` 로 앱을 죽인다 — `SocialLoginService.handleKakaoOpenURL` 이 스킴(`kakao{앱 키}`)부터 보고 그때만 초기화 뒤
+  묻는다. 확인은 `InviteLinkUITests`(데모 모드는 카카오를 켜지 않아 같은 조건을 늘 재현).
+- 시뮬레이터에 옛 번들 ID(`com.zipshowkorea.weddingplant`) 개발 빌드가 남아 있으면 `weddingplant://` 를 그 앱이 가로챈다 — 지운다.
+
+### 취소는 오류가 아니다 · 닫기만 했으면 다시 받지 않는다 (2026-11-04 사용자 보고)
+
+- **"네트워크에 연결할 수 없습니다." 의 정체는 `-999 취소됨` 이었다.** 일정에서 완료하고 홈으로 오면 6번 중 6번 떴다(운영 QA).
+  SwiftUI `.task` 는 화면이 가려지거나 다시 만들어지면 취소되는데, `URLSessionTransport` 가 그 취소를 `APIError.transport` 로
+  감쌌고 홈은 그 안내를 다시 잘 받아도 지우지 않았다. 지금은 전송이 `CancellationError` 로 올리고(`APIClient` 도 그대로 통과),
+  읽는 화면은 `error.isCancellation` 이면 보던 값을 둔 채 조용히 끝낸다. **새 화면의 받기 `catch` 에도 같은 줄을 넣는다.**
+- **모달 · 상세를 X 로 닫기만 했으면 다시 받지 않는다**(사용자 "모달 같은 걸 X 하면 새로고침 되면 안 돼"). 화면은 `.task` 대신
+  `.reloadWhenChanged({ env.dataRevision })`(DesignSystem/ReloadWhenChanged.swift) — 처음엔 받고, 다시 나타날 때는 일정
+  (`scheduleRevision`) · 패스(`passRevision`) · 방(`roomsRevision`)이 바뀌었을 때만. 패스 소개는 `.passCover` 로 띄워 결제 · 복원했을
+  때만 닫은 뒤 다시 받는다. 달력의 상세 닫기는 열 때의 `scheduleRevision` 과 견준다.
+- 일정을 바꾸는 쓰기(완료 · 되돌림 · 삭제 · 생성 · 수정)는 성공 뒤 **`env.noteSchedulesChanged()`** 를 부른다 — 빠뜨리면 그 변화가
+  다른 화면에 늦게 보인다. 탭을 눌러 화면이 새로 만들어지는 것(셸 `revision`)은 그대로 다시 받는다(Android 탭 초기화).
 
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 

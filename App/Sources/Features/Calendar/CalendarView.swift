@@ -33,6 +33,8 @@ struct CalendarView: View {
     /// 탭 셸 위에 플랜 추가를 연다(탭바가 남음 — Android `ADD_PLAN`). 셸 밖·다른 창 위면 예전처럼 전체 화면.
     @Environment(\.addPlanPresenter) private var addPlanPresenter
     @State private var openSchedule: ScheduleRef?
+    /// 상세를 열 때의 `scheduleRevision` — 닫을 때 바뀌었으면만 다시 받는다
+    @State private var detailRevisionAtOpen = 0
     /// 탭 셸 위에 일정 상세를 연다(탭바가 남음 — Android `SCHEDULE_DETAIL`). 셸 밖·다른 창 위면 예전처럼 전체 화면.
     @Environment(\.scheduleDetailPresenter) private var detailPresenter
     /// 머리 면이 지나갔는지 — 안드로이드 `headAway`. 지나가면 상태바 뒤에 흰 띠를 깐다.
@@ -56,9 +58,11 @@ struct CalendarView: View {
     }
 
     private func openDetail(_ id: Int) {
-        // 돌아오면 다시 받는다(안드로이드 `RefreshOnResume`) — 상세에서 완료·삭제했을 수 있다
+        // 돌아오면 다시 받는다(안드로이드 `RefreshOnResume`) — 상세에서 완료·삭제했을 때만. 그냥 X 로 닫으면 받지 않는다
+        // (2026-11-04 사용자 "모달 같은 걸 X 하면 새로고침 되면 안 돼").
+        detailRevisionAtOpen = env.scheduleRevision
         let opened = detailPresenter?.open(ScheduleDetailRequest(scheduleId: id, roomId: roomId) {
-            Task { await model.refresh(env: env, guest: guest) }
+            if env.scheduleRevision != detailRevisionAtOpen { Task { await model.refresh(env: env, guest: guest) } }
         }) ?? false
         if !opened { openSchedule = ScheduleRef(id: id) }
     }
@@ -146,11 +150,12 @@ struct CalendarView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden()
         // 처음부터 보드라 달력과 보드 목록을 함께 받는다(Android `init { refresh() }`)
-        .task { await model.refresh(env: env, guest: guest) }
+        // 창을 X 로 닫고 돌아와도 다시 받지 않는다 — 일정 · 패스 · 방이 바뀌었을 때만(`ReloadWhenChanged`)
+        .reloadWhenChanged({ env.dataRevision }) { await model.refresh(env: env, guest: guest) }
         // 시트 안에서는 NavigationStack 으로 push 할 수 없어 커버로 띄운다.
-        // 돌아오면 다시 받는다(안드로이드 `RefreshOnResume`) — 상세에서 완료·삭제했을 수 있다.
+        // 돌아오면 다시 받는다(안드로이드 `RefreshOnResume`) — 상세에서 완료·삭제했을 때만.
         .fullScreenCover(item: $openSchedule, onDismiss: {
-            Task { await model.refresh(env: env, guest: guest) }
+            if env.scheduleRevision != detailRevisionAtOpen { Task { await model.refresh(env: env, guest: guest) } }
         }) { schedule in
             ScheduleDetailView(scheduleId: schedule.id, roomId: roomId)
                 .environmentObject(env)

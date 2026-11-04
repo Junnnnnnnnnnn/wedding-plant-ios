@@ -31,7 +31,7 @@ final class PlanListViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             rooms = []
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 }

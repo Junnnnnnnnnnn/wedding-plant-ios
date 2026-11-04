@@ -27,7 +27,7 @@ struct PayThisWeekView: View {
             .padding(.horizontal, 16).padding(.top, 16)
             .task(id: roomId) { await load() }
             .fullScreenCover(isPresented: $showSettings, onDismiss: { Task { await load() } }) { ReminderSettingsView(roomId: roomId) }
-            .fullScreenCover(isPresented: $showPass, onDismiss: { Task { await load() } }) { PassView(roomId: roomId) }
+            .passCover(isPresented: $showPass, onPassChanged: { Task { await load() } }) { PassView(roomId: roomId) }
         }
     }
     private func dateLabel(_ raw: String?) -> String {

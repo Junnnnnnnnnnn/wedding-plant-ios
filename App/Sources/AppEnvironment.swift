@@ -82,6 +82,15 @@ final class AppEnvironment: ObservableObject {
     @Published var boundRoomError: String?
     @Published var roomsRevision = 0
 
+    /// 일정이 바뀌었다(완료 · 되돌림 · 삭제 · 저장). **창을 닫거나 화면으로 돌아올 때 다시 받을지**를 이 번호로 정한다 —
+    /// 바뀐 것이 없으면 다시 받지 않는다(2026-11-04 사용자 "모달 같은 걸 X 하면 새로고침 되면 안 돼").
+    /// 화면을 다시 그릴 일이 아니라 돌아올 때 읽는 값이라 `@Published` 가 아니다.
+    private(set) var scheduleRevision = 0
+    func noteSchedulesChanged() { scheduleRevision &+= 1 }
+
+    /// 다시 나타난 화면이 다시 받아야 하는지 가르는 열쇠 — 일정 · 패스 · 방 구성 중 하나라도 바뀌면 달라진다.
+    var dataRevision: [Int] { [scheduleRevision, passRevision, roomsRevision] }
+
     /// 귀속된 방 그 자체. `/plan/room/list` 가 이름·날짜·멤버를 다 주므로 방 상세
     /// 엔드포인트를 따로 부르지 않는다.
     @Published var boundRoomPlan: Plan?
@@ -258,7 +267,12 @@ final class AppEnvironment: ObservableObject {
             return
         }
         let planUserId = JWTDecoder.planUserId(from: token)
-        guard let list = try? await api.send(Endpoint.roomList(), decoding: RoomList.self) else {
+        let list: RoomList
+        do {
+            list = try await api.send(Endpoint.roomList(), decoding: RoomList.self)
+        } catch {
+            // 화면을 떠나 취소된 것은 실패가 아니다 — "플랜을 불러오지 못했어요" 를 띄우지 않는다.
+            if error.isCancellation { return }
             // 못 물어봤다고 귀속을 지우지 않는다 — 아는 값이 있으면 그대로 둔다.
             boundRoomError = "플랜을 불러오지 못했어요. 다시 시도해 주세요."
             return

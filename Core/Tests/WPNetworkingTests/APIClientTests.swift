@@ -28,6 +28,32 @@ final class APIClientTests: XCTestCase {
         return (APIClient(baseURL: baseURL, transport: transport, tokenStore: store), store)
     }
 
+    // MARK: - 취소
+
+    /// 화면을 떠나 취소된 요청은 **연결 실패가 아니다** — `transport`("네트워크에 연결할 수 없습니다.")로 감싸지 않고
+    /// 취소 그대로 올린다(2026-11-04: 일정에서 완료하고 홈으로 오면 매번 그 띠가 떴다).
+    func test_취소는_네트워크_오류로_감싸지_않는다() async throws {
+        // MockTransport 는 스텁이 던진 오류를 "안 맞음" 으로 삼켜서 취소만 던지는 전송을 따로 둔다
+        struct CancellingTransport: HTTPTransport {
+            func send(_ request: PreparedRequest) async throws -> HTTPResponse { throw CancellationError() }
+        }
+        let client = APIClient(baseURL: baseURL, transport: CancellingTransport(),
+                               tokenStore: InMemoryTokenStore(token: try validToken()))
+        do {
+            _ = try await client.sendRaw(Endpoint.user())
+            XCTFail("취소가 성공으로 끝났다")
+        } catch {
+            XCTAssertTrue(error is CancellationError, "취소가 \(error) 로 바뀌었다")
+            XCTAssertTrue(error.isCancellation)
+        }
+    }
+
+    func test_URLSession_의_취소도_취소로_읽는다() {
+        XCTAssertTrue(URLError(.cancelled).isCancellation)
+        XCTAssertFalse(URLError(.notConnectedToInternet).isCancellation)
+        XCTAssertFalse(APIError.transport("x").isCancellation)
+    }
+
     // MARK: - 요청 조립
 
     func test_baseURL과_path를_올바르게_결합한다() async throws {

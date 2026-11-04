@@ -77,6 +77,9 @@ public actor APIClient {
             response = try await transport.send(prepared)
         } catch let error as APIError {
             throw error
+        } catch is CancellationError {
+            // 취소는 그대로 올린다 — `transport` 로 감싸면 화면이 "네트워크에 연결할 수 없습니다." 를 띄운다.
+            throw CancellationError()
         } catch {
             throw APIError.transport(String(describing: error))
         }

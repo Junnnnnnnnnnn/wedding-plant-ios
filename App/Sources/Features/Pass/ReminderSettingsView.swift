@@ -69,7 +69,7 @@ struct ReminderSettingsView: View {
         }
         .task { await permission(); await model.load(env, roomId: roomId) }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await permission() } } }
-        .fullScreenCover(isPresented: $showPass, onDismiss: { Task { await model.load(env, roomId: roomId) } }) { PassView(roomId: roomId) }
+        .passCover(isPresented: $showPass, onPassChanged: { Task { await model.load(env, roomId: roomId) } }) { PassView(roomId: roomId) }
     }
     private func permission() async {
         let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus

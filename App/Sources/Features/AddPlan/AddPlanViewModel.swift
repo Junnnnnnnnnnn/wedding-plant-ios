@@ -293,7 +293,7 @@ final class AddPlanViewModel: ObservableObject {
             )
             syncSelectedCategory()
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 
@@ -538,6 +538,7 @@ final class AddPlanViewModel: ObservableObject {
                       기다림은 뒤로 미룬다(Android `startPendingDocs`).
                     */
                     createdPastPlan = (id, resolvedRoomId)
+                    env.noteSchedulesChanged()  // 완료 처리가 실패해도 플랜은 생겼다
                     completionPending = true
                     startPendingDocs(env: env, scheduleId: id)
                     await completeCreatedPastPlan(env: env, id: id, roomId: resolvedRoomId)
@@ -549,9 +550,10 @@ final class AddPlanViewModel: ObservableObject {
                 var query = Endpoint.amountDetail(roomId: resolvedRoomId.map(String.init)); query.timeout = 3
                 if let amount: AmountDetail = try? await env.api.send(query) { remainingBudget = amount.initialCapital - amount.totalPlannedAndUsedAmount }
             }
+            env.noteSchedulesChanged()
             saved = true
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            if !error.isCancellation { errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription }
         }
     }
 
@@ -572,6 +574,7 @@ final class AddPlanViewModel: ObservableObject {
             if let amount: AmountDetail = try? await env.api.send(query) { remainingBudget = amount.initialCapital - amount.totalPlannedAndUsedAmount }
         }
         completionPending = false
+        env.noteSchedulesChanged()
         saved = true
     }
 

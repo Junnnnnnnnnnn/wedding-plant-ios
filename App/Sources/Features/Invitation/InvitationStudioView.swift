@@ -130,7 +130,7 @@ struct InvitationStudioView: View {
                     InvitationPreviewView(content: Self.example, title: "예시 청첩장")
                 }
             }
-            .fullScreenCover(isPresented: $pass, onDismiss: { Task { await model.load(env); await env.refreshAdEligibility() } }) { PassView(roomId: model.result?.roomId, staysAfterPurchase: true) }
+            .passCover(isPresented: $pass, onPassChanged: { Task { await model.load(env); await env.refreshAdEligibility() } }) { PassView(roomId: model.result?.roomId, staysAfterPurchase: true) }
     }
     private var studioStats: [(String, String)] {
         guard let saved = model.result?.invitation else { return [] }
