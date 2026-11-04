@@ -213,10 +213,11 @@ targets:
         GIDServerClientID: $(GOOGLE_SERVER_CLIENT_ID)
         API_BASE_URL: $(API_BASE_URL)
         WEB_BASE_URL: $(WEB_BASE_URL)
-        # 공유 링크. 웹과 같은 주소(`/share/{code}`)는 Universal Link 로 받는 게 정석이지만
-        # `com.apple.developer.associated-domains` 엔타이틀먼트 + 실제 도메인이 필요하다
-        # (도메인은 공개 저장소에 넣지 않는다). 그때까지는 커스텀 스킴으로 열어 확인한다:
-        #   xcrun simctl openurl booted "weddingplant://share/ABC123"
+        # 공유 링크. 웹 주소(`https://weddingplant.app/share/{code}`)는 Universal Link 로 받는다 —
+        # 엔타이틀먼트 `applinks:weddingplant.app`(App/Resources/WeddingPlant*.entitlements) +
+        # 웹의 apple-app-site-association(2026-11-04). 커스텀 스킴은 그 뒤에도 남긴다: 카카오톡 인앱
+        # 브라우저는 Universal Link 를 따르지 않아 웹 초대 페이지의 `앱으로 열기` 버튼이 이 스킴으로 연다.
+        #   xcrun simctl openurl booted "weddingplant://share/ABC123?as=spouse"
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - $(GOOGLE_REVERSED_CLIENT_ID)

@@ -176,6 +176,20 @@ Android `c857963` · `1e62d83` · `2c2fb4c` 이식. 확인은 `InvitationPhotoPr
 - 패스 소개(웹뷰)의 마무리 구역: 앱의 흐름(높이 600 이하)에서는 `position:relative` 라 `left` 로 밀지 않는다(24pt 치우침).
   웹뷰 요소의 접근성 프레임은 그려진 자리와 ±20pt 어긋나니 위치는 캡처 픽셀로 잰다.
 
+### 초대 링크로 앱 열기 — Universal Link + 커스텀 스킴 (웹 지침서 `docs/ios-handoff-2026-11-04.md`, 2026-11-04)
+
+- `https://weddingplant.app/share/{code}?as=spouse` 는 **Universal Link** 로 곧장 앱이 연다. 엔타이틀먼트
+  `applinks:weddingplant.app` 은 `project.yml` 이 아니라 기존 `App/Resources/WeddingPlant*.entitlements` 에 있다
+  (`WP_ENTITLEMENTS` 가 고름). 웹의 `/.well-known/apple-app-site-association` 은 `9QSAD4X5L8.app.weddingplant` · `/share/*` 만 —
+  **번들 ID 는 `app.weddingplant`** 다(`com.zipshowkorea.weddingplant` 는 안드로이드 옛 패키지, 웹 지침서 첫 판이 이것으로 틀렸다).
+- Apple Developer 의 `app.weddingplant` 에 Associated Domains 를 켰고 배포 프로필 `Wedding Plant App Store` 를 다시 만들었다.
+  **기능을 더하면 기존 프로필이 INVALID** 가 되므로 그때마다 다시 만들어 `~/Library/MobileDevice/Provisioning Profiles` 와
+  `~/Library/Developer/Xcode/UserData/Provisioning Profiles` 에 깐다.
+- **커스텀 스킴 `weddingplant://share/…` 은 지우지 않는다.** 카카오톡 인앱 브라우저는 Universal Link 를 따르지 않아 웹 초대 페이지의
+  `웨딩 플랜트 앱으로 열기` 버튼이 이 스킴으로 연다. 웹은 아이폰에서 스킴으로 **자동 이동하지 않는다**(앱이 없으면 사파리 경고).
+- 받는 길은 둘 다 `.onOpenURL` → `AppEnvironment.handle(url:)` → `ShareLink.invite` 이고 카카오 · 구글 처리를 **먼저** 본다.
+- 애플 CDN 이 AASA 를 하루쯤 캐시한다. 바로 보려면 기기의 설정 → 개발자 → Associated Domains Development 를 켠다.
+
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 
 안드로이드 `PassBilling`·`PassViewModel.purchase` 와 같은 순서다. 판정·문장은 `Core/Sources/WPDomain/PassPurchaseRules.swift`,

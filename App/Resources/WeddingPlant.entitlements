@@ -21,5 +21,15 @@
 	-->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!--
+	  Universal Link — `https://weddingplant.app/share/{code}?as=spouse` 를 누르면 곧장 앱으로 연다.
+	  웹이 `/.well-known/apple-app-site-association` 에 `9QSAD4X5L8.app.weddingplant` · `/share/*` 만 적어 둔다
+	  (웹 레포 docs/ios-handoff-2026-11-04.md). 받는 길은 커스텀 스킴과 같은 `.onOpenURL` → `ShareLink.invite`.
+	  카카오톡 인앱 브라우저는 Universal Link 를 따르지 않아 웹의 `앱으로 열기`(커스텀 스킴) 버튼이 남는다.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:weddingplant.app</string>
+	</array>
 </dict>
 </plist>
