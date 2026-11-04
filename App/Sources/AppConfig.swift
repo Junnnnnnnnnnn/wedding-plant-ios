@@ -41,4 +41,8 @@ enum AppConfig {
     /// **스토어 심사에 필요하다** — 앱이 개인정보를 수집하면 접근 가능한 URL 을
     /// 요구하고, 앱 안에서도 찾을 수 있어야 한다.
     static var privacyURL: String { webBaseURL + "/privacy" }
+
+    /// 유료 서비스 이용약관 — 웹 `/terms` 한 장(웹 `lib/legal.ts` · 결제 시트, Android `AppConfig.termsUrl`).
+    /// 예전 `/terms/paid` 는 웹에 없는 주소라 404 였다(2026-11-04, 1.0.1 · 1.0.2 의 패스 화면).
+    static var termsURL: String { webBaseURL + "/terms" }
 }

@@ -100,7 +100,7 @@ struct PassPlansView: View {
                         .wpTypography(10.5, lineHeight: 17).foregroundStyle(WPColor.passSheetFaint).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity).fixedSize(horizontal: false, vertical: true).padding(.top, 8)
                     HStack(spacing: 14) {
-                        Button { if let url = URL(string: AppConfig.webBaseURL + "/terms/paid") { openURL(url) } } label: {
+                        Button { if let url = URL(string: AppConfig.termsURL) { openURL(url) } } label: {
                             Text("유료 서비스 이용약관").underline().foregroundColor(WPColor.passSheetFaint).wpTypography(10.5, lineHeight: 17)
                         }.buttonStyle(.plain)
                         // 평생 패스(비소모성)는 App Store 에서 되살릴 수 있어야 한다(심사 지침 3.1.1)
