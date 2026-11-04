@@ -53,10 +53,14 @@ struct CoupleChatTab: View {
             guard JWTDecoder.planUserId(from: await env.tokenStore.currentToken() ?? "") == me else { return }
             state = CoupleChatRules.pick(page.list, myId: me)
             if state == .solo {
-                do { invite = try await env.api.send(Endpoint.shareCode()); error = nil } catch { self.error = "링크를 불러오지 못했습니다." }
+                do { invite = try await env.api.send(Endpoint.shareCode()); error = nil } catch { if !error.isCancellation { self.error = "링크를 불러오지 못했습니다." } }
                 if let user: PlanUser = try? await env.api.send(Endpoint.user()), let value = user.name, !value.isEmpty { name = value }
             }
-        } catch { if state == .loading || state == .error { state = .error } }
+        } catch {
+            // 취소는 실패가 아니다 — "네트워크 상태를 확인" 안내로 바꾸지 않는다
+            guard !error.isCancellation else { return }
+            if state == .loading || state == .error { state = .error }
+        }
     }
 }
 

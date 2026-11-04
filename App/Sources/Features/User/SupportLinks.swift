@@ -147,7 +147,7 @@ struct BlockListSheet: View {
         .wpBottomSheet(height: height, corner: 28)
         .task {
             do { list = try await env.api.send(HTTPRequest(path: "/plan/moderation/block/list")) }
-            catch { self.error = "목록을 불러오지 못했어요." }
+            catch { if !error.isCancellation { self.error = "목록을 불러오지 못했어요." } }
             loading = false
         }
     }

@@ -30,24 +30,24 @@ import WPUtils
         error = nil; shareNote = nil
         do {
             result = try await env.api.send(Endpoint.myInvitation())
-            planDate = nil; planVenue = nil
             if state == .empty {
                 let endpoint = result?.roomId.map { Endpoint.room(shareCode: String($0)) } ?? Endpoint.user()
+                // 받은 뒤에 바꾼다 — 먼저 비우면 다시 받는 사이 빈 정원의 날짜 · 예식장 칸이 잠깐 빈칸으로 깜빡였다
                 if let plan = try? await env.api.send(endpoint, decoding: PlanUser.self) {
                     planDate = plan.weddingDate.map { String($0.prefix(10)) }
-                    planVenue = plan.weddingVenue?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if planVenue?.isEmpty == true { planVenue = nil }
+                    let venue = plan.weddingVenue?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    planVenue = venue?.isEmpty == true ? nil : venue
                 }
-            }
+            } else { planDate = nil; planVenue = nil }
             if let invitation = result?.invitation, invitation.published,
                InvitationRules.normalize(invitation.design).sections.contains(where: { $0.type == "guestbook" && $0.visible }) {
                 do {
                     let page: InvitationGuestbook = try await env.api.send(Endpoint.invitationGuestbook(slug: invitation.slug))
                     wishes = page.wishes; total = page.total ?? page.wishes.count
                     await countFresh(env)
-                } catch { total = nil; fresh = 0 }
+                } catch { if !error.isCancellation { total = nil; fresh = 0 } }
             } else { wishes = []; total = nil; fresh = 0 }
-        } catch { self.error = error.localizedDescription }
+        } catch { if !error.isCancellation { self.error = error.localizedDescription } }
     }
     /// 칸이면 지금 수를 본 것으로 적는다. 홈은 본 수와 빼고, 이 기기에서 처음이면 지금 수를 기준으로 삼아 0 —
     /// 이미 칸에서 다 읽은 사람에게 새 축하를 지어내지 않는다. 홈이 다시 앞으로 올 때(칸에서 읽고 돌아옴)도 부른다.

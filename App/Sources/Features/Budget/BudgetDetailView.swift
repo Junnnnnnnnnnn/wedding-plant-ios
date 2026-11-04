@@ -86,7 +86,7 @@ struct BudgetDetailView: View {
         .ignoresSafeArea(edges: .top)
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden()
-        .reloadWhenChanged({ env.dataRevision }) { await model.load(env: env, guest: guest) }
+        .reloadOnReturn { await model.load(env: env, guest: guest) }
     }
 
     // MARK: - 본문
@@ -331,7 +331,7 @@ private struct BudgetExportButton: View {
                 .padding(.top, 16)
             }
         }
-        .reloadWhenChanged({ [roomId ?? -1] + env.dataRevision }) { await load() }
+        .reloadOnReturn(id: roomId) { await load() }
         .sheet(isPresented: $showExport) { CalendarExportSheet(roomId: roomId) }
         // 패스 소개를 X 로 닫으면(결제 안 함) 다시 받지 않는다 — 결제·복원으로 패스가 바뀌었을 때만
         .passCover(isPresented: $showPass, onPassChanged: { Task { await load() } }) { PassView(roomId: roomId) }

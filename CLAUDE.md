@@ -194,18 +194,26 @@ Android `c857963` · `1e62d83` · `2c2fb4c` 이식. 확인은 `InvitationPhotoPr
   묻는다. 확인은 `InviteLinkUITests`(데모 모드는 카카오를 켜지 않아 같은 조건을 늘 재현).
 - 시뮬레이터에 옛 번들 ID(`com.zipshowkorea.weddingplant`) 개발 빌드가 남아 있으면 `weddingplant://` 를 그 앱이 가로챈다 — 지운다.
 
-### 취소는 오류가 아니다 · 닫기만 했으면 다시 받지 않는다 (2026-11-04 사용자 보고)
+### 취소는 오류가 아니다 · 돌아오면 안드로이드처럼 조용히 다시 받는다 (2026-11-04)
 
 - **"네트워크에 연결할 수 없습니다." 의 정체는 `-999 취소됨` 이었다.** 일정에서 완료하고 홈으로 오면 6번 중 6번 떴다(운영 QA).
   SwiftUI `.task` 는 화면이 가려지거나 다시 만들어지면 취소되는데, `URLSessionTransport` 가 그 취소를 `APIError.transport` 로
   감쌌고 홈은 그 안내를 다시 잘 받아도 지우지 않았다. 지금은 전송이 `CancellationError` 로 올리고(`APIClient` 도 그대로 통과),
-  읽는 화면은 `error.isCancellation` 이면 보던 값을 둔 채 조용히 끝낸다. **새 화면의 받기 `catch` 에도 같은 줄을 넣는다.**
-- **모달 · 상세를 X 로 닫기만 했으면 다시 받지 않는다**(사용자 "모달 같은 걸 X 하면 새로고침 되면 안 돼"). 화면은 `.task` 대신
-  `.reloadWhenChanged({ env.dataRevision })`(DesignSystem/ReloadWhenChanged.swift) — 처음엔 받고, 다시 나타날 때는 일정
-  (`scheduleRevision`) · 패스(`passRevision`) · 방(`roomsRevision`)이 바뀌었을 때만. 패스 소개는 `.passCover` 로 띄워 결제 · 복원했을
-  때만 닫은 뒤 다시 받는다. 달력의 상세 닫기는 열 때의 `scheduleRevision` 과 견준다.
-- 일정을 바꾸는 쓰기(완료 · 되돌림 · 삭제 · 생성 · 수정)는 성공 뒤 **`env.noteSchedulesChanged()`** 를 부른다 — 빠뜨리면 그 변화가
-  다른 화면에 늦게 보인다. 탭을 눌러 화면이 새로 만들어지는 것(셸 `revision`)은 그대로 다시 받는다(Android 탭 초기화).
+  읽는 화면은 `error.isCancellation`(또는 `Task.isCancelled`)이면 보던 값을 둔 채 조용히 끝낸다 — 홈 · 일정 · 상세 · 예산 · 피드 ·
+  자랑 · 플랜 목록 · 귀속 방 · 청첩장 · 서류 보관함 · 차단 목록 · 채팅 탭. **새 화면의 받기 `catch` 에도 같은 줄을 넣는다.**
+  이것이 있어야 돌아올 때 자주 다시 받아도 오류 띠가 남지 않는다.
+- **돌아올 때 다시 받기는 안드로이드 `ON_RESUME` 과 같다**(안드로이드 요청서 `docs/test-reports/2026-11-04-ios-handoff`, 사용자
+  "iOS 를 안드로이드처럼"). 화면은 `.task` 대신 **`.reloadOnReturn`**(DesignSystem/ReloadOnReturn.swift): 처음 나타날 때 · 밀어 넣은
+  화면(상세 · 예산)에서 돌아올 때 · 앱이 백그라운드에서 돌아올 때(`scenePhase` background → active, 보이는 화면만) 받고,
+  **시트 · 전체 화면 창에 가려졌다 돌아올 때는 받지 않는다**(사라질 때 창이 한 겹 더 떴는지로 가림). 받는 동안 뼈대로 바꾸지 않는
+  것은 각 화면의 몫이다(홈 `listLoaded` · 예산 `hadDetail` · 달력 `byDay`). 셸이 덮어 그리는 일정 상세는 이 화면을 사라지게 하지
+  않으므로 닫을 때 직접 받는다.
+- 한때(같은 날) "이 기기에서 일정 · 패스 · 방을 바꿨을 때만" 다시 받았다(`reloadWhenChanged`). **되살리지 마세요** — 이 기기의
+  쓰기만 세서 상대(신랑 · 신부)가 다른 폰에서 고친 것이 돌아와도 안 보였다. `env.noteSchedulesChanged()` 는 남아 있지만 다시 받기를
+  가르지 않는다.
+- 패스 소개는 `.passCover` 로 띄운다 — 결제 · 복원했을 때만 닫은 뒤 다시 받는다(안드로이드도 창을 닫기만 해서는 다시 받지 않는다).
+- 확인(2026-11-04): 운영 QA 16곳(완료 → 홈 · 상세 완료 → 뒤로 · 예산 열자마자 뒤로 · 탭 빠르게 오가기 · 백그라운드 복귀)에서
+  오류 문구 0, 데모에서 상세 → 뒤로 스크롤 자리 그대로 · 뼈대 없음, 패스 소개 X 다시 받기 0 · 뒤로 · 복귀 다시 받기 1.
 
 ## 준비 패스 결제 — StoreKit 2 (2026-10-16)
 

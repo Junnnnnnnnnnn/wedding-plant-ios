@@ -162,6 +162,8 @@ struct PassDocumentsView: View {
                 }
             }
         } catch {
+            // 화면을 떠나 취소된 것은 실패가 아니다 — 보던 목록을 그대로 둔다
+            guard !error.isCancellation else { return }
             if page == nil { loadFailed = true } else { message = "서류를 불러오지 못했어요. 다시 시도해 주세요." }
         }
     }
@@ -373,6 +375,7 @@ final class DocumentsWorkspaceModel: ObservableObject {
             loading = false
         } catch {
             loading = false
+            guard !error.isCancellation else { return }
             self.error = (error as? LocalizedError)?.errorDescription ?? "서류를 불러오지 못했어요."
         }
     }
@@ -1351,7 +1354,7 @@ struct PassDownloadView: View {
         do {
             let result: PassDownloadAll = try await env.api.send(Endpoint.allFiles(roomId: roomId))
             files = result.list.filter { URL(string: $0.url)?.scheme == "https" }; fetchedAt = Date()
-        } catch { self.error = "목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요." }
+        } catch { if !error.isCancellation { self.error = "목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요." } }
     }
 
     /// 오래된 주소면 새로 받아 같은 자리·같은 이름의 파일을 내려받는다

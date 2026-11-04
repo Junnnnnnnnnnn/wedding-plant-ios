@@ -117,7 +117,8 @@ final class BudgetDetailViewModel: ObservableObject {
         if let chart { categories = chart.list }
         if let list { items = list }
         // 문구는 안드로이드 `BudgetDetailViewModel` 과 같다.
-        if detail == nil { errorMessage = "예산 정보를 불러오지 못했습니다." }
+        // 화면을 떠나 취소됐으면 실패로 적지 않는다(돌아오면 다시 받는다)
+        if detail == nil, !Task.isCancelled { errorMessage = "예산 정보를 불러오지 못했습니다." }
     }
 
     /// 웹: 비로그인은 로컬 게스트 플랜으로 같은 화면을 계산해 보여 준다 (블러 처리됨).

@@ -202,8 +202,8 @@ struct MainView: View {
                 }.accessibilityIdentifier("main.boundCover")
             }
         }
-        // 상세에서 그냥 돌아오거나 창을 X 로 닫으면 다시 받지 않는다 — 일정 · 패스 · 방이 바뀌었을 때만(`ReloadWhenChanged`)
-        .reloadWhenChanged({ env.dataRevision }) {
+        // 상세에서 돌아오거나 앱이 앞으로 오면 조용히 다시 받는다 — 창을 X 로 닫을 때는 받지 않는다(안드로이드 ON_RESUME, `ReloadOnReturn`)
+        .reloadOnReturn {
             today = KstDate.today()
             // 방을 먼저 정하고 목록을 받는다. 순서를 뒤집으면 개인 플랜을 한 번
             // 그린 뒤 방 플랜으로 바뀐다.
