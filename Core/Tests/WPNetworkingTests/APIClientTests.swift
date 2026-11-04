@@ -128,6 +128,13 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(sent?.url.query, "count=10000&page=1&sort=DESC&sortColumn=startDate&status=NORMAL")
     }
 
+    /// 경로 조각의 `/` 도 인코딩한다 — `.urlPathAllowed` 그대로면 `../auth/logout` 이 다른 경로를 불렀다
+    func test_경로_조각의_슬래시는_인코딩한다() {
+        XCTAssertEqual(Endpoint.escape("../auth/logout/all"), "..%2Fauth%2Flogout%2Fall")
+        XCTAssertEqual(Endpoint.joinRoom(shareCode: "../auth/logout/all", asSpouse: true).path, "/plan/room/..%2Fauth%2Flogout%2Fall")
+        XCTAssertEqual(Endpoint.escape("0b7e3c2a-1111-4222-8333-444455556666"), "0b7e3c2a-1111-4222-8333-444455556666")
+    }
+
     func test_방별_일정목록은_경로가_달라진다() async throws {
         let transport = MockTransport()
         await transport.setFallback(HTTPResponse(status: 200, body: Data(#"{"result":true,"data":{"total":0,"list":[]}}"#.utf8)))

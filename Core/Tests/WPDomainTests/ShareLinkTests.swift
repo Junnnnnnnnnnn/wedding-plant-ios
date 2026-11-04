@@ -67,4 +67,25 @@ final class ShareLinkTests: XCTestCase {
         XCTAssertNil(ShareLink.shareCode(from: "https://example.com/main"))
         XCTAssertNil(ShareLink.shareCode(from: "/plan-list"))
     }
+
+    /// 웹 `isShareCode` 와 같은 판정 — 꼴이 아니면 참여 요청을 보내지 않는다(웹 769a075)
+    func test_초대_코드_꼴() {
+        XCTAssertTrue(ShareLink.isShareCode("0b7e3c2a-1111-4222-8333-444455556666"))
+        XCTAssertTrue(ShareLink.isShareCode("0B7E3C2A-1111-4222-8333-444455556666"))
+        XCTAssertFalse(ShareLink.isShareCode("leave"))
+        XCTAssertFalse(ShareLink.isShareCode("mine"))
+        XCTAssertFalse(ShareLink.isShareCode("../auth/logout/all"))
+        XCTAssertFalse(ShareLink.isShareCode("0b7e3c2a-1111-4222-8333-44445555666"))   // 35자
+        XCTAssertFalse(ShareLink.isShareCode("0b7e3c2a-1111-4222-8333-4444555566667")) // 37자
+        XCTAssertFalse(ShareLink.isShareCode("0b7e3c2a-1111-4222-8333-44445555666g"))
+        XCTAssertFalse(ShareLink.isShareCode("０b7e3c2a-1111-4222-8333-444455556666")) // 전각 숫자
+        XCTAssertFalse(ShareLink.isShareCode(""))
+    }
+
+    /// `%2F` 로 감싼 주소는 풀린 뒤 `/` 를 품는다 — 링크 파싱은 그대로 두고 꼴 검사가 막는다
+    func test_인코딩된_경로는_꼴_검사에서_걸린다() {
+        let invite = ShareLink.invite(from: URL(string: "weddingplant://share/..%2Fauth%2Flogout%2Fall?as=spouse")!)
+        XCTAssertNotNil(invite)
+        XCTAssertFalse(ShareLink.isShareCode(invite?.code ?? ""))
+    }
 }

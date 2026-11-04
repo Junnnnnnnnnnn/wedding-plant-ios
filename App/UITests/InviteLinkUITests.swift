@@ -46,7 +46,7 @@ final class InviteLinkUITests: XCTestCase {
     /// 로그인한 사람: 배우자 초대 링크 → 수락 확인창(누르기 전에는 참여하지 않는다).
     func test_배우자_초대_스킴이_참여_확인창을_연다() {
         let app = launch(loggedOut: false)
-        openFromSystem("weddingplant://share/DEMO-SHARE?as=spouse")
+        openFromSystem("weddingplant://share/0c0ffee0-0000-4000-8000-00000000de30?as=spouse")
 
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "초대 주소가 이 앱으로 오지 않았다")
         // 참여 화면 바깥의 `share.screen` 식별자가 안쪽 단추의 식별자를 덮어 글자로 찾는다.
@@ -58,11 +58,29 @@ final class InviteLinkUITests: XCTestCase {
     /// 로그인 안 한 사람: 같은 링크 → 로그인 안내(로그인하면 이 초대로 이어진다 — `pendingShareCode`).
     func test_비로그인이면_초대를_들고_로그인으로_안내한다() {
         let app = launch(loggedOut: true)
-        openFromSystem("weddingplant://share/DEMO-SHARE?as=spouse")
+        openFromSystem("weddingplant://share/0c0ffee0-0000-4000-8000-00000000de30?as=spouse")
 
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "초대 주소가 이 앱으로 오지 않았다")
         XCTAssertTrue(app.staticTexts["공유 플랜을 보려면 로그인해 주세요"].waitForExistence(timeout: 15),
                       "비로그인인데 초대 화면의 로그인 안내가 뜨지 않았다")
         capture(app, "invite-scheme-login-required")
+    }
+
+    /// 초대 코드 꼴이 아닌 주소(`leave` · `..%2F…`)는 수락 창을 내지 않고 거절한다 — 수락하면 `POST /plan/room/leave` 가 나가
+    /// 자기 자리가 지워지던 구멍(웹 769a075). 로그인한 사람 · 안 한 사람 모두.
+    func test_초대_코드_꼴이_아니면_수락_창_없이_거절한다() {
+        for (loggedOut, link) in [(false, "weddingplant://share/leave?as=spouse"),
+                                  (false, "weddingplant://share/..%2Fauth%2Flogout%2Fall?as=spouse"),
+                                  (true, "weddingplant://share/leave?as=spouse")] {
+            let app = launch(loggedOut: loggedOut)
+            openFromSystem(link)
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15))
+            XCTAssertTrue(app.staticTexts["초대 링크 주소가 올바르지 않아요. 받은 링크를 다시 확인해 주세요."].waitForExistence(timeout: 15),
+                          "\(link) 에 거절 안내가 없다")
+            XCTAssertFalse(app.buttons["네, 같이 준비할게요"].exists, "\(link) 에 수락 창이 떴다")
+            XCTAssertFalse(app.staticTexts["공유 플랜을 보려면 로그인해 주세요"].exists, "\(link) 가 로그인부터 물었다")
+            capture(app, "invite-invalid-\(loggedOut ? "loggedout" : "loggedin")")
+            app.terminate()
+        }
     }
 }

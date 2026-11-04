@@ -26,6 +26,9 @@ final class ShareJoinViewModel: ObservableObject {
     }
 
     /// 안드로이드 `SpouseRules` 와 한 글자도 다르지 않게.
+    /// 웹 `JOIN_ERROR_MESSAGES.INVALID_INVITE_CODE` 와 같은 글자
+    static let invalidCodeMessage = "초대 링크 주소가 올바르지 않아요. 받은 링크를 다시 확인해 주세요."
+
     static let inviteRoleRequiredMessage = "이 초대 링크는 더 이상 쓸 수 없어요. 신랑 · 신부 초대 링크를 새로 받아 주세요."
     static func joinErrorMessage(_ body: String?) -> String? {
         guard let body else { return nil }
@@ -52,6 +55,13 @@ final class ShareJoinViewModel: ObservableObject {
         let code = shareCode.trimmingCharacters(in: .whitespaces)
         guard !code.isEmpty else {
             state = .failed("잘못된 공유 링크입니다.", refused: false)
+            return
+        }
+        // 초대 코드 꼴이 아니면 로그인도 묻지 않고 거절한다(웹 769a075). 남겨 둔 초대도 지운다 —
+        // 남기면 로그인할 때마다 이 주소로 다시 끌려온다. 다시 눌러도 같은 답이라 "다시 시도" 를 내지 않는다.
+        guard ShareLink.isShareCode(code) else {
+            guest.shareAfterLogin = nil
+            state = .failed(Self.invalidCodeMessage, refused: true)
             return
         }
         // 옛 "함께 보는 사람" 링크. 로그인 뒤 이 초대로 다시 끌려오지 않게 남긴 코드도 지운다

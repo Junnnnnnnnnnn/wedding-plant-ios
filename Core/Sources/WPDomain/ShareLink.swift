@@ -15,6 +15,17 @@ public enum ShareLink {
     /// 공유 링크 경로의 첫 조각.
     public static let pathPrefix = "share"
 
+    /// 초대 코드 꼴인가 — 서버의 참여 라우트가 받는 UUID 꼴(`[0-9a-fA-F-]{36}`, 웹 `lib/inviteErrors.ts` `isShareCode`).
+    ///
+    /// **꼴이 아니면 서버에 보내지 않는다.** 참여는 `POST /plan/room/{코드}` 인데 같은 접두어 아래 본문 없는 POST 가 더 있어서,
+    /// `/share/leave?as=spouse` 를 연 신랑·신부가 수락하면 참여 대신 `POST /plan/room/leave` 가 나가 자기 자리가 지워졌다
+    /// (웹 769a075, 2026-11-04). `..%2F` 로 다른 경로를 노리는 주소도 같은 길이다.
+    public static func isShareCode(_ code: String) -> Bool {
+        code.utf8.count == 36 && code.utf8.allSatisfy { byte in
+            (48...57).contains(byte) || (65...70).contains(byte) || (97...102).contains(byte) || byte == 45
+        }
+    }
+
     /// 공유 링크면 코드를, 아니면 `nil`.
     ///
     /// 받아들이는 모양:

@@ -586,7 +586,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// 공유 링크로 진입 → 자동 참여 → 참여 플랜 목록.
     func test_08_공유_참여() {
-        let app = makeApp(shareCode: "DEMO-SHARE")
+        let app = makeApp(shareCode: "0c0ffee0-0000-4000-8000-00000000de30")
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 30)
 
@@ -598,7 +598,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// 비로그인으로 공유 링크를 열면 로그인 안내가 뜬다.
     func test_09_공유_참여_비로그인() {
-        let app = makeApp(loggedOut: true, shareCode: "DEMO-SHARE")
+        let app = makeApp(loggedOut: true, shareCode: "0c0ffee0-0000-4000-8000-00000000de30")
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 30)
         settle(3.0)

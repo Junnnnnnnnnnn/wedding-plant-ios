@@ -13,9 +13,16 @@ public enum Endpoint {
         return HTTPRequest(path: path, query: ["page": String(page), "count": "100"])
     }
     /// 동적 경로 세그먼트 인코딩. (shareCode 등 사용자 입력이 섞이는 경우 필수)
+    ///
+    /// **`/` 도 인코딩한다** — `.urlPathAllowed` 는 `/` 를 그대로 둬서 `../auth/logout` 같은 값이 다른 경로를 불렀다.
     public static func escape(_ segment: String) -> String {
-        segment.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? segment
+        segment.addingPercentEncoding(withAllowedCharacters: segmentAllowed) ?? segment
     }
+    private static let segmentAllowed: CharacterSet = {
+        var set = CharacterSet.urlPathAllowed
+        set.remove(charactersIn: "/")
+        return set
+    }()
 
     // MARK: - 인증
 
