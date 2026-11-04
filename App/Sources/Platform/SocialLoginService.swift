@@ -35,15 +35,28 @@ final class SocialLoginService {
 
     static var isKakaoConfigured: Bool { !kakaoNativeAppKey.isEmpty }
 
-    /// 앱 시작 때 한 번. 키가 없으면 건너뛴다.
+    /// 메인 스레드에서만 읽고 쓴다(`.task` · `.onOpenURL` 모두 메인).
+    nonisolated(unsafe) private static var kakaoInitialized = false
+
+    /// 앱 시작 때 한 번. 키가 없으면 건너뛴다. 두 번 불러도 한 번만 켠다.
     static func initializeKakaoIfNeeded() {
-        guard isKakaoConfigured else { return }
+        guard isKakaoConfigured, !kakaoInitialized else { return }
         KakaoSDK.initSDK(appKey: kakaoNativeAppKey)
+        kakaoInitialized = true
     }
 
     /// 카카오톡/카카오계정에서 돌아오는 URL. `onOpenURL` 에서 넘긴다.
+    ///
+    /// **SDK 에 묻기 전에 스킴부터 본다.** `AuthApi.isKakaoTalkLoginUrl` 은 안에서 `KakaoSDK.redirectUri()` 를
+    /// `try!` 로 불러, SDK 가 아직 안 켜졌으면 앱을 죽인다. 꺼진 앱을 초대 주소(`weddingplant://share/…` ·
+    /// Universal Link)로 켜면 `.onOpenURL` 이 초기화(`.task`)보다 먼저 와서 실제로 그랬다(2026-11-04, 데모 모드는 매번).
+    /// 카카오에서 돌아오는 주소는 늘 `kakao{앱 키}://` 라 그 밖의 주소는 SDK 없이 거른다.
     static func handleKakaoOpenURL(_ url: URL) -> Bool {
-        guard isKakaoConfigured, AuthApi.isKakaoTalkLoginUrl(url) else { return false }
+        guard isKakaoConfigured,
+              url.scheme?.lowercased() == "kakao\(kakaoNativeAppKey)".lowercased()
+        else { return false }
+        initializeKakaoIfNeeded()
+        guard AuthApi.isKakaoTalkLoginUrl(url) else { return false }
         return AuthController.handleOpenUrl(url: url)
     }
 
