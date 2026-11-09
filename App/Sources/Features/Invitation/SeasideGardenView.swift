@@ -36,6 +36,8 @@ final class GardenCanvas: UIView {
     private var nextDrop = 7
     private var link: CADisplayLink?
     private var lastTick: CFTimeInterval?
+    /// 이 정원을 품은 스크롤 — 굴리는 동안은 정원을 멈춘다(아래 `tick`).
+    private weak var hostScroll: UIScrollView?
     private var flightViews: [Int: UIImageView] = [:]
     private let dialog = GardenDialogLabel()
     private let speaker = UILabel()
@@ -122,6 +124,10 @@ final class GardenCanvas: UIView {
     }
     override func didMoveToWindow() {
         super.didMoveToWindow()
+        if window != nil {
+            var node = superview; hostScroll = nil
+            while let current = node { if let s = current as? UIScrollView { hostScroll = s; break }; node = current.superview }
+        }
         if window == nil { stop() } else if link == nil && motionEnabled {
             let display = CADisplayLink(target: self, selector: #selector(tick(_:)))
             display.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
@@ -147,6 +153,9 @@ final class GardenCanvas: UIView {
         defer { lastTick = display.timestamp }
         guard UIApplication.shared.applicationState == .active, let window,
               convert(bounds, to: window).intersects(window.bounds) else { lastTick = nil; return }
+        // 손으로 굴리는 동안(끌기 · 감속)은 그리지 않는다. 정원은 매 프레임 CPU 로 통째로 다시 그려서, 홈처럼 스크롤 안에
+        // 있으면 스크롤 프레임과 겹쳐 "드드득" 거렸다(2026-11-09 사용자). 멈춘 시간은 건너뛰지 않고 이어서 흐른다.
+        if let scroll = hostScroll, scroll.isTracking || scroll.isDecelerating { lastTick = nil; return }
         guard let previous = lastTick, unit > 0 else { return }
         let origin = convert(CGPoint(x: 0, y: sceneY), to: window)
         engine.skyAbove = max(12, (origin.y + 12) / unit)

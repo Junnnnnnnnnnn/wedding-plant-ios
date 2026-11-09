@@ -411,10 +411,19 @@ struct MainTabShell: View {
                 // 키보드가 아니다(Android 도 IME 가 화면에 뜰 때만 `isImeVisible`)
                 let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect ?? .zero
                 let screen = (note.object as? UIScreen)?.bounds.height ?? frame.maxY
-                keyboardUp = frame.height > 100 && frame.minY < screen - 1
+                let up = frame.height > 100 && frame.minY < screen - 1
+                // 탭바가 빠지는 것을 **키보드와 같은 시간**에 맞춘다. 맞추지 않으면 탭바가 먼저 툭 빠지고 키보드가 따라 올라와
+                // 채팅의 대화와 입력줄이 두 번 출렁였다(2026-11-09 사용자 "카카오처럼 깔끔하게").
+                if up != keyboardUp { withAnimation(Self.keyboardAnimation(note)) { keyboardUp = up } }
             }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-                keyboardUp = false
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { note in
+                if keyboardUp { withAnimation(Self.keyboardAnimation(note)) { keyboardUp = false } }
             }
+    }
+
+    /// 키보드 알림이 실어 오는 길이로 — 곡선은 iOS 키보드와 가까운 easeOut
+    private static func keyboardAnimation(_ note: Notification) -> Animation {
+        let duration = note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+        return .easeOut(duration: max(0.1, duration))
     }
 }

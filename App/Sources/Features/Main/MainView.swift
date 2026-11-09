@@ -163,7 +163,9 @@ struct MainView: View {
                 // 머리 면 구간에서는 빠른 감속으로 두 자리에 **딱** 붙인다(안드로이드 HeadSnap 의 짧은 애니메이션).
                 // 기본(normal) 감속은 손을 뗀 뒤 목표 자리까지 오래 미끄러져 "맞춰지는 속도가 느렸다"(2026-10-16 사용자).
                 // 목록 구간은 보통 감속 그대로 — 긴 목록을 휙 넘기는 느낌은 유지한다.
-                snapScroll.view?.decelerationRate = y < snapAnchor - 0.5 ? .fast : .normal
+                // 바뀔 때만 적는다 — 굴리는 매 프레임 감속값을 다시 적으면 감속 중인 굴림이 덜컥였다.
+                let rate: UIScrollView.DecelerationRate = y < snapAnchor - 0.5 ? .fast : .normal
+                if let view = snapScroll.view, view.decelerationRate != rate { view.decelerationRate = rate }
             })
             .accessibilityIdentifier("main.scroll")
 
@@ -647,7 +649,10 @@ private struct HomeHeadSnap: ScrollTargetBehavior {
         // `headSnapTarget`, 300dp/s). 예전에는 놓은 뒤 멈출 자리를 시작 자리와 비교해, 천천히 조금만(화면 1/5) 끌어도 위로
         // 움직였으니 제목 자리로 붙었다(2026-10-28 iOS QA HOME-03 — 기대는 맨 위로 되돌아감).
         if y >= anchor { target.rect.origin.y = anchor; return }
-        let velocity = context.velocity.dy
+        // `context.velocity` 는 **pt/ms** 다(UIKit `scrollViewWillEndDragging` 과 같은 단위). 예전에는 300 과 비교해
+        // 어떤 휙 넘김도 빠르게로 읽히지 않았고(시뮬레이터에서 세게 넘겨도 1.15), 가까운 쪽 규칙만 남아 반 넘게 끌지
+        // 않으면 맨 위로 튕겨 돌아왔다(2026-11-09 사용자 영상).
+        let velocity = context.velocity.dy * 1000
         if velocity > Self.snapVelocity { target.rect.origin.y = anchor }
         else if velocity < -Self.snapVelocity { target.rect.origin.y = 0 }
         else { target.rect.origin.y = target.rect.minY * 2 >= anchor ? anchor : 0 }
@@ -1126,7 +1131,7 @@ private struct PlanSproutEmpty: View {
         let scale: CGFloat = compact ? 0.72 : 1
         let tight = lowScreen || compact
         VStack(spacing: 0) {
-            TimelineView(.animation(paused: Self.frozen)) { context in
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: Self.frozen)) { context in
                 let t = Self.frozen ? 0 : context.date.timeIntervalSince(start)
                 Canvas { ctx, _ in
                     ctx.scaleBy(x: scale, y: scale)
@@ -1162,7 +1167,7 @@ private struct PlanSproutEmpty: View {
                     .background {
                         // 버튼 뒤로 퍼지는 물결 — 자리를 차지하지 않게 그림자처럼 바깥에 그린다
                         if !Self.frozen {
-                            TimelineView(.animation) { context in
+                            TimelineView(.animation(minimumInterval: 1 / 30)) { context in
                                 let p = Self.easeOut(context.date.timeIntervalSince(start).truncatingRemainder(dividingBy: 2.2) / 2.2)
                                 let fade = min(1, max(0, 1 - p / 0.7))
                                 Capsule()

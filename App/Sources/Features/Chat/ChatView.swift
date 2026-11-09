@@ -161,9 +161,11 @@ struct ChatView: View {
             .background(WPColor.background)
             .accessibilityIdentifier("chat.scroll")
             .scrollDismissesKeyboard(.interactively)
+            // 칸이 줄거나 늘어도(키보드 · 탭바) 대화는 **아래에 붙어** 함께 움직인다 — 카카오톡처럼. 예전에는 키보드가 다
+            // 뜬 뒤에 맨 아래로 다시 굴려서 대화가 한 번 밀렸다가 튀어 올랐다(2026-11-09 사용자 영상).
+            .defaultScrollAnchor(.bottom)
             .onChange(of: model.lines.last?.id) { _, _ in scrollToBottom(proxy) }
             .onChange(of: model.loading) { _, loading in if !loading { scrollToBottom(proxy, animated: false) } }
-            .onChange(of: inputFocused) { _, focused in if focused { scrollToBottom(proxy) } }
             .onAppear { scrollToBottom(proxy, animated: false) }
         }
     }

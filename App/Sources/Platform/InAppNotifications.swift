@@ -1,11 +1,20 @@
 import Foundation
+import UserNotifications
 import WPModels
 import WPNetworking
 import WPUtils
 
 /// Foreground subscriptions. Background delivery is handled by APNs/FCM.
 @MainActor final class InAppNotifications: ObservableObject {
-    @Published private(set) var unread: [Int: Int] = [:]
+    /// 앱 아이콘의 빨간 숫자도 같은 수로 맞춘다 — 서버 푸시가 실어 온 숫자는 대화를 읽어도 그대로 남으므로,
+    /// 앱이 안 읽은 수를 알 때마다 덮어쓴다(읽으면 0). 알림 권한(배지)이 없으면 iOS 가 무시한다.
+    @Published private(set) var unread: [Int: Int] = [:] {
+        didSet {
+            let count = unreadCount
+            guard count != oldValue.values.reduce(0, +) || count == 0 else { return }
+            UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+        }
+    }
     var unreadCount: Int { unread.values.reduce(0, +) }
     private var streams: [String: Task<Void, Never>] = [:]
     private var streamIDs: [String: UUID] = [:]
