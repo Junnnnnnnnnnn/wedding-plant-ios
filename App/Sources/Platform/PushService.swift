@@ -28,6 +28,8 @@ final class PushService: NSObject, ObservableObject {
 
     /// 알림을 눌러서 들어갈 채팅방.
     @Published var pendingChatRoomId: Int?
+    struct PendingSchedule: Identifiable { let id = UUID(); let scheduleId: Int?; let roomId: Int }
+    @Published var pendingSchedule: PendingSchedule?
 
     /// 지금 열려 있는 채팅방. 이 방의 알림은 배너도 토스트도 띄우지 않는다.
     @Published var currentChatRoomId: Int?
@@ -57,6 +59,31 @@ final class PushService: NSObject, ObservableObject {
         }
         tokenProvider.start()
     }
+
+    #if DEBUG && targetEnvironment(simulator)
+    /// 실제 FCM/APNs sandbox 전송용. 토큰은 시뮬레이터 앱 전용 파일에만 잠깐 저장한다.
+    func prepareCloudSimulatorReview(env: AppEnvironment) async {
+        guard env.isDemo else { return }
+        start(env: env)
+        await requestAuthorizationIfNeeded()
+        for _ in 0..<60 {
+            if let token = await tokenProvider.currentToken(), !token.isEmpty {
+                let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("cloud-review-token")
+                try? token.write(to: url, atomically: true, encoding: .utf8)
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
+    }
+    /// simctl 주입 검증 전용. Firebase 및 운영 토큰 등록 없이 실제 UN 알림 경로를 사용한다.
+    func prepareSimulatorReview(env: AppEnvironment) async {
+        guard env.isDemo else { return }
+        self.env = env
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        _ = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
+    }
+    #endif
 
     /// 알림 권한을 요청하고, 허용되면 APNs 에 등록한다.
     ///
@@ -176,8 +203,10 @@ extension PushService: UNUserNotificationCenterDelegate {
     ) async {
         let payload = PushPayload(userInfo: response.notification.request.content.userInfo)
         await MainActor.run {
-            if case let .chatRoom(id) = PushRouting.destination(for: payload) {
-                pendingChatRoomId = id
+            switch PushRouting.destination(for: payload) {
+            case let .chatRoom(id): pendingChatRoomId = id
+            case let .schedule(id, roomId): pendingSchedule = PendingSchedule(scheduleId: id, roomId: roomId)
+            case .none: break
             }
         }
     }

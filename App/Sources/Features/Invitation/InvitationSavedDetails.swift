@@ -39,9 +39,9 @@ struct InvitationSavedDetails: View {
                 Button("청첩장 고치기") { onEdit("layout") }.buttonStyle(InvitationLandingButton(primary: true)).disabled(!canEdit)
                 if !content.published {
                     Button(busy ? "공개하는 중…" : "공개하고 링크 받기", action: onPublish).buttonStyle(InvitationLandingButton(primary: false)).disabled(!canEdit || busy)
-                    Button("미리보기", action: onPreview).buttonStyle(InvitationLandingButton(primary: false))
                 }
             }
+            Button(content.published ? "하객 화면" : "미리보기", action: onPreview).buttonStyle(InvitationLandingButton(primary: false))
             VStack(alignment: .leading, spacing: 8) {
                 panelTitle("우리 청첩장에 담긴 것 · 눌러서 고치기")
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {

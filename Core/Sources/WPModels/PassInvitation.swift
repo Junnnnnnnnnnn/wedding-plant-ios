@@ -241,20 +241,23 @@ public struct InvitationGuestbook: Codable, Sendable, Equatable {
     }
 }
 
-public struct InvitationWish: Codable, Sendable, Equatable {
+public struct InvitationWish: Codable, Sendable, Equatable, Identifiable {
     public var id: String
     public var name: String
     public var message: String
     public var avatar: Int
     public var createdAt: String
-    public init(id: String = "", name: String = "", message: String = "", avatar: Int = 0, createdAt: String = "") {
+    /// 주인용 목록(`/plan/my-invitation/guestbook`)에서만 온다 — 고치기·지우기를 낼지. 공개 방명록에는 없어 false.
+    public var editable: Bool
+    public init(id: String = "", name: String = "", message: String = "", avatar: Int = 0, createdAt: String = "", editable: Bool = false) {
         self.id = id
         self.name = name
         self.message = message
         self.avatar = avatar
         self.createdAt = createdAt
+        self.editable = editable
     }
-    private enum CodingKeys: String, CodingKey { case id, name, message, avatar, createdAt }
+    private enum CodingKeys: String, CodingKey { case id, name, message, avatar, createdAt, editable }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
@@ -262,6 +265,7 @@ public struct InvitationWish: Codable, Sendable, Equatable {
         message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
         avatar = try c.decodeIfPresent(Int.self, forKey: .avatar) ?? 0
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        editable = (try? c.decodeIfPresent(Bool.self, forKey: .editable)) ?? false
     }
 }
 

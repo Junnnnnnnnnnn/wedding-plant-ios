@@ -39,6 +39,15 @@ struct WeddingPlantApp: App {
                         await env.refreshAuthState()
                         await notifications.start(env: env, push: push)
                     }
+                    #if DEBUG && targetEnvironment(simulator)
+                    if env.isDemo && ProcessInfo.processInfo.arguments.contains("-WPCloudPushReview") {
+                        AppDelegate.pushService = push
+                        await push.prepareCloudSimulatorReview(env: env)
+                    }
+                    if env.isDemo && ProcessInfo.processInfo.arguments.contains("-WPNativePushReview") {
+                        await push.prepareSimulatorReview(env: env)
+                    }
+                    #endif
                     // 준비 패스 결제: 밖에서 온 거래(승인 대기가 풀림 등)를 듣고, 서버에 안 들어간 거래를 다시 보낸다.
                     // 데모에서도 켠다 — UI 테스트가 StoreKit 구성 파일로 결제하고 데모 서버가 확인한다.
                     env.passStore.start(env: env)

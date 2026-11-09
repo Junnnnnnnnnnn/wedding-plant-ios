@@ -30,6 +30,18 @@ extension Endpoint {
     public static func invitationGuestbook(slug: String) -> HTTPRequest {
         HTTPRequest(path: "/plan/invitation/\(escape(slug))/guestbook", requiresAuth: false)
     }
+    /// 청첩장 주인이 보는 축하 글 전체(새 글부터). 공개 방명록과 달리 로그인이 필요하고 `editable` 이 실려 온다.
+    public static func myGuestbook(offset: Int = 0, limit: Int = 50) -> HTTPRequest {
+        HTTPRequest(path: "/plan/my-invitation/guestbook", query: ["offset": String(offset), "limit": String(limit)])
+    }
+    /// 고친 뒤 서버는 첫 쪽을 돌려준다 — 목록·총수를 그 답으로 바꾼다.
+    public static func editMyGuestbook(wishId: String, name: String, message: String) throws -> HTTPRequest {
+        struct Body: Encodable { let name: String; let message: String }
+        return try .json(.patch, "/plan/my-invitation/guestbook/\(escape(wishId))", body: Body(name: name, message: message))
+    }
+    public static func deleteMyGuestbook(wishId: String) -> HTTPRequest {
+        HTTPRequest(method: .delete, path: "/plan/my-invitation/guestbook/\(escape(wishId))")
+    }
 }
 
 // MARK: - 준비 패스 결제 (App Store)

@@ -96,6 +96,7 @@ struct NativeAdSlot: View {
 
     private func card(_ assets: NativeAdAssets, ad: NativeAd?) -> some View {
         VStack(spacing: 0) {
+            AdRemoveEntry()
             NativeAdCard(ad: ad, assets: assets, style: style)
                 .fixedSize(horizontal: false, vertical: true)
             // 후기 줄(`FeedCard`)과 같은 아래 헤어라인 — 목록에 섞여도 줄 간격이 같게
@@ -437,6 +438,7 @@ struct InlineBannerAd: View {
             if env.adGate == .show, AdsService.enabled {
                 VStack(alignment: .leading, spacing: 6) {
                     if model.height > 0 || preview {
+                        AdRemoveEntry()
                         // 배너 안에도 Google 표시가 있지만 앱 목록과 섞여 보이지 않게 우리도 적는다
                         Text("광고").font(WPFont.hak(11, .bold)).foregroundStyle(WPColor.fgSubtle)
                         if preview {

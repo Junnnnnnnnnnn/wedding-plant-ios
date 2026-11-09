@@ -57,6 +57,14 @@ struct RootView: View {
                 .environmentObject(env)
                 .environmentObject(push)
         }
+        .sheet(item: Binding(get: { env.isAuthenticated && env.planComplete == true ? push.pendingSchedule : nil }, set: { push.pendingSchedule = $0 })) { target in
+            NavigationStack {
+                Group {
+                    if let id = target.scheduleId { ScheduleDetailView(scheduleId: id, roomId: target.roomId) }
+                    else { CalendarView(roomId: target.roomId, readOnly: false) }
+                }.toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { push.pendingSchedule = nil } } }
+            }
+        }
         // 공유 링크로 들어오면 어느 화면에 있든 참여 화면이 덮는다 (웹은 `/share/{code}` 페이지).
         .fullScreenCover(item: shareCodeBinding) { pending in
             ShareJoinView(shareCode: pending.code, asSpouse: pending.asSpouse) {
@@ -318,12 +326,14 @@ struct MainTabShell: View {
     /// 둘러보기를 열 때 처음 볼 칸. 하단 탭으로 열면 피드, 홈의 청첩장 입구로 열면 청첩장
     @State private var exploreStart: ExploreSection = .feed
     /// Android `showTabBar = onTabScreen && !imeVisible` — 키보드가 떠 있으면 탭바를 내린다
-    /// (입력이 많은 플랜 추가에서 탭바가 키보드 위로 떠 입력 칸을 가리지 않게. 채팅 입력도 같음).
+    /// (입력이 많은 플랜 추가에서 탭바가 키보드 위로 떠 입력 칸을 가리지 않게).
+    /// 채팅은 탭바 자리를 유지하고 UIKit 키보드 가이드가 목록·입력창을 함께 올린다.
     @State private var keyboardUp = false
 
     var body: some View {
         let adding = addPlan.request != nil
         let detailOpen = detail.request != nil
+        let nativeChatKeyboard = tab == .rooms && !adding && !detailOpen
         VStack(spacing: 0) {
             ZStack {
                 Group {
@@ -376,7 +386,7 @@ struct MainTabShell: View {
                 }
             }
             // 후기 상세처럼 탭바가 없는 화면에서 `담기` 로 열어도 플랜 추가에는 탭바가 있다(Android ADD_PLAN)
-            if (adding || detailOpen || !tabBar.hidden) && !keyboardUp {
+            if (adding || detailOpen || !tabBar.hidden) && (!keyboardUp || nativeChatKeyboard) {
                 BottomTabBar(
                     // 플랜 추가가 떠 있으면 가운데 `+` 가 켜진다 — 다른 탭은 꺼진다(Android `fromRoute(ADD_PLAN) = ADD`)
                     // 일정 상세는 **연 탭**이 켜진다(Android 8ab1b3d `TabType.fromBackStack` — 일정 탭에서 연 상세에 홈이
@@ -391,8 +401,12 @@ struct MainTabShell: View {
                     // 다른 탭(같은 탭 포함)을 누르면 플랜 추가는 빠지고 그 탭이 처음부터 열린다(Android popToRoot)
                     onSelect: { addPlan.close(); detail.close(); exploreStart = .feed; revision = UUID() }
                 )
+                .opacity(nativeChatKeyboard && keyboardUp ? 0 : 1)
+                .allowsHitTesting(!keyboardUp)
+                .accessibilityHidden(keyboardUp)
             }
         }.background(WPColor.background)
+            .ignoresSafeArea(.keyboard, edges: nativeChatKeyboard ? .bottom : [])
             .onChange(of: env.roomsRevision) { _, _ in revision = UUID() }
             /*
               **결제를 마치면 홈으로**(안드로이드 AppNavHost `passPurchased` — 웹: 결제 성공 → `시작하기` → `/main`). 홈이 켜진 패스를
@@ -414,10 +428,16 @@ struct MainTabShell: View {
                 let up = frame.height > 100 && frame.minY < screen - 1
                 // 탭바가 빠지는 것을 **키보드와 같은 시간**에 맞춘다. 맞추지 않으면 탭바가 먼저 툭 빠지고 키보드가 따라 올라와
                 // 채팅의 대화와 입력줄이 두 번 출렁였다(2026-11-09 사용자 "카카오처럼 깔끔하게").
-                if up != keyboardUp { withAnimation(Self.keyboardAnimation(note)) { keyboardUp = up } }
+                if up != keyboardUp {
+                    if nativeChatKeyboard { keyboardUp = up }
+                    else { withAnimation(Self.keyboardAnimation(note)) { keyboardUp = up } }
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { note in
-                if keyboardUp { withAnimation(Self.keyboardAnimation(note)) { keyboardUp = false } }
+                if keyboardUp {
+                    if nativeChatKeyboard { keyboardUp = false }
+                    else { withAnimation(Self.keyboardAnimation(note)) { keyboardUp = false } }
+                }
             }
     }
 

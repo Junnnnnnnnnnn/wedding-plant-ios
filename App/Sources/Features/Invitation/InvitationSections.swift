@@ -6,9 +6,20 @@ struct InvitationGuestbookSection: View {
     let content: InvitationContent
     let editing: Bool
     var motionEnabled = true
+    /// 실제 축하 글(공개 중 + 댓글 관리 켜짐일 때만 넘어온다). nil 이면 예시 넷에 `예시` 표를 단다
+    var wishes: [InvitationWish]? = nil
     let toast: (String) -> Void
+    /// `축하 글 전체 보기` 를 누르면 그 자리에서 목록을 펼친다(웹 공개 청첩장과 같은 동작, 시안 ③). 예전에는 토스트뿐이었다
+    @State private var expanded = false
     private var p: InvitationPalette { .init(content.template) }
     private let muted = Color(hex: 0xBFCEC3)
+    static let examples: [InvitationWish] = [
+        .init(id: "example-1", name: "축하의 별", message: "두 사람의 모든 계절을 응원해요", avatar: 3),
+        .init(id: "example-2", name: "행복한 마음", message: "오래오래, 지금처럼 다정하게", avatar: 16),
+        .init(id: "example-3", name: "작은 꽃", message: "세상에서 가장 빛나는 날이 되길", avatar: 1),
+        .init(id: "example-4", name: "따뜻한 축복", message: "함께 걷는 길에 늘 꽃이 피기를", avatar: 19)
+    ]
+    private var listed: [InvitationWish] { wishes.map(InvitationRules.newestFirst) ?? Self.examples }
     var body: some View {
         VStack(spacing: 0) {
             Text("A GARDEN FULL OF WISHES").font(.custom("KakaoSmallSans-Regular", size: 9)).tracking(2).foregroundStyle(p.bright)
@@ -16,16 +27,11 @@ struct InvitationGuestbookSection: View {
             Text("바다 앞 작은 결혼식에\n당신의 따뜻한 마음도 함께해 주세요.").wpTypography(12, face: .kakao, lineHeight: 22.8).padding(.vertical, -2).multilineTextAlignment(.center).foregroundStyle(muted).padding(.top, 16)
             HStack(spacing: 8) {
                 Circle().fill(Color(hex: 0xACD0B5)).frame(width: 5, height: 5).background(Circle().fill(Color(hex: 0xACD0B5).opacity(0.35)).padding(-2.5))
-                Text("공개하면 하객이 남긴 축하가 여기 모여요").font(.custom("KakaoSmallSans-Regular", size: 10)).foregroundStyle(muted).frame(maxWidth: .infinity, alignment: .leading)
+                Text(wishes == nil ? "공개하면 하객이 남긴 축하가 여기 모여요" : "하객이 남긴 축하가 여기 모여요").font(.custom("KakaoSmallSans-Regular", size: 10)).foregroundStyle(muted).frame(maxWidth: .infinity, alignment: .leading)
                 InvIconView(InvIcon.heart, size: 12, color: p.bright)
-                Text("—개의 축하").font(.custom("KakaoSmallSans-Regular", size: 9))
+                Text(wishes.map { "\($0.count)개의 축하" } ?? "—개의 축하").font(.custom("KakaoSmallSans-Regular", size: 9))
             }.foregroundStyle(p.bright).padding(.horizontal, 24).padding(.top, 32).padding(.bottom, 16)
-            SeasideGardenView(wishes: [
-                .init(id: "example-1", name: "축하의 별", message: "두 사람의 모든 계절을 응원해요", avatar: 3),
-                .init(id: "example-2", name: "행복한 마음", message: "오래오래, 지금처럼 다정하게", avatar: 16),
-                .init(id: "example-3", name: "작은 꽃", message: "세상에서 가장 빛나는 날이 되길", avatar: 1),
-                .init(id: "example-4", name: "따뜻한 축복", message: "함께 걷는 길에 늘 꽃이 피기를", avatar: 19)
-            ], groom: content.groom, bride: content.bride, labelNote: "예시 글", motionEnabled: motionEnabled).aspectRatio(320.0 / 440, contentMode: .fit)
+            SeasideGardenView(wishes: wishes ?? Self.examples, groom: content.groom, bride: content.bride, labelNote: wishes == nil ? "예시 글" : nil, motionEnabled: motionEnabled).aspectRatio(320.0 / 440, contentMode: .fit)
             VStack(spacing: 16) {
                 Button { toast("미리보기에서는 보내지 않아요") } label: {
                     HStack(spacing: 12) {
@@ -34,12 +40,40 @@ struct InvitationGuestbookSection: View {
                         InvIconView(InvIcon.arrowRight, size: 16, color: p.deep)
                     }.foregroundStyle(p.deep).padding(.horizontal, 20).padding(.vertical, 12).frame(minHeight: 50).background(p.bright, in: RoundedRectangle(cornerRadius: 2)).overlay(RoundedRectangle(cornerRadius: 2).stroke(p.gold))
                 }.buttonStyle(.plain).allowsHitTesting(!editing)
-                Button { toast("공개하면 하객이 남긴 축하 글을 모아 볼 수 있어요") } label: {
-                    HStack(spacing: 8) { InvIconView(InvIcon.users, size: 14, color: p.bright); Text("축하 글 전체 보기").font(.custom("KakaoSmallSans-Regular", size: 11)) }
+                Button { withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() } } label: {
+                    HStack(spacing: 8) { InvIconView(InvIcon.users, size: 14, color: p.bright); Text(expanded ? "목록 접기" : "축하 글 전체 보기").font(.custom("KakaoSmallSans-Regular", size: 11)) }
                         .foregroundStyle(p.bright).padding(8).frame(minHeight: 44).contentShape(Rectangle())
-                }.buttonStyle(.plain).allowsHitTesting(!editing)
+                }.buttonStyle(.plain).allowsHitTesting(!editing).accessibilityIdentifier("invitation.guestbookToggle")
+                if expanded && !editing { expandedList }
             }.padding(.horizontal, 24).padding(.top, 24)
         }.frame(maxWidth: .infinity).padding(.top, 64).padding(.bottom, 40).background(p.night)
+            // 편집 중에는 칸을 눌러 입력을 여는 자리라 펼친 목록을 걷는다
+            .onChange(of: editing) { _, value in if value { expanded = false } }
+    }
+    private var expandedList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if listed.isEmpty {
+                Text(InvitationRules.guestbookEmpty).font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(muted).padding(.vertical, 16)
+            }
+            ForEach(listed, id: \.id) { wish in
+                HStack(alignment: .top, spacing: 10) {
+                    GuestbookAvatar(avatar: wish.avatar, size: 34)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 4) {
+                            Text(wish.name.isEmpty ? "하객" : wish.name).font(.custom("KakaoSmallSans-Bold", size: 12)).foregroundStyle(Color(hex: 0xF8EDCF))
+                            if wishes == nil {
+                                Text("예시").font(.custom("KakaoSmallSans-Regular", size: 9)).foregroundStyle(muted)
+                                    .padding(.horizontal, 6).overlay(Capsule().stroke(muted))
+                            }
+                            Spacer()
+                            Text(InvitationRules.wishDateLabel(wish.createdAt)).font(.custom("KakaoSmallSans-Regular", size: 10)).foregroundStyle(muted)
+                        }
+                        Text(wish.message).font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(Color(hex: 0xF8EDCF)).fixedSize(horizontal: false, vertical: true)
+                    }
+                }.padding(.vertical, 10)
+                Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("invitation.guestbookList")
     }
 }
 

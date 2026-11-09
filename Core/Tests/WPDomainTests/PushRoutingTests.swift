@@ -13,6 +13,16 @@ final class PushRoutingTests: XCTestCase {
         return PushPayload(userInfo: userInfo)
     }
 
+    func testScheduleChangeRoutesAndNativeBanner() {
+        for type in ["SCHEDULE_CREATED", "SCHEDULE_UPDATED"] {
+            let p = PushPayload(userInfo: ["type": type, "roomId": "7", "scheduleId": "51", "notificationId": "9"])
+            XCTAssertEqual(PushRouting.destination(for: p), .schedule(id: 51, roomId: 7))
+            XCTAssertEqual(PushRouting.display(for: p, appActive: true, currentChatRoomId: nil), .system)
+        }
+        let deleted = PushPayload(userInfo: ["type": "SCHEDULE_DELETED", "roomId": "7", "scheduleId": "51"])
+        XCTAssertEqual(PushRouting.destination(for: deleted), .schedule(id: nil, roomId: 7))
+    }
+
     // MARK: - 페이로드
 
     func test_값은_전부_문자열로_온다() {

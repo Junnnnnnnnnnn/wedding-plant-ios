@@ -14,6 +14,7 @@ public enum PushDisplay: Hashable, Sendable {
 /// 알림을 눌렀을 때 갈 곳.
 public enum PushDestination: Hashable, Sendable {
     case chatRoom(id: Int)
+    case schedule(id: Int?, roomId: Int)
     /// 어디로 갈지 알 수 없음 — 앱만 연다.
     case none
 }
@@ -38,6 +39,7 @@ public enum PushRouting {
         currentChatRoomId: Int?
     ) -> PushDisplay {
         guard appActive else { return .system }
+        if payload.type.hasPrefix("SCHEDULE_") || payload.type == "PASS_PAYMENT_REMINDER" { return .system }
 
         if let roomId = payload.chatRoomId, roomId == currentChatRoomId {
             return .suppress
@@ -47,6 +49,9 @@ public enum PushRouting {
 
     /// 알림을 눌렀을 때 갈 곳.
     public static func destination(for payload: PushPayload) -> PushDestination {
+        if (payload.type.hasPrefix("SCHEDULE_") || payload.type == "PASS_PAYMENT_REMINDER"), let roomId = payload.roomId {
+            return .schedule(id: payload.type == "SCHEDULE_DELETED" ? nil : payload.scheduleId, roomId: roomId)
+        }
         guard let roomId = payload.chatRoomId else { return .none }
         return .chatRoom(id: roomId)
     }

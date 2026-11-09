@@ -74,11 +74,18 @@ public struct MemberListPage: Codable, Hashable, Sendable {
 ///
 /// **값은 전부 문자열이다.** `chatRoomId` 도 `1` 이 아니라 `"1"`.
 public struct PushPayload: Hashable, Sendable {
+    public var type: String
+    public var roomId: Int?
+    public var scheduleId: Int?
+    public var notificationId: Int?
     public var chatRoomId: Int?
     public var senderName: String
     public var body: String
 
     public init(userInfo: [AnyHashable: Any]) {
+        type = userInfo["type"] as? String ?? ""
+        func number(_ key: String) -> Int? { (userInfo[key] as? String).flatMap(Int.init) ?? userInfo[key] as? Int }
+        roomId = number("roomId"); scheduleId = number("scheduleId"); notificationId = number("notificationId")
         let raw = userInfo["chatRoomId"]
         if let text = raw as? String {
             chatRoomId = Int(text)

@@ -22,6 +22,8 @@ struct InvitationPreviewView: View {
     /// 머리 제목·안내 — 안드로이드 `GuestPreview(title, notice)`
     var title = "하객이 보는 화면"
     var notice: String? = nil
+    /// 공개 중 + 댓글 관리가 켜진 내 청첩장이면 실제 축하 글. nil 이면 예시 글을 보인다
+    var guestbookWishes: [InvitationWish]? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var started: Date? = nil
     @State private var replayID = 0
@@ -188,7 +190,7 @@ struct InvitationPreviewView: View {
                 Text(design.notice.body.isEmpty ? "알릴 내용을 적으면 여기에 보여요" : design.notice.body).wpTypography(13, face: .kakao, lineHeight: 24.7).multilineTextAlignment(.center)
             }.frame(maxWidth: .infinity).padding(.horizontal, 32).padding(.top, 52).padding(.bottom, 48).background(palette.soft)
         case "accounts": InvitationAccounts(content: content, editing: embedded, toast: { toast = $0 })
-        case "guestbook": InvitationGuestbookSection(content: content, editing: embedded, motionEnabled: motionEnabled, toast: { toast = $0 })
+        case "guestbook": InvitationGuestbookSection(content: content, editing: embedded, motionEnabled: motionEnabled, wishes: guestbookWishes, toast: { toast = $0 })
         default: EmptyView()
         }
     }

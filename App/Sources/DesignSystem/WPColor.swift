@@ -18,6 +18,9 @@ extension Color {
 /// 화면 코드에 hex 를 직접 쓰지 말고 여기를 참조할 것. 값이 어긋나면 세 앱의 브랜드가 깨진다.
 /// Tailwind 기본 색(stone/gray)도 실제 hex 를 그대로 적어둔다 — 이름만 보고 짐작하면 틀린다.
 enum WPColor {
+    static let passEntryGold = Color(hex: 0xFFF1B8)
+    static let passEntryInk = Color(hex: 0x753D12)
+    static let inboxDot = Color(hex: 0xD31831)
 
     /// 앱 배경. 웹 `bg-[#fcfbfc]`
     static let background = Color(hex: 0xFCFBFC)

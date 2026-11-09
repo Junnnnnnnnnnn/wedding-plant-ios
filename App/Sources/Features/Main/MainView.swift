@@ -80,6 +80,11 @@ struct MainView: View {
     @ObservedObject var bragToggle: BragToggleViewModel
     @State private var showInvite = false
     @State private var showPass = false
+    @State private var showInbox = false
+    @State private var headerScrolling = false
+    @Environment(\.scenePhase) private var inboxPhase
+    @StateObject private var inbox = InboxModel()
+    @AppStorage("pass-suggestion-until") private var promoHiddenUntil: Double = 0
     @EnvironmentObject private var guide: GuideController
 
     /// 묶음 기준일. 렌더마다 새로 만들면 묶음이 흔들린다(웹 `todayForBuckets`).
@@ -140,6 +145,9 @@ struct MainView: View {
                     .zIndex(1)
 
                     VStack(alignment: .leading, spacing: 0) {
+            if invitation.result?.hasPass == false && env.isMyAdRoom(model.roomIdValue) && Date().timeIntervalSince1970 >= promoHiddenUntil {
+                PassSuggestion(open: { showPass = true }, hide: { promoHiddenUntil = Date().timeIntervalSince1970 + 7 * 86400 })
+            }
                         rest(buckets)
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { restHeight = $0 }
@@ -156,6 +164,7 @@ struct MainView: View {
             }
             .coordinateSpace(name: "main.scroll")
             .scrollIndicators(.hidden)
+            .modifier(HeaderScrollMotionFlag(scrolling: $headerScrolling))
             .scrollTargetBehavior(HomeHeadSnap(anchor: snapAnchor, viewport: viewportHeight, statusBar: wpStatusBarHeight))
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewportHeight = $0 }
             .modifier(HomeScrollReader { y in
@@ -229,7 +238,18 @@ struct MainView: View {
         .navigationDestination(for: BragRoute.self) { _ in
             BragView()
         }
-        .fullScreenCover(isPresented: $showPass) { PassView(roomId: model.roomIdValue) }
+        .passCover(isPresented: $showPass, onPassChanged: { Task { await invitation.load(env) } }) { PassView(roomId: model.roomIdValue) }
+        .sheet(isPresented: $showInbox) { InboxView(model: inbox) { item in
+            if let id = item.scheduleId { path.append(id) }
+            else { path.append(CalendarRoute(roomId: item.roomId, readOnly: false)) }
+        } }
+        .task(id: inboxPhase) {
+            guard inboxPhase == .active else { return }
+            while !Task.isCancelled {
+                if !showInbox { await inbox.load(env) }
+                do { try await Task.sleep(for: .seconds(30)) } catch { return }
+            }
+        }
         .sheet(isPresented: $showInvite) {
             SpouseInviteSheet()
                 .environmentObject(env)
@@ -367,6 +387,10 @@ struct MainView: View {
                     }.foregroundStyle(Color(hex: 0x875022)).padding(.horizontal, 8).padding(.vertical, 5)
                         .background(Color(hex: 0xFFF1B8), in: Capsule())
                 }
+                if !memberPass && invitation.result?.hasPass == false && env.isMyAdRoom(model.roomIdValue) {
+                    PassEntryButton(motionEnabled: !headerScrolling) { showPass = true }
+                }
+                InboxBell(unread: inbox.page?.unreadCount ?? 0) { showInbox = true }
             }
             .guideAnchor("main-header-info")
 
@@ -1302,5 +1326,16 @@ private struct PlanSproutEmpty: View {
         cross.move(to: CGPoint(x: plus.x - 5, y: plus.y)); cross.addLine(to: CGPoint(x: plus.x + 5, y: plus.y))
         cross.move(to: CGPoint(x: plus.x, y: plus.y - 5)); cross.addLine(to: CGPoint(x: plus.x, y: plus.y + 5))
         ctx.stroke(cross, with: .color(.white), style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+    }
+}
+
+private struct HeaderScrollMotionFlag: ViewModifier {
+    @Binding var scrolling: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollPhaseChange { _, phase in scrolling = phase != .idle }
+        } else {
+            content.simultaneousGesture(DragGesture(minimumDistance: 2).onChanged { _ in scrolling = true }.onEnded { _ in scrolling = false })
+        }
     }
 }

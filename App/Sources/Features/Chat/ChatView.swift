@@ -74,6 +74,7 @@ struct ChatView: View {
                 } else {
                     if loadFailed {
                         ChatLoadFailed { Task { await model.load(env: env); await model.loadActivities(env: env) } }
+                        inputBar
                     } else {
                         messages
                     }
@@ -81,7 +82,6 @@ struct ChatView: View {
                         InfoBanner(message: message, actionLabel: "닫기") { model.errorMessage = nil }
                             .padding(.horizontal, 16).padding(.vertical, 8)
                     }
-                    inputBar
                 }
             }
         }
@@ -119,68 +119,33 @@ struct ChatView: View {
     // MARK: - 메시지
 
     private var messages: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    if model.loadingMore {
-                        ProgressView().tint(WPColor.primary).frame(maxWidth: .infinity).padding(8)
-                    } else if model.hasMore {
-                        // 위쪽 끝이 보이면 이전 페이지를 불러온다.
-                        Color.clear.frame(height: 1).onAppear { Task { await model.loadMore(env: env) } }
-                    }
-
-                    let items = ChatActivityRules.merge(messages: model.lines, activities: model.activities, hasMore: model.hasMore)
-                    ForEach(Array(items.enumerated()), id: \.element.id) { offset, item in
-                        let previous = offset > 0 ? items[offset - 1] : nil
-                        let showDate = previous?.dayKey != item.dayKey
-                        VStack(spacing: 0) {
-                            if showDate { ChatDateDivider(text: ChatTimeline.dateHeaderText(item.dayKey)) }
-                            switch item {
-                            case .activity(let activity):
-                                ChatActivityRow(activity: activity) { openDetail($0) }
-                            case .message(let line, _):
-                                // 상대 이름 줄은 이어 말하면 뺀다 — 앞 줄이 같은 사람의 말이고 날짜가 같을 때만.
-                                // 활동 줄 다음 말에는 다시 단다(안드로이드 `showName`).
-                                let prevSender: String? = { if case let .message(p, _) = previous { return p.senderId }; return nil }()
-                                ChatMessageRow(
-                                    line: line,
-                                    showName: previous == nil || prevSender != line.senderId || showDate,
-                                    onOpenSchedule: { openDetail($0) },
-                                    onReport: { if let id = Int(line.id) { reportMessage = id } }
-                                )
-                            }
-                            Color.clear.frame(height: 12)
-                        }.id(item.id)
-                    }
-
-                    // 항상 아래로 붙이기 위한 표식
-                    Color.clear.frame(height: 1).id(Self.bottomAnchor)
+        let items = ChatActivityRules.merge(messages: model.lines, activities: model.activities, hasMore: model.hasMore)
+        return ChatMessageTable(
+            items: items, lines: model.lines, activities: model.activities,
+            focused: inputFocused, hasMore: model.hasMore, loadingMore: model.loadingMore,
+            input: AnyView(inputBar),
+            loadMore: { Task { await model.loadMore(env: env) } }
+        ) { offset in
+            let item = items[offset]
+            let previous = offset > 0 ? items[offset - 1] : nil
+            let showDate = previous?.dayKey != item.dayKey
+            return AnyView(VStack(spacing: 0) {
+                if showDate { ChatDateDivider(text: ChatTimeline.dateHeaderText(item.dayKey)) }
+                switch item {
+                case .activity(let activity):
+                    ChatActivityRow(activity: activity) { openDetail($0) }
+                case .message(let line, _):
+                    let prevSender: String? = { if case let .message(p, _) = previous { return p.senderId }; return nil }()
+                    ChatMessageRow(
+                        line: line, showName: previous == nil || prevSender != line.senderId || showDate,
+                        onOpenSchedule: { openDetail($0) },
+                        onReport: { if let id = Int(line.id) { reportMessage = id } }
+                    )
                 }
-                .padding(16)
-            }
-            .background(WPColor.background)
-            .accessibilityIdentifier("chat.scroll")
-            .scrollDismissesKeyboard(.interactively)
-            // 칸이 줄거나 늘어도(키보드 · 탭바) 대화는 **아래에 붙어** 함께 움직인다 — 카카오톡처럼. 예전에는 키보드가 다
-            // 뜬 뒤에 맨 아래로 다시 굴려서 대화가 한 번 밀렸다가 튀어 올랐다(2026-11-09 사용자 영상).
-            .defaultScrollAnchor(.bottom)
-            .onChange(of: model.lines.last?.id) { _, _ in scrollToBottom(proxy) }
-            .onChange(of: model.loading) { _, loading in if !loading { scrollToBottom(proxy, animated: false) } }
-            .onAppear { scrollToBottom(proxy, animated: false) }
+                Color.clear.frame(height: 12)
+            }.padding(.horizontal, 16))
         }
-    }
-
-    private static let bottomAnchor = "chat.bottom"
-
-    private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool = true) {
-        // 렌더가 끝난 뒤에 내려야 마지막 줄이 잘리지 않는다.
-        DispatchQueue.main.async {
-            if animated {
-                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.bottomAnchor, anchor: .bottom) }
-            } else {
-                proxy.scrollTo(Self.bottomAnchor, anchor: .bottom)
-            }
-        }
+        .background(WPColor.background)
     }
 
     // MARK: - 입력
@@ -525,5 +490,183 @@ private struct ChatScheduleCard: View {
     private var amountText: String {
         let amount = schedule.amount ?? 0
         return amount > 0 ? "\(wpThousands(amount))만 원" : "미정"
+    }
+}
+
+/// 키보드가 바꾸는 bounds와 스크롤 원점을 같은 UIKit 레이아웃에서 갱신한다.
+/// 셀을 재사용하므로 이전 대화를 많이 받아도 전체 SwiftUI 목록을 다시 배치하지 않는다.
+private struct ChatMessageTable: UIViewControllerRepresentable {
+    let items: [ChatActivityItem]
+    let lines: [ChatLine]
+    let activities: [PlanActivity]
+    let focused: Bool
+    let hasMore: Bool
+    let loadingMore: Bool
+    let input: AnyView
+    let loadMore: () -> Void
+    let row: (Int) -> AnyView
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> ChatInputController {
+        let controller = ChatInputController(input: input)
+        let table = controller.table
+        table.backgroundColor = UIColor(WPColor.background)
+        table.separatorStyle = .none
+        table.contentInsetAdjustmentBehavior = .never
+        table.keyboardDismissMode = .interactive
+        table.contentInset = UIEdgeInsets(top: 16, left: 0, bottom: 16, right: 0)
+        table.estimatedRowHeight = 80
+        table.rowHeight = UITableView.automaticDimension
+        table.register(UITableViewCell.self, forCellReuseIdentifier: "message")
+        table.dataSource = context.coordinator
+        table.delegate = context.coordinator
+        table.accessibilityIdentifier = "chat.scroll"
+        return controller
+    }
+
+    func updateUIViewController(_ controller: ChatInputController, context: Context) {
+        controller.inputHost.rootView = input
+        let table = controller.table
+        let previous = context.coordinator.parent
+        let changed = previous.lines != lines || previous.activities != activities || previous.hasMore != hasMore
+        context.coordinator.parent = self
+        let firstLoad = !context.coordinator.loaded
+        if changed || firstLoad {
+            let firstVisible = table.indexPathsForVisibleRows?.first
+            let oldId = firstVisible.flatMap { previous.items.indices.contains($0.row) ? previous.items[$0.row].id : nil }
+            let oldY = firstVisible.map { table.rectForRow(at: $0).minY - table.contentOffset.y } ?? 0
+            let appended = previous.lines.last?.id != lines.last?.id
+            table.reloadData()
+            table.layoutIfNeeded()
+            if firstLoad || appended || table.pinned {
+                table.showLatest()
+            } else if let oldId, let index = items.firstIndex(where: { $0.id == oldId }) {
+                let path = IndexPath(row: index, section: 0)
+                table.scrollToRow(at: path, at: .top, animated: false)
+                table.layoutIfNeeded()
+                table.contentOffset.y = table.rectForRow(at: path).minY - oldY
+            }
+            context.coordinator.loaded = true
+        }
+        if focused && !previous.focused { table.showLatest() }
+    }
+
+    final class Coordinator: NSObject, UITableViewDataSource, UITableViewDelegate {
+        var parent: ChatMessageTable
+        var loaded = false
+        init(_ parent: ChatMessageTable) { self.parent = parent }
+
+        func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { parent.items.count }
+        func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "message", for: indexPath)
+            cell.selectionStyle = .none
+            cell.backgroundColor = .clear
+            let content = parent.row(indexPath.row)
+            cell.contentConfiguration = UIHostingConfiguration { content }
+                .margins(.all, 0).background(Color.clear)
+            return cell
+        }
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            guard let table = scrollView as? BottomPinnedTable else { return }
+            if table.isDragging || table.isDecelerating {
+                table.pinned = table.contentSize.height + table.contentInset.bottom - table.bounds.maxY < 40
+                if table.contentOffset.y < 80 && parent.hasMore && !parent.loadingMore { parent.loadMore() }
+            }
+        }
+    }
+}
+
+private final class BottomPinnedTable: UITableView {
+    var pinned = true
+    private var needsInitialScroll = true
+    private var lastLayoutSize = CGSize.zero
+    private var keyboardAnimationEnd: CFTimeInterval = 0
+    private var keyboardAnimationOptions: UIView.AnimationOptions = []
+
+    override init(frame: CGRect, style: UITableView.Style) {
+        super.init(frame: frame, style: style)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardFrameWillChange(_:)),
+                                               name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func keyboardFrameWillChange(_ note: Notification) {
+        let duration = note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0
+        let curve = note.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt ?? 7
+        keyboardAnimationEnd = CACurrentMediaTime() + duration
+        keyboardAnimationOptions = [UIView.AnimationOptions(rawValue: curve << 16), .beginFromCurrentState, .allowUserInteraction]
+    }
+
+    override func layoutSubviews() {
+        let resized = lastLayoutSize != bounds.size
+        lastLayoutSize = bounds.size
+        super.layoutSubviews()
+        let top = max(16, bounds.height - contentSize.height - contentInset.bottom)
+        if abs(contentInset.top - top) > 0.5 { contentInset.top = top }
+        if resized && pinned && bounds.height > 0 {
+            // UIKit의 셀 배치가 끝난 같은 레이아웃 패스에서 원점을 맞춘다. 별도 비동기 스크롤은 없다.
+            let target = CGPoint(x: contentOffset.x, y: max(-contentInset.top, contentSize.height + contentInset.bottom - bounds.height))
+            let remaining = keyboardAnimationEnd - CACurrentMediaTime()
+            if remaining > 0 {
+                // 셀 원점도 키보드가 보내준 곡선·시간으로 이동해야 프레임보다 먼저 튀지 않는다.
+                UIView.animate(withDuration: remaining, delay: 0, options: keyboardAnimationOptions) {
+                    self.contentOffset = target
+                }
+            } else {
+                contentOffset = target
+            }
+        }
+        if needsInitialScroll && bounds.height > 0 && numberOfRows(inSection: 0) > 0 {
+            needsInitialScroll = false
+            showLatest()
+        }
+    }
+
+    func showLatest() {
+        guard numberOfRows(inSection: 0) > 0 else { return }
+        guard bounds.height > 0 else { needsInitialScroll = true; return }
+        pinned = true
+        scrollToRow(at: IndexPath(row: numberOfRows(inSection: 0) - 1, section: 0), at: .bottom, animated: false)
+    }
+}
+
+/// 입력창·대화 목록을 같은 Auto Layout에 둔다. 키보드 프레임은 iOS 가이드만 처리한다.
+private final class ChatInputController: UIViewController {
+    let table = BottomPinnedTable(frame: .zero, style: .plain)
+    let inputHost: UIHostingController<AnyView>
+
+    init(input: AnyView) {
+        inputHost = UIHostingController(rootView: input)
+        inputHost.safeAreaRegions = []
+        inputHost.sizingOptions = .intrinsicContentSize
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor(WPColor.background)
+        addChild(inputHost)
+        view.addSubview(table)
+        view.addSubview(inputHost.view)
+        table.translatesAutoresizingMaskIntoConstraints = false
+        inputHost.view.translatesAutoresizingMaskIntoConstraints = false
+        inputHost.view.setContentHuggingPriority(.required, for: .vertical)
+        inputHost.view.setContentCompressionResistancePriority(.required, for: .vertical)
+        let restingBottom = inputHost.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        restingBottom.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            table.topAnchor.constraint(equalTo: view.topAnchor),
+            table.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            table.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            table.bottomAnchor.constraint(equalTo: inputHost.view.topAnchor),
+            inputHost.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            inputHost.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            inputHost.view.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor),
+            restingBottom,
+        ])
+        inputHost.didMove(toParent: self)
     }
 }

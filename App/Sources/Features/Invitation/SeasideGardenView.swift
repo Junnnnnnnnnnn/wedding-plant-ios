@@ -4,6 +4,11 @@ import CoreText
 import WPDomain
 import WPModels
 
+struct GardenSummon: Equatable {
+    let wish: InvitationWish
+    let serial: Int
+}
+
 struct SeasideGardenView: UIViewRepresentable {
     var wishes: [InvitationWish] = []
     var demo = false
@@ -15,6 +20,8 @@ struct SeasideGardenView: UIViewRepresentable {
     var labelNote: String? = nil
     var emptySeats = false
     var motionEnabled = true
+    /// `정원에서 만나기` — 값이 바뀔 때마다 그 하객을 정원 한가운데로 불러 말풍선을 띄운다(같은 사람을 또 불러도 되게 차례 번호를 함께 둔다)
+    var summon: GardenSummon? = nil
     func makeUIView(context: Context) -> GardenCanvas {
         GardenCanvas(wishes: wishes, demo: demo, empty: empty, peek: peek, groom: groom, bride: bride, script: script, labelNote: labelNote, emptySeats: emptySeats, motionEnabled: motionEnabled)
     }
@@ -22,6 +29,7 @@ struct SeasideGardenView: UIViewRepresentable {
         view.updateWishes(wishes)
         view.updateCouple(groom: groom, bride: bride)
         view.updatePresentation(script: script, labelNote: labelNote, emptySeats: emptySeats, groom: groom, bride: bride)
+        if let summon { view.summon(summon) }
     }
     static func dismantleUIView(_ uiView: GardenCanvas, coordinator: ()) { uiView.stop() }
 }
@@ -103,6 +111,21 @@ final class GardenCanvas: UIView {
         guard !demo, values != lastWishes else { return }
         lastWishes = values; engine.setWishes(values)
         if !motionEnabled { engine.settle(); setNeedsDisplay() }
+    }
+    private var lastSummon: Int?
+    func summon(_ value: GardenSummon) {
+        guard !demo, value.serial != lastSummon else { return }
+        lastSummon = value.serial
+        // 정원에 없던 사람(앞 쪽에 안 실린 옛 글)이어도 엔진이 빈자리 · 덜 바쁜 자리에 세워 준다
+        engine.enter(value.wish, drop: true)
+        if !motionEnabled { engine.settle() }
+        updateBubble(); setNeedsDisplay()
+    }
+    /// 주인의 축하 글 목록이 정원과 같은 그림을 쓰도록 — 서 있는 첫 자세
+    static func standingSprite(avatar: Int) -> UIImage? {
+        guard !sprites.isEmpty else { return nil }
+        let row = sprites[((avatar % sprites.count) + sprites.count) % sprites.count]
+        return row.first
     }
     func updateCouple(groom: String, bride: String) {
         for actor in engine.actors where actor.isCouple {

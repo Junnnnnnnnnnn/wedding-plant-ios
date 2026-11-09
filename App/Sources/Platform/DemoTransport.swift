@@ -8,6 +8,12 @@ import WPUtils
 /// 그래서 스크린샷·동영상 촬영과 SwiftUI 프리뷰에서는 이 전송 계층을 주입해
 /// 채워진 화면을 보여준다. 실행 인자에 `-WPDemoMode` 가 있으면 활성화된다.
 actor DemoTransport: HTTPTransport {
+    private var inboxRows: [[String: Any]] = (1...3).reversed().map { id in
+        ["id": id, "type": id == 3 ? "SCHEDULE_DELETED" : "SCHEDULE_UPDATED", "title": "함께 준비하는 일정",
+         "body": id == 3 ? "현우님이 ‘드레스 피팅’ 일정을 삭제했어요." : "현우님이 ‘웨딩홀 계약’ 일정을 수정했어요.",
+         "roomId": 1, "scheduleId": id == 3 ? NSNull() : 1,
+         "readAt": id == 1 ? "2026-11-09T10:00:00.000Z" : NSNull(), "createDate": "2026-11-09T09:00:00.000Z"]
+    }
     private var invitation: [String: Any]?
     /// 이 실행에서 산 패스(`/plan/pass/apple/verify`) — UI 테스트가 StoreKit 구성 파일로 결제한 뒤 패스가 켜지는지 본다
     private var purchasedPlan: String?
@@ -29,8 +35,28 @@ actor DemoTransport: HTTPTransport {
     /// `-WPInvitationGuestsTotal N` — 방명록에 N 명. 없으면 0 명
     private var guestTotal: Int {
         let args = ProcessInfo.processInfo.arguments
-        guard let index = args.firstIndex(of: "-WPInvitationGuestsTotal"), index + 1 < args.count else { return 0 }
+        // 공개 중인 청첩장은 수를 따로 주지 않아도 축하 글 6개 — 주인 목록(고치기·지우기)을 데모로 바로 보려고
+        guard let index = args.firstIndex(of: "-WPInvitationGuestsTotal"), index + 1 < args.count else { return args.contains("-WPInvitationPublished") ? 6 : 0 }
         return Int(args[index + 1]) ?? 0
+    }
+    /// 방명록 — 주인이 고치고 지운 것이 공개 방명록(정원)에도 그대로 보이도록 한 벌만 둔다
+    private var guestbookStore: [[String: Any]]?
+    private var guestbook: [[String: Any]] {
+        get {
+            if let guestbookStore { return guestbookStore }
+            let names = ["하은", "도윤", "서연", "지호", "민서", "예준", "수아", "시우"]
+            // 새 글이 앞(서버와 같은 순서) — index 0 이 가장 늦게 남긴 글
+            return (0..<guestTotal).map { index in
+                ["id": "w\(index)", "name": names[index % names.count], "message": "결혼 축하해요 \(index + 1)", "avatar": index % 6,
+                 "createdAt": String(format: "2026-10-%02dT09:00:00.000Z", 28 - index % 27), "editable": true]
+            }
+        }
+        set { guestbookStore = newValue }
+    }
+    private func guestbookPage(offset: Int, limit: Int) throws -> String {
+        let all = guestbook
+        let page = Array(all.dropFirst(offset).prefix(limit))
+        return String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": ["wishes": page, "total": all.count]]), as: UTF8.self)
     }
     /// 로딩 상태가 화면에 보이도록 약간의 지연을 준다.
     var latency: Duration = .milliseconds(200)
@@ -94,6 +120,11 @@ actor DemoTransport: HTTPTransport {
         } else if path.hasSuffix("/plan/place/search") {
             // 위치 검색(백엔드 카카오 프록시) — 엔터·검색 버튼이 결과를 띄우는지 보려고 한 곳만 돌려준다
             json = "{\"result\":true,\"data\":{\"total\":1,\"list\":[{\"placeId\":\"8001\",\"placeName\":\"서울특별시청\",\"addressName\":\"서울 중구 태평로1가 31\",\"roadAddressName\":\"서울 중구 세종대로 110\",\"lat\":37.5663,\"lng\":126.9779}]}}"
+        } else if path.hasPrefix("/plan/notification/inbox") {
+            if request.method == .delete { inboxRows.removeAll { $0["readAt"] is NSNull } }
+            if request.method == .patch, let id = path.split(separator: "/").dropLast().last.flatMap({ Int($0) }), let i = inboxRows.firstIndex(where: { $0["id"] as? Int == id }) { inboxRows[i]["readAt"] = "2026-11-09T10:00:00.000Z" }
+            let rows = ProcessInfo.processInfo.arguments.contains("-WPInboxDemo") ? inboxRows : []
+            json = String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": ["items": rows, "unreadCount": rows.filter { $0["readAt"] is NSNull }.count, "nextCursor": NSNull()]]), as: UTF8.self)
         } else if path.hasSuffix("/plan/my-invitation") {
             if request.method == .put, let data = request.body,
                var body = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -129,12 +160,29 @@ actor DemoTransport: HTTPTransport {
             }
             json = String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": reminder]), as: UTF8.self)
         } else if path.contains("/plan/invitation/") && path.hasSuffix("/guestbook") {
-            let names = ["하은", "도윤", "서연", "지호", "민서", "예준", "수아", "시우"]
-            let wishes: [[String: Any]] = (0..<guestTotal).map { index in
-                ["id": "w\(index)", "name": names[index % names.count], "message": "결혼 축하해요 \(index + 1)", "avatar": index % 6,
-                 "createdAt": String(format: "2026-10-%02dT09:00:00.000Z", 1 + index % 27)]
+            json = try guestbookPage(offset: 0, limit: 1000)
+        } else if path.hasPrefix("/plan/my-invitation/guestbook") {
+            // 주인용 목록 · 고치기 · 지우기. 고치기·지우기는 실제 서버처럼 첫 쪽을 돌려준다
+            let wishId = path.hasSuffix("/guestbook") ? nil : String(path.split(separator: "/").last ?? "").removingPercentEncoding
+            if let wishId {
+                guard let index = guestbook.firstIndex(where: { $0["id"] as? String == wishId }) else {
+                    return HTTPResponse(status: 404, headers: ["Content-Type": "application/json"],
+                                        body: Data("{\"result\":false,\"message\":\"이미 지워진 글이에요.\"}".utf8))
+                }
+                if request.method == .delete { guestbook.remove(at: index) } else {
+                    let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: Any]
+                    var wish = guestbook[index]
+                    if let name = body?["name"] as? String { wish["name"] = name }
+                    if let message = body?["message"] as? String { wish["message"] = message }
+                    guestbook[index] = wish
+                }
+                json = try guestbookPage(offset: 0, limit: 50)
+            } else {
+                let items = URLComponents(url: request.url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                let value = { (key: String) in items.first { $0.name == key }?.value.flatMap(Int.init) }
+                let offset = value("offset") ?? 0, limit = value("limit") ?? 50
+                json = try guestbookPage(offset: offset, limit: limit)
             }
-            json = String(decoding: try JSONSerialization.data(withJSONObject: ["result": true, "data": ["wishes": wishes, "total": guestTotal]]), as: UTF8.self)
         } else if path.hasSuffix("/plan/my-invitation/photo") {
             // 서버처럼 형식을 본다 — 앱이 WebP 로 바꿔 올리지 않으면 여기서 거절돼 화면에 오류가 뜬다(UI 테스트가 본다)
             let body = (try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: Any]

@@ -14,7 +14,7 @@ import WPUtils
     @Published var planVenue: String?
     /// 공개·비공개 뒤의 한 줄 — 안드로이드 `InvitationRules.PUBLISHED_NOTE` · `UNPUBLISHED_NOTE`
     @Published var shareNote: String?
-    /// 홈의 `새 축하 N`(청첩장 칸에서 본 뒤로 늘어난 축하 수). 칸은 늘 0 — 칸에서 받은 하객까지가 "본 것" 이다
+    /// `새 축하 N`(청첩장 칸에서 본 뒤로 늘어난 축하 수). 홈은 카드에, 칸은 정원 아래 줄에 — 칸은 시트를 열면 0
     @Published var fresh = 0
     /// 청첩장 칸이면 받은 하객 수를 "본 것" 으로 적고, 홈이면 그 수와 비교한다(Android `InvitationStudioViewModel` · `HomeInvitationViewModel`)
     let marksSeen: Bool
@@ -55,8 +55,11 @@ import WPUtils
         guard let slug = result?.invitation?.slug, let total,
               let account = await env.tokenStore.currentToken().flatMap({ JWTDecoder.planUserId(from: $0) }) else { fresh = 0; return }
         if marksSeen {
+            // 칸에서는 정원 아래 줄에 이번에 처음 보는 수를 한 번 보여 준 뒤 본 것으로 적는다 — 홈의 `새 축하` 는 칸에 들른 순간
+            // 0 이 되어야 해서(안드로이드와 같은 기준) 적는 시점은 그대로 두고, 줄의 배지는 시트를 열 때 지운다(`clearFresh`).
+            let seen = InvitationSeenStore.seen(account: account, slug: slug)
             InvitationSeenStore.markSeen(account: account, slug: slug, total: total)
-            fresh = 0
+            fresh = max(fresh, InvitationRules.freshWishes(total: total, seen: seen))
         } else {
             let seen = InvitationSeenStore.seen(account: account, slug: slug) ?? {
                 InvitationSeenStore.markSeen(account: account, slug: slug, total: total)
@@ -65,6 +68,7 @@ import WPUtils
             fresh = InvitationRules.freshWishes(total: total, seen: seen)
         }
     }
+    func clearFresh() { fresh = 0 }
     func publish(_ published: Bool, env: AppEnvironment) async {
         guard !busy, var content = result?.invitation else { return }
         busy = true; error = nil; shareNote = nil; defer { busy = false }
@@ -86,10 +90,13 @@ struct InvitationStudioView: View {
     @State private var preview = false
     @State private var headerHeight: CGFloat = 170
     @State private var pass = false
+    @State private var guestbook = false
+    @State private var summon: GardenSummon?
     private var published: Bool { model.result?.invitation?.published == true }
     private var guestbookOn: Bool { model.result?.invitation.map { InvitationRules.normalize($0.design).sections.contains { $0.type == "guestbook" && $0.visible } } ?? false }
     var body: some View {
         GeometryReader { geometry in
+            ScrollViewReader { reader in
             ScrollView {
                 VStack(spacing: 0) {
                     ExploreHead(switcher: titleSlot ?? AnyView(Text("모바일 청첩장").font(WPFont.hak(18, .bold)).foregroundStyle(.white)), headline: "모바일 청첩장", stats: studioStats, loading: false) { EmptyView() }
@@ -109,14 +116,23 @@ struct InvitationStudioView: View {
                             groom: model.result?.invitation?.groom ?? InvitationRules.exampleGroom, bride: model.result?.invitation?.bride ?? InvitationRules.exampleBride,
                             script: model.state == .mine ? InvitationRules.mineLines(published: published, guestbookOn: guestbookOn, guests: model.total) : nil,
                             labelNote: model.state == .mine ? InvitationRules.mineLabelNote(published: published, guests: model.total) : nil,
-                            emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total), motionEnabled: motionEnabled)
+                            emptySeats: model.state == .mine && InvitationRules.mineEmptySeats(published: published, guestbookOn: guestbookOn, guests: model.total), motionEnabled: motionEnabled,
+                            summon: summon)
                             .frame(height: min(geometry.size.width * 440 / 320, max(360, geometry.size.height - headerHeight - 12)))
                             .id(model.state == .landing ? "landing" : model.state == .empty ? "empty" : "mine")
+                        Color.clear.frame(height: 0).id("gardenTop")
+                        if model.state == .mine { guestbookRow.padding(.horizontal, 16).padding(.top, 14) }
                         details.padding(.horizontal, 16).padding(.top, 22).padding(.bottom, 32)
                     }
                 }
             }.background(.white)
                 .refreshable { await model.load(env) }
+                .onChange(of: summon) { _, value in
+                    // 정원이 화면 위에 보이도록 — 줄을 누른 자리는 정원 아래라 내려와 있다
+                    guard value != nil else { return }
+                    withAnimation(.easeInOut(duration: 0.3)) { reader.scrollTo(model.state == .mine ? "mine" : "gardenTop", anchor: .top) }
+                }
+            }
         }.ignoresSafeArea(edges: .top).font(.custom("KakaoSmallSans-Regular", size: 14))
             .task { await model.load(env) }
             .fullScreenCover(item: $editTarget, onDismiss: { Task { await model.load(env) } }) { target in
@@ -125,12 +141,40 @@ struct InvitationStudioView: View {
             .fullScreenCover(isPresented: $preview) {
                 // 안드로이드 `StudioPreviewDialog` — 내 청첩장은 "하객이 보는 청첩장"(공개 전이면 안내 한 줄), 예시는 "예시 청첩장"
                 if let saved = model.result?.invitation {
-                    InvitationPreviewView(content: saved, title: "하객이 보는 청첩장", notice: saved.published ? nil : "아직 공개하지 않았어요")
+                    InvitationPreviewView(content: saved, title: "하객이 보는 청첩장", notice: saved.published ? nil : "아직 공개하지 않았어요",
+                                          guestbookWishes: saved.published && guestbookOn && model.total != nil ? model.wishes : nil)
                 } else {
                     InvitationPreviewView(content: Self.example, title: "예시 청첩장")
                 }
             }
+            .sheet(isPresented: $guestbook) {
+                InvitationGuestbookSheet(onChanged: { Task { await model.load(env) } },
+                                         onMeet: { wish in summon = GardenSummon(wish: wish, serial: (summon?.serial ?? 0) + 1) })
+            }
             .passCover(isPresented: $pass, onPassChanged: { Task { await model.load(env); await env.refreshAdEligibility() } }) { PassView(roomId: model.result?.roomId, staysAfterPurchase: true) }
+    }
+    /// 정원 바로 아래 `축하 글 N개 [새 K] · 전체 보기 ›` + 가장 늦은 글 한 줄(시안 ①).
+    /// 공개 전에는 하객 글이 있을 수 없어 열지 않는다 — 아래 `InvitationSavedDetails` 의 안내가 이유를 말한다.
+    private var guestbookRow: some View {
+        let openable = InvitationRules.guestbookOpenable(published: published)
+        let latest = InvitationRules.homeLatestWish(model.wishes.map { ($0.name, $0.message, $0.createdAt) })
+        return Button { model.clearFresh(); guestbook = true } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(InvitationRules.guestbookRowTitle(total: model.total ?? (published ? nil : 0)))
+                        .font(.custom("KakaoSmallSans-Bold", size: 14)).foregroundStyle(WPColor.primary)
+                    if model.fresh > 0 {
+                        Text("새 \(model.fresh)").font(.custom("KakaoSmallSans-Bold", size: 11)).foregroundStyle(.white)
+                            .padding(.horizontal, 7).padding(.vertical, 1).background(WPColor.primary, in: Capsule())
+                    }
+                    Spacer()
+                    if openable { Text("전체 보기 ›").font(.custom("KakaoSmallSans-Regular", size: 13)).foregroundStyle(WPColor.stone600) }
+                }
+                Text(latest.map { "\($0.name) · \"\($0.message)\"" } ?? InvitationRules.guestbookEmpty)
+                    .font(.custom("KakaoSmallSans-Regular", size: 12)).foregroundStyle(WPColor.stone500).lineLimit(1)
+            }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(hex: 0xFFF4F9), in: RoundedRectangle(cornerRadius: 12)).contentShape(Rectangle())
+        }.buttonStyle(.plain).disabled(!openable).accessibilityIdentifier("invitation.guestbookRow")
     }
     private var studioStats: [(String, String)] {
         guard let saved = model.result?.invitation else { return [] }
