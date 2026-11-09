@@ -38,6 +38,37 @@ final class FeatureReviewUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["준비 패스"].firstMatch.waitForExistence(timeout: 10))
         shot(app, "features-ad-pass-intro")
     }
+    func testHomeBoardDesignReview() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-WPDemoMode", "-WPAdPreview", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
+        app.launch()
+        XCTAssertTrue(app.buttons["main.profile"].waitForExistence(timeout: 20))
+        shot(app, "review-home-profile")
+        let scroll = app.scrollViews["main.scroll"]
+        let promo = app.buttons["준비 패스 살펴보기 ›"]
+        for _ in 0..<12 { if promo.exists && promo.isHittable { break }; scroll.swipeUp() }
+        XCTAssertTrue(promo.isHittable)
+        shot(app, "review-home-promo")
+        app.buttons["tab.schedule"].tap()
+        XCTAssertTrue(app.scrollViews["calendar.scroll"].waitForExistence(timeout: 15))
+        let board = app.scrollViews["calendar.scroll"]
+        let ad = app.descendants(matching: .any)["ad.board.inline"].firstMatch
+        for _ in 0..<10 { if ad.exists && ad.isHittable { break }; board.swipeUp() }
+        XCTAssertTrue(ad.isHittable)
+        shot(app, "review-board-ad")
+    }
+    func testCoupleOwnerProfileLabel() { coupleProfile(false) }
+    func testCoupleSpouseProfileLabel() { coupleProfile(true) }
+    private func coupleProfile(_ spouse: Bool) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-WPDemoMode", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"] + (spouse ? ["-WPDemoSpouse"] : [])
+        app.launch()
+        XCTAssertTrue(app.buttons["main.profile"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["지수"].exists)
+        XCTAssertTrue(app.staticTexts["현우"].exists)
+        XCTAssertTrue(app.staticTexts["설정"].exists)
+        shot(app, spouse ? "review-couple-spouse" : "review-couple-owner")
+    }
     func testPaidHome() {
         let app = launch(true)
         XCTAssertFalse(app.buttons["main.passEntry"].exists)

@@ -111,6 +111,7 @@ struct CalendarView: View {
                     BoardList(
                         loaded: model.upcomingLoaded,
                         groups: model.boardGroups,
+                        showAd: model.loadedOnce && !model.readOnly && env.isAuthenticated && env.isMyAdRoom(roomId),
                         onOpen: { openDetail($0) }
                     )
                 }
@@ -653,6 +654,7 @@ private struct DayPlanCard: View {
 private struct BoardList: View {
     var loaded: Bool
     var groups: [(label: String, items: [ScheduleItem])]
+    var showAd: Bool
     var onOpen: (Int) -> Void
 
     /// 카드를 한 장씩 짓는다(Android 8c1068b `LazyColumn`, 요청서 08). 화면 전체(머리 면 · 달력)를 LazyVStack 으로 감싸면
@@ -691,10 +693,13 @@ private struct BoardList: View {
                 .padding(.top, index == 0 ? 4 : 20)
                 .padding(.bottom, 4)
 
-                ForEach(group.items.map { ("board-plan-\($0.id)", $0) }, id: \.0) { _, item in
+                ForEach(Array(group.items.enumerated()), id: \.element.id) { itemIndex, item in
                     DateTileRow(item: item) { onOpen(item.id) }
                         .padding(.top, 10)
                         .padding(.horizontal, 16)
+                    if showAd && groups.prefix(index).reduce(0, { $0 + $1.items.count }) + itemIndex == 1 && groups.reduce(0, { $0 + $1.items.count }) > 2 {
+                        NativeAdSlot(placement: "board.inline", style: .feed, horizontal: 16, top: 14, bottom: 4)
+                    }
                 }
             }
         }

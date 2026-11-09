@@ -302,7 +302,8 @@ enum DemoData {
     /// 서명은 검증하지 않으므로 아무 값이나 넣는다.
     static let token: String = {
         let exp = Int(Date().addingTimeInterval(60 * 60 * 24 * 365).timeIntervalSince1970)
-        let payload = "{\"planUserId\":\"demo-user\",\"sub\":\"demo\",\"exp\":\(exp)}"
+        let userId = ProcessInfo.processInfo.arguments.contains("-WPDemoSpouse") ? "u2" : "demo-user"
+        let payload = "{\"planUserId\":\"\(userId)\",\"sub\":\"demo\",\"exp\":\(exp)}"
         let encoded = Data(payload.utf8).base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")

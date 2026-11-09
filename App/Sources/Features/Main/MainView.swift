@@ -145,10 +145,10 @@ struct MainView: View {
                     .zIndex(1)
 
                     VStack(alignment: .leading, spacing: 0) {
-            if invitation.result?.hasPass == false && env.isMyAdRoom(model.roomIdValue) && Date().timeIntervalSince1970 >= promoHiddenUntil {
-                PassSuggestion(open: { showPass = true }, hide: { promoHiddenUntil = Date().timeIntervalSince1970 + 7 * 86400 })
-            }
                         rest(buckets)
+                        if invitation.result?.hasPass == false && env.isMyAdRoom(model.roomIdValue) && Date().timeIntervalSince1970 >= promoHiddenUntil {
+                            PassSuggestion(open: { showPass = true }, hide: { promoHiddenUntil = Date().timeIntervalSince1970 + 7 * 86400 })
+                        }
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { restHeight = $0 }
 
@@ -355,16 +355,26 @@ struct MainView: View {
                 } else {
                     NavigationLink { UserView() } label: {
                         HStack(spacing: 0) {
-                            HomeTmoneyLabel(
-                                runs: [.init(loadFailed ? "내 프로필" : (model.displayName.isEmpty ? "이름" : model.displayName), size: 18, tracking: -0.36)],
-                                color: .white,
-                                lineHeight: 27
-                            )
-                            Spacer().frame(width: 8)
-                            HeadAvatars(initials: model.headerInitials)
-                            // 눌린다는 표시 — 프로필 탭이 없어져 이 줄이 그 자리를 대신한다
-                            WPLucideIcon(paths: WPIconPaths.chevronRight, size: 18, color: .white.opacity(0.75))
-                                .padding(.leading, 2)
+                            let names = (loadFailed ? "내 프로필" : (model.displayName.isEmpty ? "이름" : model.displayName)).components(separatedBy: " · ")
+                            HStack(spacing: 4) {
+                                ForEach(Array(names.enumerated()), id: \.offset) { index, name in
+                                    if index > 0 { Text("·").foregroundStyle(.white.opacity(0.8)) }
+                                    let isOwn = names.count == 1 || name.trimmingCharacters(in: .whitespaces) == model.ownHeaderName
+                                    Text(name).font(WPFont.hak(15, .bold)).foregroundStyle(.white).lineLimit(1)
+                                        .padding(.horizontal, isOwn ? 8 : 0).padding(.vertical, 6)
+                                        .background(isOwn ? Color.white.opacity(0.16) : .clear, in: RoundedRectangle(cornerRadius: 11))
+                                        .overlay {
+                                            if isOwn { RoundedRectangle(cornerRadius: 11).stroke(.white.opacity(0.65), lineWidth: 1) }
+                                        }
+                                        .overlay(alignment: .topTrailing) {
+                                            if isOwn {
+                                                Text("설정").font(WPFont.hak(9, .bold)).foregroundStyle(WPColor.primary)
+                                                    .padding(.horizontal, 5).padding(.vertical, 2)
+                                                    .background(.white, in: Capsule()).offset(x: 7, y: -7)
+                                            }
+                                        }
+                                }
+                            }.lineLimit(1)
                         }
                         // 보이는 줄은 안드로이드처럼 27pt, 누르는 자리만 위아래로 넓힌다
                         .padding(.vertical, 8)

@@ -37,13 +37,19 @@ struct PassSuggestion: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("준비를 조금 더 편하게").font(WPFont.hak(18, .bold))
+                Text("준비 패스").font(WPFont.hak(18, .bold))
                 Spacer()
-                Button("7일간 숨기기", action: hide).font(WPFont.hak(12)).frame(minHeight: 44)
+                Button("7일간 숨기기", action: hide).font(WPFont.hak(12)).foregroundStyle(WPColor.fgMuted).frame(minHeight: 44)
             }
-            Text("서류부터 청첩장까지 한곳에 모아요.").font(WPFont.hak(14)).foregroundStyle(WPColor.fgMuted)
-            Button("준비 패스 살펴보기 ›", action: open).font(WPFont.hak(15)).frame(minHeight: 44)
-        }.padding(18).background(WPColor.fill, in: RoundedRectangle(cornerRadius: 16)).padding(16)
+            Text("둘이 함께 준비할수록 편해지는\n우리만의 결혼 준비 도구").font(WPFont.hak(13)).foregroundStyle(WPColor.fgMuted).fixedSize(horizontal: false, vertical: true)
+            Text("서류 보관  ·  엑셀로 받기  ·  결제일 알림  ·  광고 제거").font(WPFont.hak(11)).foregroundStyle(WPColor.primary).fixedSize(horizontal: false, vertical: true)
+            Button(action: open) {
+                Text("준비 패스 살펴보기 ›").font(WPFont.hak(15, .bold)).foregroundStyle(.white).frame(maxWidth: .infinity).frame(minHeight: 44)
+                    .background(WPColor.primary, in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain)
+        }.padding(16).background(.white, in: RoundedRectangle(cornerRadius: 20))
+            .overlay { PassHighlightBorder(radius: 20) }.padding(16)
+            .accessibilityIdentifier("main.passSuggestion")
     }
 }
 /// 광고 SDK 바깥, 광고를 받은 경우에만 표시한다.
