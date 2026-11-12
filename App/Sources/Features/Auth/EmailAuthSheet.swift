@@ -14,6 +14,8 @@ struct EmailAuthSheet: View {
     @State private var password = ""
     @State private var code = ""
     @State private var social: String?
+    /// `email/verify` 가 준 가입 표 — 가입 요청에 실어야 서버가 받습니다. 화면에 보이지 않으니 단계가 바뀔 때 직접 비웁니다.
+    @State private var signupTicket: String?
     @State private var busy = false
     @State private var error: String?
     @State private var resendAt = Date.distantPast
@@ -257,6 +259,7 @@ struct EmailAuthSheet: View {
     private func back() {
         guard !busy else { return }
         step = step == .reset ? .password : .email
+        if step == .email { signupTicket = nil }
         password = ""; code = ""; error = nil
     }
     private func run(fallback: String, _ action: @escaping () async throws -> Void) {
@@ -279,7 +282,11 @@ struct EmailAuthSheet: View {
     }
     private func verify() async throws {
         guard EmailAuthRules.validCode(code) else { throw LocalFailure(message: "6자리 인증 코드를 입력해 주세요.") }
-        try await env.api.sendIgnoringData(Endpoint.emailVerify(email, code: code))
+        let result: EmailVerifyResult = try await env.api.send(Endpoint.emailVerify(email, code: code))
+        guard let ticket = result.signupTicket, !ticket.isEmpty else {
+            throw LocalFailure(message: "인증을 완료하지 못했어요. 다시 시도해 주세요.")
+        }
+        signupTicket = ticket
         step = .signup; code = ""
     }
     private func submit() {
@@ -288,6 +295,7 @@ struct EmailAuthSheet: View {
             let normalized = EmailAuthRules.normalize(email)
             guard EmailAuthRules.validEmail(normalized) else { error = "이메일 주소를 다시 확인해 주세요."; return }
             email = normalized
+            signupTicket = nil
             run(fallback: "이메일 주소를 다시 확인해 주세요.") {
                 let result: EmailCheckResult = try await env.api.send(Endpoint.emailCheck(email))
                 if result.exists { step = .password }
@@ -300,10 +308,13 @@ struct EmailAuthSheet: View {
         case .code:
             run(fallback: "인증 코드가 일치하지 않아요.") { try await verify() }
         case .password:
-            run(fallback: "이메일 또는 비밀번호가 맞지 않아요.") { try await login(signup: false) }
+            run(fallback: "이메일 또는 비밀번호가 맞지 않아요.") {
+                try await finishLogin(env.api.send(Endpoint.emailLogin(email, password: password)))
+            }
         case .signup:
             guard EmailAuthRules.validPassword(password) else { error = passwordError; return }
-            run(fallback: "가입하지 못했어요. 처음부터 다시 시도해 주세요.") { try await login(signup: true) }
+            guard let ticket = signupTicket else { error = "이메일 인증을 다시 해 주세요."; return }
+            run(fallback: "가입하지 못했어요. 처음부터 다시 시도해 주세요.") { try await signup(ticket: ticket) }
         case .reset:
             guard EmailAuthRules.validCode(code) else { error = "6자리 인증 코드를 입력해 주세요."; return }
             guard EmailAuthRules.validPassword(password) else { error = passwordError; return }
@@ -314,8 +325,22 @@ struct EmailAuthSheet: View {
         case .social, .resetDone: break
         }
     }
-    private func login(signup: Bool) async throws {
-        let result: AuthTokenResult = try await env.api.send(Endpoint.emailLogin(email, password: password, signup: signup))
+    /// 가입 표는 30분이면 끝납니다(서버 401). 처음부터 다시 하라고 하지 않고 새 코드를 보내 코드 단계로 돌립니다(Android `submitSignup`).
+    private func signup(ticket: String) async throws {
+        let result: AuthTokenResult
+        do {
+            result = try await env.api.send(Endpoint.emailSignup(email, password: password, signupTicket: ticket))
+        } catch let APIError.http(status, _) where status == 401 {
+            signupTicket = nil
+            step = .code
+            do { try await sendCode(next: nil) }
+            catch { throw LocalFailure(message: EmailAuthRules.errorText(error, fallback: "인증 메일을 보내지 못했어요.")) }
+            throw LocalFailure(message: "인증이 만료되어 새 코드를 보냈어요.")
+        }
+        signupTicket = nil
+        try await finishLogin(result)
+    }
+    private func finishLogin(_ result: AuthTokenResult) async throws {
         guard let token = result.value, !token.isEmpty else { throw LocalFailure(message: "로그인하지 못했어요. 잠시 후 다시 시도해 주세요.") }
         await env.tokenStore.save(token)
         await env.refreshAuthState()

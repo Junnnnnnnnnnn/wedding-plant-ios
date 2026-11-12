@@ -422,6 +422,25 @@ final class AndroidParityUITests: XCTestCase {
         app.buttons["email.submit"].tap()
         XCTAssertTrue(password.waitForExistence(timeout: 5))
     }
+    /// 코드 확인 → 비밀번호 → 가입이 끝까지 간다. 데모 서버는 운영처럼 verify 의 가입 표가 없으면 가입을 거절한다
+    /// (2026-11-12: iOS 가 표를 버려 "가입하지 못했어요. 처음부터 다시 시도해 주세요." 만 떴다)
+    func testEmailSignupSendsTicketAndLogsIn() {
+        let app = launch(["-WPLoggedOut"])
+        XCTAssertTrue(app.buttons["auth.email"].waitForExistence(timeout: 10)); app.buttons["auth.email"].tap()
+        let email = app.textFields["email.address"]
+        XCTAssertTrue(email.waitForExistence(timeout: 5)); email.tap(); email.typeText("new-member@example.com")
+        app.buttons["email.submit"].tap()
+        let code = app.textFields["email.code"]
+        XCTAssertTrue(code.waitForExistence(timeout: 5)); code.tap(); code.typeText("123456")
+        let password = app.secureTextFields["email.password"]
+        XCTAssertTrue(password.waitForExistence(timeout: 5)); password.tap(); password.typeText("new-password")
+        app.staticTexts["email.title"].tap()
+        app.buttons["email.submit"].tap()
+        XCTAssertTrue(email.waitForNonExistence(timeout: 10), "가입하면 시트가 닫힌다")
+        XCTAssertFalse(app.staticTexts["가입하지 못했어요. 처음부터 다시 시도해 주세요."].exists)
+        XCTAssertTrue(app.buttons["auth.email"].waitForNonExistence(timeout: 10), "로그인 화면을 떠난다")
+        capture(app, "email-signup-done")
+    }
     func testInvitationLandingMotionAndPreview() {
         let app = launch(); app.buttons["tab.explore"].tap()
         XCTAssertTrue(app.buttons["explore.invitation"].waitForExistence(timeout: 5)); app.buttons["explore.invitation"].tap()

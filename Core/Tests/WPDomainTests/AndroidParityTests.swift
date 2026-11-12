@@ -38,10 +38,20 @@ final class AndroidParityTests: XCTestCase {
         XCTAssertFalse(EmailAuthRules.validPassword(String(repeating: "a", count: 73)))
     }
     func testEmailEndpointsNeverAttachAuthAndResetUsesNewPassword() throws {
-        let requests = try [Endpoint.emailCheck("a@b.co"), Endpoint.emailCode("a@b.co"), Endpoint.emailVerify("a@b.co", code: "123456"), Endpoint.emailLogin("a@b.co", password: "secret"), Endpoint.emailReset("a@b.co", code: "123456", password: "newsecret")]
+        let requests = try [Endpoint.emailCheck("a@b.co"), Endpoint.emailCode("a@b.co"), Endpoint.emailVerify("a@b.co", code: "123456"), Endpoint.emailLogin("a@b.co", password: "secret"), Endpoint.emailSignup("a@b.co", password: "secret", signupTicket: "t"), Endpoint.emailReset("a@b.co", code: "123456", password: "newsecret")]
         XCTAssertTrue(requests.allSatisfy { !$0.requiresAuth && $0.method == .post })
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: requests.last!.body!) as? [String: String])
         XCTAssertEqual(json["newPassword"], "newsecret"); XCTAssertNil(json["password"])
+    }
+    /// 가입은 verify 가 준 표를 실어야 서버가 받습니다 — 빠지면 iOS 에서만 가입이 늘 실패했습니다(2026-11-12)
+    func testEmailSignupCarriesTicketAndVerifyDecodesIt() throws {
+        let request = try Endpoint.emailSignup("a@b.co", password: "secret", signupTicket: "ticket-1")
+        XCTAssertEqual(request.path, "/plan/auth/email/signup")
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: request.body!) as? [String: String])
+        XCTAssertEqual(json, ["email": "a@b.co", "password": "secret", "signupTicket": "ticket-1"])
+        XCTAssertEqual(try Endpoint.emailLogin("a@b.co", password: "secret").path, "/plan/auth/email/login")
+        let decoded = try JSONDecoder().decode(EmailVerifyResult.self, from: Data(#"{"signupTicket":"abc"}"#.utf8))
+        XCTAssertEqual(decoded.signupTicket, "abc")
     }
     func testInvitationReplacementClearsDatesAndUsesOptimisticVersion() throws {
         var draft = InvitationRules.draft(); draft.weddingDate = nil; draft.weddingTime = nil; draft.updatedAt = "version-7"

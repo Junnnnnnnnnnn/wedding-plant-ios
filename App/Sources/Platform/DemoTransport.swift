@@ -103,6 +103,14 @@ actor DemoTransport: HTTPTransport {
                       body["password"] == "wrong-password" {
                 // Android `PortingUiTest` 의 비밀번호 오류 화면과 같은 상태를 찍기 위한 거절.
                 json = "{\"result\":false,\"message\":\"이메일 또는 비밀번호가 맞지 않아요.\"}"
+            } else if path.hasSuffix("/verify") {
+                // 실제 서버처럼 가입 표(64자 hex)를 준다 — 이 표를 버리면 가입이 거절된다(2026-11-12 iOS 가입 실패)
+                json = "{\"result\":true,\"data\":{\"signupTicket\":\"\(DemoData.signupTicket)\"}}"
+            } else if path.hasSuffix("/signup"),
+                      ((try? JSONSerialization.jsonObject(with: request.body ?? Data())) as? [String: String])?["signupTicket"] != DemoData.signupTicket {
+                // 운영 서버와 같은 거절 — 검증 오류 배열이라 화면에는 대체 문장이 뜬다
+                return HTTPResponse(status: 400, headers: ["Content-Type": "application/json"],
+                                    body: Data("{\"message\":[{\"property\":\"signupTicket\"}],\"error\":\"Bad Request\",\"statusCode\":400}".utf8))
             } else if path.hasSuffix("/login") || path.hasSuffix("/signup") {
                 json = "{\"result\":true,\"data\":{\"token\":\"\(DemoData.token)\"}}"
             } else { json = "{\"result\":true}" }
@@ -300,6 +308,7 @@ enum DemoData {
     ///
     /// `APIClient` 가 `exp` 를 검사해 만료 토큰을 차단하므로, 데모용이라도 형식이 맞아야 한다.
     /// 서명은 검증하지 않으므로 아무 값이나 넣는다.
+    static let signupTicket = String(repeating: "ab", count: 32)
     static let token: String = {
         let exp = Int(Date().addingTimeInterval(60 * 60 * 24 * 365).timeIntervalSince1970)
         let userId = ProcessInfo.processInfo.arguments.contains("-WPDemoSpouse") ? "u2" : "demo-user"

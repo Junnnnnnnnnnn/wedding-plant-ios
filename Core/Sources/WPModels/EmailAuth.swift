@@ -9,3 +9,7 @@ public struct AuthTokenResult: Decodable, Sendable {
     public let jwt: String?
     public var value: String? { [jwt, token].compactMap { $0 }.first { !$0.isEmpty } }
 }
+/// `POST /plan/auth/email/verify` — 통과하면 30분 안에 가입에 쓸 표(Android `EmailVerifyResult`)
+public struct EmailVerifyResult: Decodable, Sendable {
+    public let signupTicket: String?
+}
